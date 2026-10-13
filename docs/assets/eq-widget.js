@@ -1,25 +1,57 @@
 /*!
- * eq-widget.js — LiEqualizer project page, interactive spectral equaliser.
+ * eq-widget.js — LiEqualizer project page, the spatial-profile equaliser.
  *
- * A self-contained hero instrument. Two vertical faders ("LF EQUALIZER" and
- * "HF EQUALIZER") continuously morph the sparse student's profile toward the
- * dense teacher's: LF moves the low-frequency ENVELOPE, HF moves the
- * high-frequency DETAIL. Both rest at 0. Releasing a fader leaves the curve
- * exactly where it was put — the faders never spring back.
+ * A self-contained hero instrument. Two vertical faders ("LF" and "HF")
+ * continuously morph the sparse student's profile toward the dense teacher's.
+ * Both rest at 0. Releasing a fader leaves the curve exactly where it was put —
+ * the faders never spring back.
  *
- * Six more things move, so the instrument is not just two sliders:
- *   · either curve can be PLUCKED — grab it anywhere, pull, and on release it
- *     springs back to the shape the faders imply, with a short underdamped
- *     settle. A pluck never touches the fader values.
- *   · a scrub cursor follows the pointer across the plot and reads out the
- *     local teacher-student gap.
- *   · three preset pills (BYPASS / LF / LF+HF) jump the faders to the three
- *     states of the paper's insight figure. They jump; they do not rebound.
+ * THE PLOT IS IN THE SPATIAL DOMAIN. x is a spatial position, y is a signal /
+ * feature response. The HEIGHT of a curve therefore says NOTHING about
+ * frequency, and no region of either curve is ever labelled with a frequency.
+ * What the two words mean here is what they mean in the paper's insight figure,
+ * whose own x axis is labelled "Spatial position":
  *
- * At full travel the student lands CLOSE TO but not ON the teacher: a residual
- * of FULL_SCALE_RESIDUAL (4% of the signal range) is left behind, because the
+ *   LOW  FREQUENCY  ==  the ENVELOPE, the gross shape of the curve.
+ *   HIGH FREQUENCY  ==  the fine spiky ripple riding on top of that envelope.
+ *
+ * So the instrument is built from four arrays, not two curves:
+ *
+ *   teacherEnvelope   one dominant hump with subordinate shoulders
+ *   teacherRipple     dense, sharp, varied spikes — detail a DENSE scan keeps
+ *   studentEnvelope   a different, WRONG shape: two humps where the dense scan
+ *                     has one dominant hump
+ *   studentRipple     a 5% trace of the teacher's texture — what survived a
+ *                     sparse sampling of it, i.e. visually nothing
+ *
+ * and the drawn student at faders (lf, hf) is exactly
+ *
+ *   env[i]    = lerp(studentEnvelope[i], teacherEnvelope[i], lf)
+ *   ripple[i] = lerp(studentRipple[i],   teacherRipple[i],   hf)
+ *   y[i]      = env[i] + ripple[i]
+ *
+ * LF moves the SHAPE onto the dense scan's and leaves the student smooth;
+ * HF grows the fine detail until the student's texture matches. At full travel
+ * the student lands CLOSE TO but not ON the teacher: a residual of
+ * FULL_SCALE_RESIDUAL (4% of the signal range) is left behind, because the
  * paper's own measurements show a distilled student near the teacher, not
  * equal to it.
+ *
+ * Four more things move, so the instrument is not just two sliders:
+ *   · either curve can be PLUCKED — grab it anywhere, pull, and on release it
+ *     springs back to the shape the faders imply, with a short underdamped
+ *     settle. A pluck never touches the fader values. ONE transparent hit
+ *     surface covers the plot and plucks whichever curve is nearer in y, so
+ *     the teacher stays grabbable where the two curves are close (v2 stacked
+ *     two fat invisible strokes and the student's swallowed the teacher's).
+ *   · a scrub cursor follows the pointer across the plot and reads out the
+ *     local teacher-student gap.
+ *   · two in-plot callouts state, in plain spatial language, what the sparse
+ *     scan got wrong: the SHAPE (which LF closes) and the DETAIL it never
+ *     recorded (which HF fills in). Their wording changes as the faders move,
+ *     because at full travel neither sentence is true any more.
+ *   · three preset pills (BYPASS / LF / LF+HF) jump the faders to the three
+ *     states of the paper's insight figure. They jump; they do not rebound.
  *
  * Native inline SVG + one injected <style>. No framework, no bundler, no CDN,
  * no chart library, no build step. ES5-compatible. Safe to load with a plain
@@ -28,11 +60,12 @@
  * Public API (window.LiEQEqualizer):
  *   init(target, opts)   -> instance | null     mount into one element
  *   initAll(sel, opts)   -> [instance]          mount into every match
- *   caption              -> the illustrative-not-measured disclosure line
- *   math                 -> pure helpers (smooth / split / morph / reach /
- *                           bump / spring / path)
- *   PluckState           -> the DOM-free pluck + spring state machine
- *   curves               -> { teacher: [...], student: [...] }
+ *   autoInit()                                  runs itself on #eq-mount
+ *   renderMarkup(o, uid) -> string              DOM-free markup, for the tests
+ *   css / caption / defaults / presets / constants / math / geometry
+ *   Instance / PluckState
+ *   curves               -> { teacher, student, teacherEnvelope, teacherRipple,
+ *                             studentEnvelope, studentRipple, vmax, reach }
  *
  * Instance:
  *   .element .svg .state .caption
@@ -41,11 +74,9 @@
  *   .morph(lf, hf) -> []    the curve the given pose would draw (pure)
  *   .destroy()
  *
- * The two curves are traced from the left half of the paper's insight figure
- * (the "Bypass / LF Equalizer / HF Equalizer" triptych), whose own x axis is
- * labelled "Spatial position" — so this plot is in the SPATIAL domain, not the
- * frequency domain: x is a spatial coordinate, y is a signal/feature value.
- * The curves are illustrative, not measured; see CAPTION below.
+ * Both profiles are drawn procedurally from the named constants in section 1,
+ * after the paper's insight figure. They are illustrative, not measured; see
+ * CAPTION below.
  */
 (function (root, factory) {
   'use strict';
@@ -58,61 +89,97 @@
   function () {
 'use strict';
 
-var VERSION = '2.0.0';
+var VERSION = '3.0.0';
 
-/* The one-line disclosure the page should print under the instrument. The
- * student's high-frequency ripple is synthesised: the curve traced off the
- * figure is smooth, and without a ripple the HF fader would have nothing to
- * take away. That is an illustrative choice and it is stated out loud. */
+/* The one-line disclosure the page should print under the instrument. Nothing
+ * here is traced off a measurement: the two profiles are built out of the
+ * constants below so that the one thing the figure is about — a shape plus its
+ * fine detail — can be moved by a fader. That is an illustrative choice and it
+ * is stated out loud. */
 var CAPTION =
-  'Illustrative, not measured: both curves are traced from the paper’s insight figure, ' +
-  'and the student’s high-frequency ripple is synthesised so the HF fader has something to remove.';
+  'Illustrative, not measured: both profiles are drawn procedurally after the paper’s insight figure — ' +
+  'one dominant shape carrying fine detail for the dense scan, a smoothed two-hump shape for the sparse ' +
+  'one — and not plotted from logged features.';
 
 /* ==============================================================
- * 1.  Source curves
+ * 1.  The curve model — every number that shapes the two profiles.
  *
- * 97 samples on a shared, uniform x grid, y normalised so the taller
- * of the two peaks is 1.0. Traced column by column off the paper's
- * insight figure: the teacher from the top-left panel (rescaled by the
- * 1.046 factor that least-squares-fits the dashed teacher drawn in the
- * student's own axes), the student from the bottom-left panel. The
- * student additionally carries a small decaying ripple over its right
- * half — the paper's "unsupported / spurious high-frequency response",
- * which is what the HF fader exists to remove, and which is the one
- * part of these curves that is synthesised rather than traced.
+ * Tune the instrument here and nowhere else. There is no table of
+ * hand-typed coordinates in this file on purpose: the four arrays are
+ * generated from these constants, so a change of mind is one number.
  * ============================================================== */
 
-var TEACHER_SRC =
-  '0,0.0148,0.0363,0.0502,0.0705,0.0967,0.127,0.1615,0.1991,0.2397,0.282,0.3254,' +
-  '0.3678,0.4079,0.4442,0.4751,0.4992,0.5149,0.5237,0.5262,0.5243,0.5223,0.5271,' +
-  '0.541,0.5597,0.5829,0.6143,0.6549,0.6914,0.7135,0.7198,0.7192,0.7217,0.7342,' +
-  '0.7599,0.7961,0.8387,0.882,0.9215,0.9526,0.974,0.9862,0.9916,0.9913,0.9842,' +
-  '0.9671,0.9386,0.8991,0.8594,0.83,0.8198,0.8164,0.8052,0.7811,0.7549,0.7366,' +
-  '0.7188,0.6912,0.6487,0.5965,0.5409,0.4863,0.4363,0.3939,0.3598,0.3351,0.3201,' +
-  '0.3164,0.3227,0.3378,0.3574,0.378,0.3943,0.4022,0.3964,0.3787,0.3565,0.34,' +
-  '0.3268,0.3113,0.2904,0.2709,0.2545,0.2375,0.2154,0.1887,0.1604,0.133,0.1083,' +
-  '0.0871,0.069,0.0539,0.0415,0.0331,0.0288,0.0137,0';
+/* How many samples the shared x grid carries. High enough that a spike can be
+ * two samples wide and still read as a spike (181 samples over a 300-unit plot
+ * is 1.67 units per sample), low enough that the path strings stay cheap. */
+var N_SAMPLES = 181;
 
-var STUDENT_SRC =
-  '0,0.0331,0.0775,0.0969,0.1251,0.158,0.1953,0.2336,0.2728,0.3088,0.341,0.3669,' +
-  '0.3873,0.4032,0.4183,0.4376,0.4639,0.4992,0.541,0.5899,0.6439,0.7017,0.7588,' +
-  '0.8112,0.8568,0.8953,0.9277,0.9541,0.9744,0.9886,0.9969,1,0.999,0.9935,0.9819,' +
-  '0.9634,0.9377,0.9055,0.8661,0.8216,0.7741,0.7254,0.674,0.6201,0.5652,0.5152,' +
-  '0.4741,0.4474,0.4335,0.43,0.4309,0.4328,0.4357,0.4455,0.4718,0.5198,0.585,' +
-  '0.6502,0.6951,0.7073,0.6925,0.6716,0.6669,0.6861,0.7183,0.7396,0.7287,0.6827,' +
-  '0.618,0.5603,0.5249,0.5097,0.4969,0.47,0.4235,0.369,0.3245,0.3048,0.3096,' +
-  '0.3253,0.3329,0.3207,0.2921,0.2634,0.2491,0.2491,0.2468,0.2251,0.1845,0.1417,' +
-  '0.1112,0.0939,0.0827,0.0722,0.0645,0.0306,0';
+/* Both profiles are a sum of Gaussian lobes over u in [0, 1]:
+ *     y(u) = sum a * exp(-((u - c) / w)^2)
+ * c is where the lobe sits, w its half-width, a its height. The teacher gets
+ * ONE dominant lobe and a few subordinate shoulders — "a clear single dominant
+ * envelope". The student gets TWO comparable humps, neither of them where the
+ * dominant lobe is: the shape a sparse scan reports instead. */
+var TEACHER_LOBES = [
+  { c: 0.160, w: 0.065, a: 0.34 },
+  { c: 0.300, w: 0.085, a: 0.60 },
+  { c: 0.430, w: 0.105, a: 1.00 },   /* the one dominant hump */
+  { c: 0.560, w: 0.070, a: 0.34 },
+  { c: 0.735, w: 0.085, a: 0.42 },
+  { c: 0.875, w: 0.055, a: 0.17 }
+];
 
-/* Where each annotation points, as a fraction of the x grid. 26/96 is where
- * the student's envelope most exceeds the teacher's (the low-frequency
- * excess); 74/96 sits in the middle of the student's spurious ripple. */
-var ANN_LF_FRAC = 26 / 96;
-var ANN_HF_FRAC = 74 / 96;
+var STUDENT_LOBES = [
+  { c: 0.260, w: 0.112, a: 0.82 },   /* hump one: too early, too tall */
+  { c: 0.550, w: 0.098, a: 0.60 },   /* hump two: a shape the dense scan lacks */
+  /* the right-hand shoulders ARE roughly right: a sparse scan does not get
+   * everything wrong, and a stretch where only the DETAIL differs is what the
+   * second callout needs in order to be true */
+  { c: 0.740, w: 0.082, a: 0.38 },
+  { c: 0.875, w: 0.055, a: 0.16 }
+];
 
-/* ==============================================================
- * 2.  Named constants
- * ============================================================== */
+/* Both curves are windowed to exactly 0 at both ends over this fraction of the
+ * width, so the filled areas close on the axis as the paper's do. */
+var EDGE_TAPER = 0.035;
+
+/* The teacher's fine detail. Spikes, not a sine: a tall sample with two short
+ * wings, repeated every stride samples, heights drawn from a deterministic
+ * generator so every visitor and the test harness see the same curve.
+ *   amp          the tallest ordinary spike, in signal units (plot spans ~0..1.1)
+ *   minH         the shortest spike as a fraction of the tallest
+ *   accentEvery  every nth spike is taller still: structure, not noise
+ *   wing         what the samples either side of a spike get, as a fraction
+ *   strideMin/Max  spacing in samples, varied so it does not read as a comb
+ *   flip         chance of alternating sign at each spike (mostly, not always)
+ *   maskPow      the detail rides ON the signal: amplitude follows the
+ *                envelope to this power, so there is no detail where there is
+ *                no signal
+ *   edge         samples at each end left completely alone
+ */
+var RIPPLE = {
+  amp: 0.082,
+  minH: 0.38,
+  accentEvery: 7,
+  accentGain: 1.55,
+  wing: 0.26,
+  strideMin: 2,
+  strideMax: 4,
+  flip: 0.82,
+  maskPow: 0.8,
+  edge: 4,
+  seed: 20260413
+};
+
+/* What the sparse scan kept of that texture. Not zero — a sparse scan is not
+ * perfectly smooth — but 5% of a 0.082 spike is 0.004 of a unit range, which
+ * is a third of a screen pixel: visually nothing, which is the point.
+ *
+ * It is a SCALED COPY of the teacher's ripple rather than an independent
+ * wiggle, and that is deliberate: it makes the HF fader exactly a gain on the
+ * dense scan's own texture, so the drawn ripple energy is strictly monotone in
+ * hf (it is |(1-h)k + h| * ||r|| with k < 1), which the harness asserts. */
+var STUDENT_RIPPLE_KEEP = 0.05;
 
 /* What the equaliser CANNOT recover. At lf = hf = 1 the student lands this far
  * from the teacher, measured as the largest absolute difference in normalised
@@ -121,6 +188,15 @@ var ANN_HF_FRAC = 74 / 96;
  * the dense teacher, never equal to it. The faders therefore travel over
  * `reach = 1 - residual / peakGap` of the student-to-teacher path. */
 var FULL_SCALE_RESIDUAL = 0.04;
+
+/* Grabbing. ONE transparent surface covers the plot; a press picks the nearer
+ * curve in y within this radius, in viewBox units (14 units is ~17 CSS px on
+ * the desktop hero, ~10 px on a phone). A touch gets a more generous radius
+ * because a fingertip has no pixel. GRAB_WINDOW samples either side of the
+ * pointer are searched, so a steep or spiky stretch is not penalised. */
+var GRAB_RADIUS = 14;
+var GRAB_RADIUS_TOUCH = 26;
+var GRAB_WINDOW = 2;
 
 /* Pluck: how far either side of the grab point the deformation reaches, as a
  * fraction of the sample count. A raised-cosine bump, so the pull is local but
@@ -135,8 +211,18 @@ var PLUCK_SETTLE_EPS = 0.0015;   /* signal units; < 0.25 user units on screen */
 var PLUCK_MIN_TIME = 0.05;       /* seconds; never settle before this */
 var PLUCK_MAX_AMP = 0.45;        /* signal units; the cord has a limit */
 
+/* Where the DETAIL callout's bracket spans, as a fraction of the x grid: a
+ * stretch where the dense scan's texture is strong and the sparse scan's
+ * SHAPE is already roughly right, so the only thing missing there is detail. */
+var ANN_DETAIL_FROM = 0.68;
+var ANN_DETAIL_TO = 0.81;
+
+/* Above this much travel each callout says the opposite thing, because the
+ * sentence it started with has stopped being true. */
+var ANN_DONE_AT = 0.55;
+
 /* ==============================================================
- * 3.  Pure maths — no DOM, safe to require() in node
+ * 2.  Pure maths — no DOM, safe to require() in node
  * ============================================================== */
 
 function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
@@ -160,7 +246,8 @@ function parseCurve(src) {
 }
 
 /* Box moving average, `passes` times, edges clamped. A few passes of a short
- * window is the cheap Gaussian the recipe calls for. */
+ * window is the cheap Gaussian the recipe calls for. Kept because the test
+ * harness measures envelopes with it and a host may pass its own curves. */
 function smooth(src, radius, passes) {
   var a = src.slice(0), n = a.length, w = 2 * radius + 1, p, i, j, s, b;
   if (!(radius > 0) || !(passes > 0) || n === 0) { return a; }
@@ -186,12 +273,16 @@ function split(src, radius, passes) {
 }
 
 /* The whole instrument, in one line:
- *     y[i] = lerp(studentLo, teacherLo, lf) + lerp(studentHi, teacherHi, hf)
+ *     y[i] = lerp(studentEnvelope, teacherEnvelope, lf)
+ *          + lerp(studentRipple,   teacherRipple,   hf)
  * Separately linear in lf and in hf, so the response is continuous, every
  * intermediate fader position is a proportional intermediate curve, and the
  * extremes of the family are reached at the four corners of the unit square.
  * The widget feeds it lf * reach and hf * reach (see `reach` below), which is
- * still exactly linear — it only shortens the path. */
+ * still exactly linear — it only shortens the path.
+ *
+ * The parameter names are historical (sLo/sHi/tLo/tHi): read them as
+ * studentEnvelope / studentRipple / teacherEnvelope / teacherRipple. */
 function morph(sLo, sHi, tLo, tHi, lf, hf) {
   var n = sLo.length, out = new Array(n), i;
   for (i = 0; i < n; i++) {
@@ -244,7 +335,20 @@ function spring(a0, t, zeta, freq) {
 
 function n1(v) { return Math.round(v * 10) / 10; }
 
-/* Uniform Catmull-Rom through every sample, emitted as cubic Béziers.
+/* Straight segments, one per sample. This is what the two live curves are
+ * drawn with: at 1.67 units per sample the envelope still reads as a smooth
+ * curve, and a spike keeps a SHARP tip instead of the rounded overshoot a
+ * spline puts on it. Shorter strings too, which matters several times a frame. */
+function linePath(xs, ys) {
+  var n = Math.min(xs.length, ys.length), d, i;
+  if (n < 2) { return ''; }
+  d = 'M' + n1(xs[0]) + ' ' + n1(ys[0]);
+  for (i = 1; i < n; i++) { d += 'L' + n1(xs[i]) + ' ' + n1(ys[i]); }
+  return d;
+}
+
+/* Uniform Catmull-Rom through every sample, emitted as cubic Béziers. Used for
+ * the dashed reference envelope, which has no spikes to blunt.
  * End tangents are clamped (P-1 = P0, Pn+1 = Pn). */
 function catmullPath(xs, ys) {
   var n = xs.length, d, i, x0, y0, x1, y1, x2, y2, x3, y3, c1x, c1y, c2x, c2y;
@@ -263,8 +367,243 @@ function catmullPath(xs, ys) {
   return d;
 }
 
+/* Close a curve path down to the baseline and back: the filled area the paper
+ * figure draws under both profiles. */
+function areaPath(d, x0, x1, baseline) {
+  if (!d) { return ''; }
+  return d + 'L' + n1(x1) + ' ' + n1(baseline) + 'L' + n1(x0) + ' ' + n1(baseline) + 'Z';
+}
+
+/* A square bracket over [x1, x2] with legs pointing down at the curve. */
+function bracketPath(x1, x2, y, drop) {
+  return 'M' + n1(x1) + ' ' + n1(y + drop) + 'L' + n1(x1) + ' ' + n1(y) +
+         'L' + n1(x2) + ' ' + n1(y) + 'L' + n1(x2) + ' ' + n1(y + drop);
+}
+
+/* ---- the four arrays -------------------------------------------------- */
+
+function lobeSum(lobes, u) {
+  var s = 0, i, z;
+  if (!lobes) { return 0; }
+  for (i = 0; i < lobes.length; i++) {
+    z = (u - lobes[i].c) / lobes[i].w;
+    s += lobes[i].a * Math.exp(-z * z);
+  }
+  return s;
+}
+
+/* Raised-cosine edge window: 1 in the middle, exactly 0 at both ends. */
+function edgeWindow(n, frac) {
+  var out = new Array(n), i, u;
+  for (i = 0; i < n; i++) {
+    u = i / (n - 1);
+    if (!(frac > 0)) { out[i] = 1; }
+    else if (u < frac) { out[i] = 0.5 * (1 - Math.cos(Math.PI * u / frac)); }
+    else if (u > 1 - frac) { out[i] = 0.5 * (1 - Math.cos(Math.PI * (1 - u) / frac)); }
+    else { out[i] = 1; }
+  }
+  return out;
+}
+
+/* A 32-bit linear congruential generator. Deliberately NOT Math.random: the
+ * spike heights must be identical for every visitor, in every browser, and in
+ * the test harness. */
+function lcg(seed) {
+  var s = (seed >>> 0) || 1;
+  return function () {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+
+/* Dense, sharp, varied spikes, masked by `mask` so the detail rides on the
+ * signal. See the RIPPLE constants for what each knob does. */
+function buildRipple(n, mask, cfg) {
+  var out = new Array(n), rnd = lcg(cfg.seed), i, k, h, w, sign = 1, hits = 0,
+      mmax = 0, m, stride, strideSpan;
+
+  for (i = 0; i < n; i++) { out[i] = 0; }
+  strideSpan = Math.max(0, (cfg.strideMax | 0) - (cfg.strideMin | 0));
+  k = cfg.edge;
+  while (k < n - cfg.edge) {
+    hits++;
+    h = cfg.amp * (cfg.minH + (1 - cfg.minH) * rnd());
+    if (cfg.accentEvery > 0 && hits % cfg.accentEvery === 0) { h *= cfg.accentGain; }
+    h *= sign;
+    out[k] += h;
+    w = cfg.wing * h;
+    if (k > 0) { out[k - 1] += w; }
+    if (k + 1 < n) { out[k + 1] += w; }
+    /* mostly alternate: a perfect comb reads as a machine, never as texture */
+    if (rnd() < cfg.flip) { sign = -sign; }
+    stride = (cfg.strideMin | 0) + Math.floor(rnd() * (strideSpan + 1));
+    if (stride < 1) { stride = 1; }
+    k += stride;
+  }
+
+  for (i = 0; i < n; i++) { if (mask[i] > mmax) { mmax = mask[i]; } }
+  if (!(mmax > 0)) { mmax = 1; }
+  for (i = 0; i < n; i++) {
+    m = mask[i] / mmax;
+    out[i] *= Math.pow(m < 0 ? 0 : m, cfg.maskPow);
+  }
+  return out;
+}
+
+function addArrays(a, b) {
+  var n = Math.min(a.length, b.length), out = new Array(n), i;
+  for (i = 0; i < n; i++) { out[i] = a[i] + b[i]; }
+  return out;
+}
+
+function maxOf(a) {
+  var m = -Infinity, i;
+  for (i = 0; i < a.length; i++) { if (a[i] > m) { m = a[i]; } }
+  return m;
+}
+
+/* The whole model, built from section 1. Both envelopes are scaled by the SAME
+ * factor — the teacher's own peak — so their relative heights mean something:
+ * the student overshoots the dense scan in one place and falls far short of it
+ * in another, which is the entire job of the LF branch. */
+function buildModel(cfg) {
+  var o = cfg || {},
+      n = o.n > 3 ? (o.n | 0) : N_SAMPLES,
+      tl = o.teacherLobes || TEACHER_LOBES,
+      sl = o.studentLobes || STUDENT_LOBES,
+      rip = o.ripple || RIPPLE,
+      keep = o.studentKeep === undefined ? STUDENT_RIPPLE_KEEP : o.studentKeep,
+      win = edgeWindow(n, o.taper === undefined ? EDGE_TAPER : o.taper),
+      tEnv = new Array(n), sEnv = new Array(n), sRip = new Array(n),
+      tRip, i, u, k;
+
+  for (i = 0; i < n; i++) {
+    u = i / (n - 1);
+    tEnv[i] = lobeSum(tl, u);
+    sEnv[i] = lobeSum(sl, u);
+  }
+  k = maxOf(tEnv);
+  k = k > 0 ? 1 / k : 1;
+  for (i = 0; i < n; i++) {
+    tEnv[i] = tEnv[i] * k * win[i];
+    sEnv[i] = sEnv[i] * k * win[i];
+  }
+
+  tRip = buildRipple(n, tEnv, rip);
+  for (i = 0; i < n; i++) { sRip[i] = keep * tRip[i]; }
+
+  return {
+    n: n,
+    teacherEnvelope: tEnv,
+    teacherRipple: tRip,
+    studentEnvelope: sEnv,
+    studentRipple: sRip,
+    teacher: addArrays(tEnv, tRip),
+    student: addArrays(sEnv, sRip)
+  };
+}
+
+/* The vertical scale. The family is separately linear in lf and in hf, so its
+ * extremes over the unit square are attained at the four corners. */
+function modelVmax(m, rch) {
+  var hi = 0, c, i, v, poses = [[0, 0], [1, 0], [0, 1], [1, 1]];
+  for (c = 0; c < poses.length; c++) {
+    v = morph(m.studentEnvelope, m.studentRipple, m.teacherEnvelope, m.teacherRipple,
+              poses[c][0] * rch, poses[c][1] * rch);
+    for (i = 0; i < v.length; i++) { if (v[i] > hi) { hi = v[i]; } }
+  }
+  return hi > 0 ? hi : 1;
+}
+
+/* Where the sparse scan's SHAPE departs upward from the dense scan's by the
+ * most: the sample the SHAPE callout points at. Signed on purpose — the
+ * overshooting hump has clear space above it for a label, and it is the
+ * departure the LF fader visibly erases. */
+function shapeDepartureIndex(sEnv, tEnv) {
+  var n = Math.min(sEnv.length, tEnv.length), best = 0, bestD = -Infinity, i, d;
+  for (i = 0; i < n; i++) {
+    d = sEnv[i] - tEnv[i];
+    if (d > bestD) { bestD = d; best = i; }
+  }
+  return best;
+}
+
+/* ---- the hit test ----------------------------------------------------- */
+
+/* Which curve a press at (sample i0, screen y py) should pluck.
+ *
+ * Version 2 painted two invisible 22-unit-wide strokes, one per curve, with
+ * the student's LAST. Wherever the two curves came within ~11 units of each
+ * other the student's band covered the teacher's and the teacher could not be
+ * grabbed at all: measured with real pointer events, 3 of 9 presses along the
+ * teacher moved it, and at the 6 failures the element under the point was the
+ * student's band. This is the replacement, and it is a pure function so the
+ * harness can probe it directly: ONE surface, nearest curve wins.
+ *
+ * tys/sys are the drawn screen y of the two curves. `window` samples either
+ * side of i0 are searched so a steep or spiky stretch is not penalised.
+ * Returns null when neither curve is within `radius`. Ties go to the teacher,
+ * which is both the curve drawn underneath and the one that used to be
+ * impossible to reach. */
+function segDist(px, py, ax, ay, bx, by) {
+  var vx = bx - ax, vy = by - ay, L = vx * vx + vy * vy, t, qx, qy;
+  if (!(L > 0)) { qx = ax; qy = ay; }
+  else {
+    t = ((px - ax) * vx + (py - ay) * vy) / L;
+    t = t < 0 ? 0 : (t > 1 ? 1 : t);
+    qx = ax + t * vx; qy = ay + t * vy;
+  }
+  return Math.sqrt((px - qx) * (px - qx) + (py - qy) * (py - qy));
+}
+
+/* Distance from the pointer to a drawn polyline, searched over the samples
+ * around i0. Falls back to the vertical distance at the samples when no xs
+ * array is supplied, which is what the pure-function tests exercise. */
+function curveDist(i0, px, py, xs, ys, w, n) {
+  var d = Infinity, lo = i0 - w < 0 ? 0 : i0 - w,
+      hi = i0 + w > n - 1 ? n - 1 : i0 + w, i, v;
+  if (!xs) {
+    for (i = lo; i <= hi; i++) { v = Math.abs(py - ys[i]); if (v < d) { d = v; } }
+    return d;
+  }
+  for (i = lo; i < hi; i++) {
+    v = segDist(px, py, xs[i], ys[i], xs[i + 1], ys[i + 1]);
+    if (v < d) { d = v; }
+  }
+  if (lo === hi) { d = Math.abs(py - ys[lo]); }
+  return d;
+}
+
+/* ONE surface, nearest curve wins.
+ *
+ * `xs` and `px` are optional. When they are given the comparison is the true
+ * point-to-segment distance to the DRAWN polyline, which is what the user is
+ * aiming at; without them it degrades to the vertical distance at the nearest
+ * samples. The difference matters because the teacher carries dense fine
+ * ripple, so between two samples the drawn curve can sit several units away
+ * from either sample's value -- measured with real pointer events, the
+ * sample-only form picked the wrong curve at 2 of 12 presses on each curve.
+ *
+ * Returns null when neither curve is within `radius`. Ties go to the teacher,
+ * which is both the curve drawn underneath and the one that used to be
+ * impossible to reach. */
+function pickCurve(i0, py, tys, sys, radius, window, xs, px) {
+  var n = Math.min(tys ? tys.length : 0, sys ? sys.length : 0),
+      w = window > 0 ? Math.round(window) : 0,
+      useX = !!(xs && xs.length >= n && isFinite(px)),
+      dt, ds;
+  if (!(n > 0) || !isFinite(py)) { return null; }
+  i0 = clamp(Math.round(i0), 0, n - 1);
+  if (useX && w < 3) { w = 3; }     /* segments need a little more reach */
+  dt = curveDist(i0, px, py, useX ? xs : null, tys, w, n);
+  ds = curveDist(i0, px, py, useX ? xs : null, sys, w, n);
+  if (dt > radius && ds > radius) { return null; }
+  if (dt <= ds) { return { which: 't', i: i0, dist: dt, other: ds }; }
+  return { which: 's', i: i0, dist: ds, other: dt };
+}
+
 /* ==============================================================
- * 4.  PluckState — the direct-manipulation state machine.
+ * 3.  PluckState — the direct-manipulation state machine.
  *
  * Deliberately DOM-free and deliberately ignorant of lf/hf: it cannot
  * change a fader because it cannot see one. The instance's pointer
@@ -347,7 +686,7 @@ PluckState.prototype.apply = function (vals, which, amp) {
 };
 
 /* ==============================================================
- * 5.  Geometry — viewBox 480 x 248, aspect 1.935.
+ * 4.  Geometry — viewBox 480 x 248, aspect 1.935.
  *
  * Deliberately SHORTER than the 470 x 280 (1.679) of version 1: at the
  * hero's 1.22fr column the card was taller than the sibling page's and
@@ -362,20 +701,25 @@ var RACK = { x: 362, y: 20, w: 110, h: 216 };         /* the fader rack         
 var FADER_X = { lf: 389, hf: 445 };
 var TRACK = { top: 66, bottom: 200, mid: 133, half: 67 };  /* len = 134 */
 
-/* where the two annotations anchor their text, and the dimension bar's cap width */
-var ANN_LF_TEXT_X = PLOT.l + 70;
-var ANN_HF_TEXT_X = PLOT.r - 2;
-var GAP_CAP = 4;
-
 /* legend run: swatch, text, swatch, text */
 var LEGEND = { y: 17, baseline: 20.5, sw1: 46, t1: 70, sw2: 164, t2: 188, swLen: 18 };
+
+/* The SHAPE callout lives in the plot's empty upper LEFT bay, above the
+ * sparse scan's first hump; its dimension bar drops straight down from the
+ * text onto the two curves, so the leader never crosses any ink. */
+var ANN_SHAPE = { textX: PLOT.l + 6, y1: 44, y2: 55, leadTop: 60, cap: 4 };
+
+/* The DETAIL callout lives in the upper RIGHT bay, under the pluck hint, and
+ * brackets the stretch where the dense scan's texture is strongest. */
+var ANN_DETAIL = { textX: PLOT.r - 2, y1: 60, y2: 71, leadTop: 75, minY: 82, drop: 5 };
+
+/* The pluck hint: a pill, top right INSIDE the plot, with a vertical
+ * double-arrow glyph. It retires for good the first time anyone plucks. */
+var HINT = { x: PLOT.r - 2, y: 34, h: 13, pad: 7, fs: 8, ls: 0.12, glyph: 7, gap: 5 };
 
 /* the bottom rows: axis ticks + title, then the preset pills and the readout */
 var ROW_TICK = 213, ROW_TITLE = 215, ROW_CHIP = 229, ROW_READOUT = 232;
 var CHIP = { h: 13, hit: 24, gap: 8, pad: 8, fs: 8, ls: 0.1 };
-
-/* the pluck hint, top right of the plot */
-var HINT = { x: PLOT.r, y1: 16, y2: 24.5 };
 
 /* Dual clamp, exactly as the sibling widget does it: a tight box for anything
  * the user drags, an 8px-inset box for anything computed. */
@@ -384,13 +728,23 @@ var VB_INSET = 8;
 /* Chip boxes are sized from the LARGEST font the chip label will ever be
  * painted at (the narrow-screen size), so the pill never has to resize and the
  * text never escapes it. Same advance model the test harness uses. */
-function chipWidth(label) {
+function advance(label, fs, ls) {
   var s = String(label == null ? '' : label);
-  return n1(s.length * CHIP.fs * 0.6 + (s.length - 1) * CHIP.ls * CHIP.fs + CHIP.pad * 2);
+  if (!s.length) { return 0; }
+  return s.length * fs * 0.6 + (s.length - 1) * ls * fs;
+}
+
+function chipWidth(label) {
+  return n1(advance(label, CHIP.fs, CHIP.ls) + CHIP.pad * 2);
+}
+
+/* Same idea for the hint pill, plus room for the glyph. */
+function hintWidth(label) {
+  return n1(advance(label, HINT.fs, HINT.ls) + HINT.pad * 2 + HINT.glyph + HINT.gap);
 }
 
 /* ==============================================================
- * 6.  Styles — injected once per document
+ * 5.  Styles — injected once per document
  * ============================================================== */
 
 var MONO = "var(--mono,'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace)";
@@ -429,27 +783,35 @@ var CSS = [
   '.lieq-sw-t{stroke:#56adf0;stroke-width:3.2;stroke-linecap:round}',
   '.lieq-sw-s{stroke:#e58236;stroke-width:3.2;stroke-linecap:round}',
 
-  /* ---- curves: fat core + thin bright dashed flow, the sibling's beam idiom ---- */
+  /* ---- the two profiles: a filled area with a solid outline, as the paper
+   *      figure draws them. Thin outlines, because a fat stroke swallows the
+   *      fine detail this whole widget is about. ---- */
   '.lieq-curve{fill:none;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}',
-  '.lieq-t-halo{stroke:#56adf0;stroke-width:8;opacity:.22}',
-  '.lieq-t-core{stroke:#56adf0;stroke-width:2.9;transition:stroke-width .14s ease}',
-  '.lieq-t-flow{stroke:#bfe0ff;stroke-width:1.2}',
-  '.lieq-s-core{stroke:#e58236;stroke-width:2.9;transition:stroke-width .14s ease}',
-  '.lieq-s-flow{stroke:#f6bd8c;stroke-width:1.2}',
-  '.lieq-flow{stroke-dasharray:6 12;animation:lieq-flow 2.4s steps(18,end) infinite}',
-  '@keyframes lieq-flow{to{stroke-dashoffset:-36}}',
+  '.lieq-area{stroke:none;pointer-events:none}',
+  '.lieq-t-core{stroke:#56adf0;stroke-width:1.5;transition:stroke-width .14s ease,stroke .14s ease}',
+  '.lieq-s-core{stroke:#e58236;stroke-width:1.6;transition:stroke-width .14s ease,stroke .14s ease}',
+  /* the dense scan's SHAPE, dashed: what the LF fader is aiming the student at */
+  '.lieq-ghost{fill:none;stroke:#cfe6ff;stroke-width:1.2;stroke-dasharray:6 5;',
+  'stroke-linecap:round;pointer-events:none;transition:opacity .2s ease}',
 
-  /* ---- the pluck bands: invisible, wide, and the only thing you can grab ---- */
-  '.lieq-grab{fill:none;stroke:rgba(0,0,0,0);stroke-width:22;stroke-linecap:round;',
-  'stroke-linejoin:round;pointer-events:stroke;cursor:grab;touch-action:none}',
-  '.lieq-stage[data-lieq-hot="s"] .lieq-s-core{stroke-width:3.9}',
-  '.lieq-stage[data-lieq-hot="t"] .lieq-t-core{stroke-width:3.9}',
-  '.lieq-stage[data-lieq-pluck="1"] .lieq-grab{cursor:grabbing}',
+  /* ---- grabbing: ONE transparent surface over the plot. The nearest curve in
+   *      y wins the press, so the teacher stays reachable where the two curves
+   *      run close together. ---- */
+  '.lieq-hitfield{fill:rgba(0,0,0,0);pointer-events:all;touch-action:none;cursor:default}',
+  '.lieq-stage[data-lieq-arm] .lieq-hitfield{cursor:grab}',
+  '.lieq-stage[data-lieq-pluck="1"] .lieq-hitfield{cursor:grabbing}',
+  /* whichever curve WOULD be grabbed lights up, so the affordance is honest */
+  '.lieq-stage[data-lieq-hot="t"] .lieq-t-core{stroke-width:2.6;stroke:#bfe0ff}',
+  '.lieq-stage[data-lieq-hot="s"] .lieq-s-core{stroke-width:2.7;stroke:#f6bd8c}',
+  '.lieq-armdot{fill:none;stroke-width:1.6;pointer-events:none;transition:opacity .12s ease}',
 
   /* ---- the pluck hint, retired the first time someone plucks ---- */
-  '.lieq-hint{fill:#6f8bab;font-size:6.5px;font-weight:700;letter-spacing:.14em;',
-  'transition:opacity .4s ease;animation:lieq-hint 3.4s ease-in-out infinite}',
-  '@keyframes lieq-hint{0%,100%{opacity:.5}50%{opacity:.95}}',
+  '.lieq-hintg{pointer-events:none;transition:opacity .45s ease;animation:lieq-nudge 3.6s ease-in-out infinite}',
+  '.lieq-hintbox{fill:rgba(18,30,52,.86);stroke:rgba(159,208,255,.52);stroke-width:1}',
+  '.lieq-hint{fill:#cfe3f7;font-size:7px;font-weight:700;letter-spacing:.12em}',
+  '.lieq-hintglyph{stroke:#9fd0ff;stroke-width:1.2;stroke-linecap:round;fill:none}',
+  '@keyframes lieq-nudge{0%,100%{transform:translateY(0)}50%{transform:translateY(2.2px)}}',
+  '.lieq-stage[data-lieq-plucked="1"] .lieq-hintg{animation:none}',
 
   /* ---- scrub cursor ---- */
   '.lieq-scrub{pointer-events:none;opacity:0;transition:opacity .16s ease}',
@@ -457,13 +819,14 @@ var CSS = [
   '.lieq-scrub-s{fill:#f6bd8c}',
   '.lieq-scrub-t{fill:#bfe0ff}',
 
-  /* ---- annotations ---- */
-  '.lieq-ann{pointer-events:none}',
+  /* ---- the two callouts. Plain spatial statements: a shape, and a texture.
+   *      Nothing here labels a REGION of the curve with a frequency, because
+   *      in the spatial domain the height of a curve carries no frequency. ---- */
+  '.lieq-ann{pointer-events:none;transition:opacity .2s ease}',
   '.lieq-ann-t{fill:#eab089;font-size:7.5px;font-weight:700;letter-spacing:.06em}',
   '.lieq-ann-line{stroke:#eab089;stroke-width:1.1;stroke-linecap:round}',
   '.lieq-ann-dash{stroke:#eab089;stroke-width:1.1;stroke-dasharray:2 3;stroke-linecap:round}',
-  '.lieq-ann-halo{fill:#eab089;opacity:.2}',
-  '.lieq-ann-dot{fill:#f6bd8c}',
+  '.lieq-ann-br{fill:none;stroke:#eab089;stroke-width:1.1;stroke-linecap:round;stroke-linejoin:round}',
 
   /* ---- readout ---- */
   '.lieq-ro-k{fill:#6d7b8e;font-size:8px;font-weight:700;letter-spacing:.13em}',
@@ -503,10 +866,9 @@ var CSS = [
 
   /* ---- respect the setting ---- */
   '@media (prefers-reduced-motion:reduce){',
-  '.lieq-flow{animation:none}',
   '.lieq-scan{animation:none;opacity:0}',
-  '.lieq-hint{animation:none;opacity:.8}',
-  '.lieq-scrub{transition:none}',
+  '.lieq-hintg{animation:none;transition:none}',
+  '.lieq-scrub,.lieq-ann,.lieq-ghost,.lieq-armdot{transition:none}',
   '.lieq-t-core,.lieq-s-core,.lieq-cap-body,.lieq-chip-box,.lieq-chip-t{transition:none}}',
 
   /* ---- narrow screens: the card shrinks, so the type grows in user units.
@@ -519,7 +881,7 @@ var CSS = [
   '.lieq-ro-k{font-size:9px}',
   '.lieq-ro-v{font-size:9px}',
   '.lieq-ann-t{font-size:8px}',
-  '.lieq-hint{font-size:7.5px}',
+  '.lieq-hint{font-size:8px}',
   '.lieq-chip-t{font-size:8px}',
   '.lieq-rack-eyebrow{font-size:9.5px}',
   '.lieq-val{font-size:11.5px}',
@@ -537,7 +899,7 @@ function injectCSS(doc) {
 }
 
 /* ==============================================================
- * 7.  Markup
+ * 6.  Markup
  * ============================================================== */
 
 function esc(s) {
@@ -546,7 +908,7 @@ function esc(s) {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function faderMarkup(uid, key, cx, label, aria) {
+function faderMarkup(uid, key, cx, label, sub, aria) {
   var g = [], k, ty;
   g.push('<g class="lieq-fader" data-lieq-fader="' + key + '"');
   g.push(' transform="translate(' + cx + ',' + TRACK.mid + ')"');
@@ -573,7 +935,7 @@ function faderMarkup(uid, key, cx, label, aria) {
   g.push('</g>');
   g.push('<text class="lieq-val" y="-79">0.00</text>');
   g.push('<text class="lieq-cap-label" y="88">' + esc(label) + '</text>');
-  g.push('<text class="lieq-cap-sub" y="100">EQUALIZER</text>');
+  g.push('<text class="lieq-cap-sub" y="100">' + esc(sub) + '</text>');
   g.push('</g>');
   return g.join('');
 }
@@ -600,6 +962,27 @@ function presetMarkup(presets) {
   return s.join('');
 }
 
+/* The pluck affordance, spelled out. Version 2 put two small words in the
+ * corner and the first thing a reader reported was that the curves could not
+ * be dragged at all — so it is a pill with a border, a vertical double-arrow
+ * glyph, and a slow nudge, and it retires for good after the first pluck. */
+function hintMarkup(label) {
+  var w = hintWidth(label), bx = n1(HINT.x - w), cy = n1(HINT.y + HINT.h / 2),
+      gx = n1(HINT.x - w + HINT.pad + HINT.glyph / 2), s = [];
+  s.push('<g class="lieq-hintg" data-lieq="hintg">');
+  s.push('<rect class="lieq-hintbox" x="' + bx + '" y="' + HINT.y + '" width="' + w +
+         '" height="' + HINT.h + '" rx="' + n1(HINT.h / 2) + '"/>');
+  s.push('<path class="lieq-hintglyph" d="M' + gx + ' ' + n1(cy - 4.2) + 'L' + gx + ' ' + n1(cy + 4.2) +
+         'M' + n1(gx - 2.2) + ' ' + n1(cy - 2) + 'L' + gx + ' ' + n1(cy - 4.4) +
+         'L' + n1(gx + 2.2) + ' ' + n1(cy - 2) +
+         'M' + n1(gx - 2.2) + ' ' + n1(cy + 2) + 'L' + gx + ' ' + n1(cy + 4.4) +
+         'L' + n1(gx + 2.2) + ' ' + n1(cy + 2) + '"/>');
+  s.push('<text class="lieq-hint" x="' + n1(bx + HINT.pad + HINT.glyph + HINT.gap) +
+         '" y="' + n1(cy + 2.6) + '">' + esc(label) + '</text>');
+  s.push('</g>');
+  return s.join('');
+}
+
 function svgMarkup(uid, o) {
   var s = [], i, gx, gy;
 
@@ -615,9 +998,13 @@ function svgMarkup(uid, o) {
          '<stop offset="1" stop-color="#0a111b"/></linearGradient>');
   s.push('<linearGradient id="lieqFill' + uid + '" x1="0" y1="0" x2="0" y2="1">' +
          '<stop offset="0" stop-color="#f6bd8c"/><stop offset="1" stop-color="#e58236"/></linearGradient>');
-  s.push('<linearGradient id="lieqArea' + uid + '" x1="0" y1="0" x2="0" y2="1">' +
-         '<stop offset="0" stop-color="#e58236" stop-opacity=".34"/>' +
-         '<stop offset=".62" stop-color="#e58236" stop-opacity=".1"/>' +
+  s.push('<linearGradient id="lieqTArea' + uid + '" x1="0" y1="0" x2="0" y2="1">' +
+         '<stop offset="0" stop-color="#56adf0" stop-opacity=".26"/>' +
+         '<stop offset=".7" stop-color="#56adf0" stop-opacity=".07"/>' +
+         '<stop offset="1" stop-color="#16223a" stop-opacity="0"/></linearGradient>');
+  s.push('<linearGradient id="lieqSArea' + uid + '" x1="0" y1="0" x2="0" y2="1">' +
+         '<stop offset="0" stop-color="#e58236" stop-opacity=".22"/>' +
+         '<stop offset=".7" stop-color="#e58236" stop-opacity=".06"/>' +
          '<stop offset="1" stop-color="#16223a" stop-opacity="0"/></linearGradient>');
   s.push('<linearGradient id="lieqRack' + uid + '" x1="0" y1="0" x2=".55" y2="1">' +
          '<stop offset="0" stop-color="#16223a" stop-opacity=".82"/>' +
@@ -646,44 +1033,45 @@ function svgMarkup(uid, o) {
   s.push('<text class="lieq-leg" x="' + LEGEND.t2 + '" y="' + LEGEND.baseline + '">' +
          esc(o.studentLabel) + '</text>');
 
-  /* ---- the pluck hint ---- */
-  s.push('<g data-lieq="hint">');
-  s.push('<text class="lieq-hint" x="' + HINT.x + '" y="' + HINT.y1 + '" text-anchor="end">' +
-         esc(o.hint[0]) + '</text>');
-  s.push('<text class="lieq-hint" x="' + HINT.x + '" y="' + HINT.y2 + '" text-anchor="end">' +
-         esc(o.hint[1]) + '</text>');
-  s.push('</g>');
-
-  /* ---- curves (declared before everything solid, as the sibling does) ---- */
+  /* ---- the two profiles, back to front: dense area + outline, then the
+   *      dashed dense SHAPE the LF fader aims at, then the sparse scan on top
+   *      with a translucent fill so the curve underneath still reads ---- */
   s.push('<g clip-path="url(#lieqClip' + uid + ')">');
-  s.push('<path class="lieq-s-area" data-lieq="sArea" d="" fill="url(#lieqArea' + uid + ')" stroke="none"/>');
-  s.push('<path class="lieq-curve lieq-t-halo" data-lieq="tHalo" d=""/>');
+  s.push('<path class="lieq-area" data-lieq="tArea" d="" fill="url(#lieqTArea' + uid + ')"/>');
   s.push('<path class="lieq-curve lieq-t-core" data-lieq="tCore" d=""/>');
-  s.push('<path class="lieq-curve lieq-t-flow lieq-flow" data-lieq="tFlow" d=""/>');
-  s.push('<path class="lieq-curve lieq-s-core" data-lieq="sCore" d="" opacity=".62"/>');
-  s.push('<path class="lieq-curve lieq-s-flow lieq-flow" data-lieq="sFlow" d="" opacity=".75"/>');
+  s.push('<path class="lieq-area" data-lieq="sArea" d="" fill="url(#lieqSArea' + uid + ')"/>');
+  s.push('<path class="lieq-curve lieq-s-core" data-lieq="sCore" d=""/>');
+  /* The dense scan's SHAPE, dashed: the reference overlay the paper figure puts
+   * on the student panel. Both profiles share one pair of axes here, so this
+   * sits ON TOP of them — underneath, it would vanish inside the dense scan's
+   * own spiky curve, which is the line it runs through the middle of. */
+  s.push('<path class="lieq-ghost" data-lieq="ghost" d="" opacity="0"/>');
+  s.push('<circle class="lieq-armdot" data-lieq="armDot" cx="0" cy="0" r="4.2" opacity="0"/>');
   s.push('</g>');
 
-  /* ---- annotation 1: low-frequency excess (fades out with LF) ---- */
-  s.push('<g class="lieq-ann" data-lieq="annLF">');
-  s.push('<text class="lieq-ann-t" x="' + ANN_LF_TEXT_X + '" y="56" text-anchor="end">' +
-         esc(o.lfAnnotation[0]) + '</text>');
-  s.push('<text class="lieq-ann-t" x="' + ANN_LF_TEXT_X + '" y="68" text-anchor="end">' +
-         esc(o.lfAnnotation[1]) + '</text>');
+  /* ---- callout 1: the SHAPE the sparse scan got wrong. A dimension bar
+   *      between the two curves where their shapes differ most, and a label
+   *      that stops claiming it once LF has closed the gap. ---- */
+  s.push('<g class="lieq-ann" data-lieq="annShape">');
+  s.push('<text class="lieq-ann-t" data-lieq="shapeT1" x="' + ANN_SHAPE.textX + '" y="' +
+         ANN_SHAPE.y1 + '">' + esc(o.shapeAnnotation[0]) + '</text>');
+  s.push('<text class="lieq-ann-t" data-lieq="shapeT2" x="' + ANN_SHAPE.textX + '" y="' +
+         ANN_SHAPE.y2 + '">' + esc(o.shapeAnnotation[1]) + '</text>');
+  s.push('<line class="lieq-ann-dash" data-lieq="shapeLead" x1="0" y1="0" x2="0" y2="0"/>');
   s.push('<line class="lieq-ann-dash" data-lieq="gapStem" x1="0" y1="0" x2="0" y2="0"/>');
   s.push('<line class="lieq-ann-line" data-lieq="gapTop" x1="0" y1="0" x2="0" y2="0"/>');
   s.push('<line class="lieq-ann-line" data-lieq="gapBot" x1="0" y1="0" x2="0" y2="0"/>');
   s.push('</g>');
 
-  /* ---- annotation 2: spurious high-frequency response (fades out with HF) ---- */
-  s.push('<g class="lieq-ann" data-lieq="annHF">');
-  s.push('<text class="lieq-ann-t" x="' + ANN_HF_TEXT_X + '" y="42" text-anchor="end">' +
-         esc(o.hfAnnotation[0]) + '</text>');
-  s.push('<text class="lieq-ann-t" x="' + ANN_HF_TEXT_X + '" y="54" text-anchor="end">' +
-         esc(o.hfAnnotation[1]) + '</text>');
-  s.push('<line class="lieq-ann-dash" data-lieq="hfDrop" x1="0" y1="60" x2="0" y2="0"/>');
-  s.push('<circle class="lieq-ann-halo" data-lieq="hfHalo" cx="0" cy="0" r="7"/>');
-  s.push('<circle class="lieq-ann-dot" data-lieq="hfDot" cx="0" cy="0" r="2.6"/>');
+  /* ---- callout 2: the DETAIL the sparse scan never recorded. A bracket over
+   *      the stretch where the dense scan's texture is strongest. ---- */
+  s.push('<g class="lieq-ann" data-lieq="annDetail">');
+  s.push('<text class="lieq-ann-t" data-lieq="detailT1" x="' + ANN_DETAIL.textX + '" y="' +
+         ANN_DETAIL.y1 + '" text-anchor="end">' + esc(o.detailAnnotation[0]) + '</text>');
+  s.push('<text class="lieq-ann-t" data-lieq="detailT2" x="' + ANN_DETAIL.textX + '" y="' +
+         ANN_DETAIL.y2 + '" text-anchor="end">' + esc(o.detailAnnotation[1]) + '</text>');
+  s.push('<line class="lieq-ann-dash" data-lieq="detailLead" x1="0" y1="0" x2="0" y2="0"/>');
+  s.push('<path class="lieq-ann-br" data-lieq="detailBr" d=""/>');
   s.push('</g>');
 
   /* ---- scrub cursor ---- */
@@ -694,16 +1082,22 @@ function svgMarkup(uid, o) {
   s.push('<circle class="lieq-scrub-s" data-lieq="scrubDotS" cx="0" cy="0" r="2.4"/>');
   s.push('</g>');
 
-  /* ---- axes ---- */
+  /* ---- axes. The x ticks carry NO numbers: this axis is a spatial
+   *      coordinate with no units in the figure it comes from, and the old
+   *      "X MAX" label pretended to be a coordinate it was not. ---- */
   s.push('<line class="lieq-axis" x1="' + PLOT.l + '" y1="' + PLOT.t + '" x2="' + PLOT.l + '" y2="' + PLOT.b + '"/>');
   s.push('<line class="lieq-axis" x1="' + PLOT.l + '" y1="' + PLOT.b + '" x2="' + PLOT.r + '" y2="' + PLOT.b + '"/>');
   for (i = 0; i <= 4; i++) {
     gx = n1(PLOT.l + (PLOT.r - PLOT.l) * (i / 4));
     s.push('<line class="lieq-tick" x1="' + gx + '" y1="' + PLOT.b + '" x2="' + gx + '" y2="' + (PLOT.b + 4) + '"/>');
   }
-  s.push('<text class="lieq-tick-t" x="' + PLOT.l + '" y="' + ROW_TICK + '">' + esc(o.lowTick) + '</text>');
-  s.push('<text class="lieq-tick-t" x="' + PLOT.r + '" y="' + ROW_TICK + '" text-anchor="end">' +
-         esc(o.highTick) + '</text>');
+  if (o.lowTick) {
+    s.push('<text class="lieq-tick-t" x="' + PLOT.l + '" y="' + ROW_TICK + '">' + esc(o.lowTick) + '</text>');
+  }
+  if (o.highTick) {
+    s.push('<text class="lieq-tick-t" x="' + PLOT.r + '" y="' + ROW_TICK + '" text-anchor="end">' +
+           esc(o.highTick) + '</text>');
+  }
   s.push('<text class="lieq-axis-t" x="' + n1((PLOT.l + PLOT.r) / 2) + '" y="' + ROW_TITLE +
          '" text-anchor="middle">' + esc(o.xLabel) + '</text>');
   s.push('<text class="lieq-axis-t" transform="translate(16,' + n1((PLOT.t + PLOT.b) / 2) +
@@ -717,11 +1111,13 @@ function svgMarkup(uid, o) {
   /* ---- end of the static decoration; everything below must stay reachable ---- */
   s.push('</g>');
 
-  /* ---- the pluck bands, on top of the ink so they can be grabbed ---- */
-  s.push('<g clip-path="url(#lieqClip' + uid + ')">');
-  s.push('<path class="lieq-grab" data-lieq="tGrab" data-lieq-curve="t" d=""/>');
-  s.push('<path class="lieq-grab" data-lieq="sGrab" data-lieq-curve="s" d=""/>');
-  s.push('</g>');
+  /* ---- the hint sits above the ink but below the hit surface ---- */
+  s.push(hintMarkup(o.hint));
+
+  /* ---- ONE hit surface over the whole plot. It is the only thing in the plot
+   *      that takes a pointer event, and it plucks the nearest curve. ---- */
+  s.push('<rect class="lieq-hitfield" data-lieq="hit" x="' + (PLOT.l - 2) + '" y="' + (PLOT.t - 8) +
+         '" width="' + (PLOT.r - PLOT.l + 4) + '" height="' + (PLOT.b - PLOT.t + 12) + '"/>');
 
   /* ---- preset pills ---- */
   s.push(presetMarkup(o.presets));
@@ -732,58 +1128,74 @@ function svgMarkup(uid, o) {
          ')" stroke="rgba(134,182,239,.17)" stroke-width="1"/>');
   s.push('<text class="lieq-rack-eyebrow" x="' + n1(RACK.x + RACK.w / 2) + '" y="38" text-anchor="middle">' +
          esc(o.rackLabel) + '</text>');
-  s.push(faderMarkup(uid, 'lf', FADER_X.lf, 'LF', o.lfAria));
-  s.push(faderMarkup(uid, 'hf', FADER_X.hf, 'HF', o.hfAria));
+  s.push(faderMarkup(uid, 'lf', FADER_X.lf, 'LF', o.lfSub, o.lfAria));
+  s.push(faderMarkup(uid, 'hf', FADER_X.hf, 'HF', o.hfSub, o.hfAria));
 
   s.push('</svg>');
   return s.join('');
 }
 
 /* ==============================================================
- * 8.  The widget
+ * 7.  The widget
  * ============================================================== */
 
 var uidSeq = 0;
 
 var PRESETS = [
-  { label: 'BYPASS', lf: 0, hf: 0, aria: 'Preset: bypass — both equalizers at zero, the undistilled student' },
-  { label: 'LF',     lf: 1, hf: 0, aria: 'Preset: LF equalizer only — restore the low-frequency envelope' },
-  { label: 'LF+HF',  lf: 1, hf: 1, aria: 'Preset: LF and HF equalizers — restore the envelope and remove the spurious detail' }
+  { label: 'BYPASS', lf: 0, hf: 0,
+    aria: 'Preset: bypass — both equalizers at zero, the undistilled sparse student' },
+  { label: 'LF',     lf: 1, hf: 0,
+    aria: 'Preset: LF equalizer only — pull the sparse scan’s shape onto the dense scan’s, still smooth' },
+  { label: 'LF+HF',  lf: 1, hf: 1,
+    aria: 'Preset: LF and HF equalizers — the shape, and the fine detail that goes on it' }
 ];
 
 var DEFAULTS = {
   lf: 0,
   hf: 0,
   chrome: false,                       /* true = also paint the dark card shell */
+  residual: FULL_SCALE_RESIDUAL,
+  samples: N_SAMPLES,
+  /* only used when a host passes its own `teacher` / `student` curves: they are
+   * split into envelope + ripple with this box blur */
   smoothRadius: 3,
   smoothPasses: 3,
-  residual: FULL_SCALE_RESIDUAL,
   /* The source figure's own axis is SPATIAL — its x is literally labelled
-   * "Spatial position". LF and HF name bands of that spatial signal, which is
-   * what the two faders act on; they are not axes. */
+   * "Spatial position". LF and HF name what the two faders act on, the shape
+   * and the fine detail; they are not axes, and no REGION of either curve is
+   * ever labelled with a frequency. */
   xLabel: 'Spatial position',
   yLabel: 'Signal / feature response',
-  lowTick: '0',
-  highTick: 'X MAX',
+  lowTick: '',                         /* no fake coordinates on this axis */
+  highTick: '',
   teacherLabel: 'DENSE TEACHER',
   studentLabel: 'SPARSE STUDENT',
   rackLabel: 'SPECTRAL EQ',
   readoutLabel: 'PEAK GAP',
   scrubLabel: 'GAP HERE',
-  hint: ['PLUCK', 'A CURVE'],
-  lfAnnotation: ['LOW-FREQUENCY', 'EXCESS'],
-  hfAnnotation: ['SPURIOUS HIGH-FREQUENCY', 'RESPONSE'],
-  lfAria: 'LF equalizer strength, low-frequency envelope',
-  hfAria: 'HF equalizer strength, high-frequency detail',
+  hint: 'DRAG EITHER CURVE',
+  /* Plain spatial statements, and each one stops being true at full travel, so
+   * each has a second wording the widget swaps in. */
+  shapeAnnotation: ['SHAPE THE SPARSE', 'SCAN GOT WRONG'],
+  shapeAnnotationDone: ['SHAPE BROUGHT', 'BACK IN LINE'],
+  detailAnnotation: ['DETAIL THE SPARSE SCAN', 'NEVER RECORDED'],
+  detailAnnotationDone: ['DETAIL BACK FROM', 'THE DENSE SCAN'],
+  lfSub: 'SHAPE',
+  hfSub: 'DETAIL',
+  lfAria: 'LF equalizer strength, the overall shape of the profile',
+  hfAria: 'HF equalizer strength, the fine detail riding on that shape',
   ariaLabel: 'Spectral equalizer: two faders morph the sparse student’s spatial profile toward the dense teacher’s.',
   desc: 'A plot of two signal profiles against spatial position. The blue curve is the dense ' +
-        'teacher. The orange curve is the sparse student: at rest it carries too much energy in ' +
-        'the low-frequency envelope and a spurious high-frequency ripple. The LF fader moves the ' +
-        'student’s low-frequency envelope onto the teacher’s; the HF fader moves its ' +
-        'high-frequency detail onto the teacher’s. With both at full the student comes close ' +
-        'to the teacher but does not reach it — a residual of four per cent of the signal ' +
-        'range is left, as in the paper’s own measurements. Either curve can also be dragged ' +
-        'to deform it; it springs back when released, and dragging a curve never changes the faders.',
+        'teacher: one dominant hump carrying dense fine detail. The orange curve is the sparse ' +
+        'student: at rest its overall shape is wrong — two humps where the dense scan has one — ' +
+        'and it is almost perfectly smooth, because sparse sampling never recorded the fine ' +
+        'detail. The LF fader pulls the student’s shape onto the teacher’s and leaves it smooth; ' +
+        'the HF fader grows the fine detail until the student’s texture matches the teacher’s. ' +
+        'Height on this plot is a signal value, not a frequency. With both faders at full the ' +
+        'student comes close to the teacher but does not reach it — a residual of four per cent ' +
+        'of the signal range is left, as in the paper’s own measurements. Either curve can also ' +
+        'be dragged to deform it; the nearer curve to the pointer is the one that moves, it ' +
+        'springs back when released, and dragging a curve never changes the faders.',
   caption: CAPTION,
   presets: PRESETS,
   teacher: null,
@@ -806,6 +1218,15 @@ function normLines(v, fallback) {
   return fallback;
 }
 
+function normOpts(o) {
+  o.shapeAnnotation = normLines(o.shapeAnnotation, DEFAULTS.shapeAnnotation);
+  o.shapeAnnotationDone = normLines(o.shapeAnnotationDone, DEFAULTS.shapeAnnotationDone);
+  o.detailAnnotation = normLines(o.detailAnnotation, DEFAULTS.detailAnnotation);
+  o.detailAnnotationDone = normLines(o.detailAnnotationDone, DEFAULTS.detailAnnotationDone);
+  o.hint = typeof o.hint === 'string' ? o.hint : (o.hint && o.hint.length ? String(o.hint[0]) : '');
+  return o;
+}
+
 function resolve(target, doc) {
   if (!target) { return null; }
   if (typeof target === 'string') { return doc ? doc.querySelector(target) : null; }
@@ -814,27 +1235,31 @@ function resolve(target, doc) {
 }
 
 function Instance(el, opts) {
-  var o = extend(extend({}, DEFAULTS), opts),
+  var o = normOpts(extend(extend({}, DEFAULTS), opts)),
       doc = el.ownerDocument,
       uid = String(++uidSeq),
-      teacher = o.teacher ? parseCurve(o.teacher) : parseCurve(TEACHER_SRC),
-      student = o.student ? parseCurve(o.student) : parseCurve(STUDENT_SRC),
-      n = Math.min(teacher.length, student.length),
-      ts, ss, i, corner, hi, lo, v;
+      model, t, s, ts, ss, n, i;
 
-  if (n < 4) { throw new Error('LiEQEqualizer: need at least 4 samples'); }
-  teacher = teacher.slice(0, n);
-  student = student.slice(0, n);
-
-  /* tolerate a plain string where a two-line label is expected */
-  o.lfAnnotation = normLines(o.lfAnnotation, DEFAULTS.lfAnnotation);
-  o.hfAnnotation = normLines(o.hfAnnotation, DEFAULTS.hfAnnotation);
-  o.hint = normLines(o.hint, DEFAULTS.hint);
-
-  /* --- sample both curves onto the shared grid, then split each into a
-   *     low-frequency envelope and a high-frequency residual --- */
-  ts = split(teacher, o.smoothRadius, o.smoothPasses);
-  ss = split(student, o.smoothRadius, o.smoothPasses);
+  if (o.teacher && o.student) {
+    /* a host brought its own curves: split each into shape + detail */
+    t = parseCurve(o.teacher);
+    s = parseCurve(o.student);
+    n = Math.min(t.length, s.length);
+    if (n < 4) { throw new Error('LiEQEqualizer: need at least 4 samples'); }
+    t = t.slice(0, n); s = s.slice(0, n);
+    ts = split(t, o.smoothRadius, o.smoothPasses);
+    ss = split(s, o.smoothRadius, o.smoothPasses);
+    model = {
+      n: n,
+      teacherEnvelope: ts.lo, teacherRipple: ts.hi,
+      studentEnvelope: ss.lo, studentRipple: ss.hi,
+      teacher: t, student: s
+    };
+  } else {
+    model = buildModel({ n: o.samples });
+    n = model.n;
+    if (n < 4) { throw new Error('LiEQEqualizer: need at least 4 samples'); }
+  }
 
   this.opts = o;
   this.caption = o.caption;
@@ -842,33 +1267,30 @@ function Instance(el, opts) {
   this.doc = doc;
   this.uid = uid;
   this.n = n;
-  this.teacher = teacher;
-  this.student = student;
-  this.tLo = ts.lo; this.tHi = ts.hi;
-  this.sLo = ss.lo; this.sHi = ss.hi;
+  this.model = model;
+  this.teacher = model.teacher;
+  this.student = model.student;
+  this.tEnv = model.teacherEnvelope; this.tRip = model.teacherRipple;
+  this.sEnv = model.studentEnvelope; this.sRip = model.studentRipple;
   /* how much of the gap a full fader closes — the rest is FULL_SCALE_RESIDUAL */
-  this.reach = reach(student, teacher, o.residual);
+  this.reach = reach(this.student, this.teacher, o.residual);
   this.state = { lf: clamp(+o.lf || 0, 0, 1), hf: clamp(+o.hf || 0, 0, 1) };
   this.drag = null;
   this.cdrag = null;
   this.pluck = new PluckState({ span: Math.max(2, PLUCK_SPAN_FRAC * (n - 1)) });
   this.plucked = false;
+  this.hintRetired = false;
+  this.arm = null;
+  this.armAt = -1;
   this.scrubAt = -1;
   this.frame = 0;
   this.springFrame = 0;
   this.destroyed = false;
+  this.lastShapeDone = null;
+  this.lastDetailDone = null;
 
-  /* --- vertical scale. The family is separately linear in lf and in hf, so
-   *     its extremes over the unit square are attained at the four corners. --- */
-  hi = 0; lo = 0;
-  for (corner = 0; corner < 4; corner++) {
-    v = this.morph(corner === 1 || corner === 3 ? 1 : 0, corner >= 2 ? 1 : 0);
-    for (i = 0; i < n; i++) {
-      if (v[i] > hi) { hi = v[i]; }
-      if (v[i] < lo) { lo = v[i]; }
-    }
-  }
-  this.vmax = hi > 0 ? hi : 1;
+  /* --- vertical scale, from the four corners of the fader square --- */
+  this.vmax = modelVmax(model, this.reach);
   this.vmin = 0;
   this.span = (PLOT.b - PLOT.t - PLOT_HEAD) / this.vmax;
 
@@ -877,8 +1299,18 @@ function Instance(el, opts) {
   for (i = 0; i < n; i++) { this.xs[i] = PLOT.l + (PLOT.r - PLOT.l) * (i / (n - 1)); }
   this.ys = new Array(n);
   this.tys = new Array(n);
-  this.annLFi = clamp(Math.round(ANN_LF_FRAC * (n - 1)), 0, n - 1);
-  this.annHFi = clamp(Math.round(ANN_HF_FRAC * (n - 1)), 0, n - 1);
+
+  /* --- where the two callouts point --- */
+  this.annShapeI = shapeDepartureIndex(this.sEnv, this.tEnv);
+  this.detailFrom = clamp(Math.round(ANN_DETAIL_FROM * (n - 1)), 0, n - 1);
+  this.detailTo = clamp(Math.round(ANN_DETAIL_TO * (n - 1)), 0, n - 1);
+
+  /* --- the dashed reference: the dense scan's SHAPE, which never moves --- */
+  this.ghostD = catmullPath(this.xs, (function (self) {
+    var out = new Array(n), j;
+    for (j = 0; j < n; j++) { out[j] = self.y(self.tEnv[j]); }
+    return out;
+  })(this));
 
   this.build();
   this.bind();
@@ -888,7 +1320,15 @@ function Instance(el, opts) {
 /* The pose the faders imply. lf and hf travel over `reach` of the path, which
  * leaves exactly `residual` between the full-travel student and the teacher. */
 Instance.prototype.morph = function (lf, hf) {
-  return morph(this.sLo, this.sHi, this.tLo, this.tHi, lf * this.reach, hf * this.reach);
+  return morph(this.sEnv, this.sRip, this.tEnv, this.tRip, lf * this.reach, hf * this.reach);
+};
+
+/* The student's ENVELOPE alone at a given lf — what the dashed reference is
+ * compared against, and what the SHAPE callout measures. */
+Instance.prototype.envAt = function (lf) {
+  var n = this.n, out = new Array(n), t = lf * this.reach, i;
+  for (i = 0; i < n; i++) { out[i] = lerp(this.sEnv[i], this.tEnv[i], t); }
+  return out;
 };
 
 /* value -> y, clamped to the plot box so a hard pluck saturates against the
@@ -939,16 +1379,20 @@ Instance.prototype.build = function () {
   this.svg = wrap.querySelector('svg');
 
   this.el = {
-    sArea: this.q('sArea'), sCore: this.q('sCore'), sFlow: this.q('sFlow'),
-    tHalo: this.q('tHalo'), tCore: this.q('tCore'), tFlow: this.q('tFlow'),
-    sGrab: this.q('sGrab'), tGrab: this.q('tGrab'),
-    annLF: this.q('annLF'), annHF: this.q('annHF'),
+    tArea: this.q('tArea'), tCore: this.q('tCore'), ghost: this.q('ghost'),
+    sArea: this.q('sArea'), sCore: this.q('sCore'), armDot: this.q('armDot'),
+    hit: this.q('hit'), hintg: this.q('hintg'),
+    annShape: this.q('annShape'), annDetail: this.q('annDetail'),
+    shapeT1: this.q('shapeT1'), shapeT2: this.q('shapeT2'), shapeLead: this.q('shapeLead'),
     gapStem: this.q('gapStem'), gapTop: this.q('gapTop'), gapBot: this.q('gapBot'),
-    hfDrop: this.q('hfDrop'), hfHalo: this.q('hfHalo'), hfDot: this.q('hfDot'),
-    gapValue: this.q('gapValue'), roLabel: this.q('roLabel'), hint: this.q('hint'),
+    detailT1: this.q('detailT1'), detailT2: this.q('detailT2'),
+    detailLead: this.q('detailLead'), detailBr: this.q('detailBr'),
+    gapValue: this.q('gapValue'), roLabel: this.q('roLabel'),
     scrub: this.q('scrub'), scrubLine: this.q('scrubLine'),
     scrubDotS: this.q('scrubDotS'), scrubDotT: this.q('scrubDotT')
   };
+
+  if (this.el.ghost) { this.el.ghost.setAttribute('d', this.ghostD); }
 
   this.faders = {};
   faders = this.svg.querySelectorAll('[data-lieq-fader]');
@@ -1005,6 +1449,12 @@ Instance.prototype.indexAt = function (x) {
   return clamp(Math.round(f * (n - 1)), 0, n - 1);
 };
 
+/* A fingertip has no pixel, so it gets a bigger radius than a mouse. */
+Instance.prototype.grabRadius = function (e) {
+  return e && (e.pointerType === 'touch' || e.pointerType === 'pen')
+    ? GRAB_RADIUS_TOUCH : GRAB_RADIUS;
+};
+
 Instance.prototype.bind = function () {
   var self = this, key, f, i, win;
 
@@ -1012,9 +1462,7 @@ Instance.prototype.bind = function () {
   this.onMove = function (e) { self.pointerMove(e); };
   this.onUp = function (e) { self.pointerUp(e); };
   this.onKey = function (e) { self.keyDown(e); };
-  this.onCurveDown = function (e) { self.curveDown(e); };
-  this.onCurveOver = function (e) { self.curveOver(e); };
-  this.onCurveOut = function () { self.curveOut(); };
+  this.onHitDown = function (e) { self.hitDown(e); };
   this.onStageMove = function (e) { self.stageMove(e); };
   this.onStageLeave = function () { self.stageLeave(); };
   this.onChipDown = function (e) { self.chipActivate(e); };
@@ -1027,13 +1475,8 @@ Instance.prototype.bind = function () {
     f.group.addEventListener('keydown', this.onKey, false);
   }
 
-  this.grabs = [];
-  if (this.el.sGrab) { this.grabs.push(this.el.sGrab); }
-  if (this.el.tGrab) { this.grabs.push(this.el.tGrab); }
-  for (i = 0; i < this.grabs.length; i++) {
-    this.grabs[i].addEventListener('pointerdown', this.onCurveDown, false);
-    this.grabs[i].addEventListener('pointerover', this.onCurveOver, false);
-    this.grabs[i].addEventListener('pointerout', this.onCurveOut, false);
+  if (this.el.hit) {
+    this.el.hit.addEventListener('pointerdown', this.onHitDown, false);
   }
 
   for (i = 0; i < this.chips.length; i++) {
@@ -1162,32 +1605,57 @@ Instance.prototype.pluckRelease = function (now) {
   return this;
 };
 
-Instance.prototype.curveDown = function (e) {
-  var node = e.currentTarget, which, i0, base;
+/* The hint has done its job the first time anyone plucks, and it does not come
+ * back. */
+Instance.prototype.retireHint = function () {
+  if (this.hintRetired) { return; }
+  this.hintRetired = true;
+  if (this.stage) { this.stage.setAttribute('data-lieq-plucked', '1'); }
+  if (this.el.hintg) { this.el.hintg.setAttribute('opacity', '0'); }
+};
+
+/* Which curve the pointer is over, i.e. which one a press would grab. The
+ * highlight exists so that answer is never a surprise. */
+Instance.prototype.setArm = function (which, i) {
+  var changed = this.arm !== which || this.armAt !== i;
+  this.arm = which || null;
+  this.armAt = which ? i : -1;
+  if (this.stage) {
+    if (which) {
+      this.stage.setAttribute('data-lieq-hot', which);
+      this.stage.setAttribute('data-lieq-arm', which);
+    } else {
+      this.stage.removeAttribute('data-lieq-hot');
+      this.stage.removeAttribute('data-lieq-arm');
+    }
+  }
+  if (changed) { this.schedule(); }
+  return this;
+};
+
+/* ONE hit surface, nearest curve wins. No stacked bands, so no curve can hide
+ * another's hit area — the bug this replaces. */
+Instance.prototype.hitDown = function (e) {
+  var node = e.currentTarget, p, i, pick, base;
   if (this.drag || this.cdrag) { return; }
   if (e.button !== undefined && e.button !== 0 && e.pointerType === 'mouse') { return; }
-  which = node.getAttribute('data-lieq-curve');
+
+  p = this.toSvg(e);
+  i = this.indexAt(p.x);
+  pick = pickCurve(i, p.y, this.tys, this.ys, this.grabRadius(e), GRAB_WINDOW, this.xs, p.x);
+  if (!pick) { return; }            /* a press on empty plot is not a pluck */
+
   e.preventDefault();
   e.stopPropagation();
 
-  i0 = this.indexAt(this.toSvg(e).x);
-  base = which === 't' ? this.tvals[i0] : this.svals[i0];
-
-  this.cdrag = { id: e.pointerId, node: node, which: which };
-  this.pluckBegin(which, i0, base);
+  base = pick.which === 't' ? this.tvals[i] : this.svals[i];
+  this.cdrag = { id: e.pointerId, node: node, which: pick.which };
+  this.setArm(pick.which, i);
+  this.pluckBegin(pick.which, i, base);
   try { node.setPointerCapture(e.pointerId); } catch (err) { /* not supported */ }
   if (this.stage) { this.stage.setAttribute('data-lieq-pluck', '1'); }
-  if (this.el.hint) { this.el.hint.setAttribute('opacity', '0'); }
+  this.retireHint();
   this.schedule();
-};
-
-Instance.prototype.curveOver = function (e) {
-  var which = e.currentTarget.getAttribute('data-lieq-curve');
-  if (this.stage) { this.stage.setAttribute('data-lieq-hot', which); }
-};
-
-Instance.prototype.curveOut = function () {
-  if (this.stage && !this.cdrag) { this.stage.removeAttribute('data-lieq-hot'); }
 };
 
 /* the spring loop: time-based, so a dropped frame changes nothing */
@@ -1204,22 +1672,26 @@ Instance.prototype.startSpring = function () {
   this.springFrame = raf.call(win, step);
 };
 
-/* ---- scrub cursor --------------------------------------------------- */
+/* ---- scrub cursor + the grab highlight ------------------------------ */
 
 Instance.prototype.stageMove = function (e) {
-  var p = this.toSvg(e), i;
+  var p = this.toSvg(e), i, pick;
   if (this.drag) { return; }
-  if (p.x < PLOT.l || p.x > PLOT.r || p.y < PLOT.t - 10 || p.y > PLOT.b + 6) {
+  if (p.x < PLOT.l - 2 || p.x > PLOT.r + 2 || p.y < PLOT.t - 10 || p.y > PLOT.b + 6) {
+    this.setArm(null, -1);
     if (this.scrubAt >= 0) { this.scrubAt = -1; this.schedule(); }
     return;
   }
   i = this.indexAt(p.x);
   if (i !== this.scrubAt) { this.scrubAt = i; this.schedule(); }
+  if (this.cdrag) { return; }        /* a live drag owns the highlight */
+  pick = pickCurve(i, p.y, this.tys, this.ys, this.grabRadius(e), GRAB_WINDOW, this.xs, p.x);
+  this.setArm(pick ? pick.which : null, i);
 };
 
 Instance.prototype.stageLeave = function () {
   if (this.scrubAt >= 0) { this.scrubAt = -1; this.schedule(); }
-  this.curveOut();
+  if (!this.cdrag) { this.setArm(null, -1); }
 };
 
 /* ---- presets: they jump, and like the faders they never rebound ----- */
@@ -1280,11 +1752,17 @@ Instance.prototype.schedule = function () {
 
 /* ---- render ----------------------------------------------------------- */
 
+function setLine(el, x1, y1, x2, y2) {
+  if (!el) { return; }
+  el.setAttribute('x1', n1(x1)); el.setAttribute('y1', n1(y1));
+  el.setAttribute('x2', n1(x2)); el.setAttribute('y2', n1(y2));
+}
+
 Instance.prototype.render = function () {
   var st = this.state, n = this.n, el = this.el,
       amp = this.pluck.amp(this.now()),
-      vals, tvals, i, d, td, area, conv, gap, dv,
-      ax, tY, sY, fadeLF, fadeHF, key, f, knobY, want;
+      vals, tvals, i, d, td, gap, dv, ax, tY, sY, key, f, knobY, want,
+      done, lines, top, brY, cx, x1, x2;
 
   /* the two shapes: the faders' pose, plus whatever the cord is doing */
   vals = this.pluck.apply(this.morph(st.lf, st.hf), 's', amp);
@@ -1293,24 +1771,29 @@ Instance.prototype.render = function () {
   this.tvals = tvals;
 
   for (i = 0; i < n; i++) { this.ys[i] = this.y(vals[i]); this.tys[i] = this.y(tvals[i]); }
-  d = catmullPath(this.xs, this.ys);
-  td = catmullPath(this.xs, this.tys);
-  area = d + 'L' + n1(this.xs[n - 1]) + ' ' + PLOT.b + 'L' + n1(this.xs[0]) + ' ' + PLOT.b + 'Z';
-  this.teacherYs = this.tys;
+  d = linePath(this.xs, this.ys);
+  td = linePath(this.xs, this.tys);
 
-  if (el.sCore) { el.sCore.setAttribute('d', d); }
-  if (el.sFlow) { el.sFlow.setAttribute('d', d); }
-  if (el.sArea) { el.sArea.setAttribute('d', area); }
-  if (el.sGrab) { el.sGrab.setAttribute('d', d); }
-  if (el.tHalo) { el.tHalo.setAttribute('d', td); }
   if (el.tCore) { el.tCore.setAttribute('d', td); }
-  if (el.tFlow) { el.tFlow.setAttribute('d', td); }
-  if (el.tGrab) { el.tGrab.setAttribute('d', td); }
+  if (el.tArea) { el.tArea.setAttribute('d', areaPath(td, this.xs[0], this.xs[n - 1], PLOT.b)); }
+  if (el.sCore) { el.sCore.setAttribute('d', d); }
+  if (el.sArea) { el.sArea.setAttribute('d', areaPath(d, this.xs[0], this.xs[n - 1], PLOT.b)); }
 
-  /* the suppressed-vs-clean opacity language: the student brightens as it converges */
-  conv = (st.lf + st.hf) / 2;
-  if (el.sCore) { el.sCore.setAttribute('opacity', n1(0.62 + 0.38 * conv) + ''); }
-  if (el.sFlow) { el.sFlow.setAttribute('opacity', n1(0.75 + 0.25 * conv) + ''); }
+  /* the dashed dense SHAPE is the LF fader's target, so it retires as LF
+   * arrives — exactly the reference overlay the paper figure draws */
+  if (el.ghost) { el.ghost.setAttribute('opacity', n1(0.72 * clamp(1 - st.lf * 1.18, 0, 1)) + ''); }
+
+  /* the grab highlight's dot, on whichever curve a press would take */
+  if (el.armDot) {
+    if (this.arm && this.armAt >= 0) {
+      el.armDot.setAttribute('cx', n1(this.xs[this.armAt]));
+      el.armDot.setAttribute('cy', n1(this.arm === 't' ? this.tys[this.armAt] : this.ys[this.armAt]));
+      el.armDot.setAttribute('stroke', this.arm === 't' ? '#bfe0ff' : '#f6bd8c');
+      el.armDot.setAttribute('opacity', '0.95');
+    } else {
+      el.armDot.setAttribute('opacity', '0');
+    }
+  }
 
   /* readout — either the peak gap over the whole plot, or the local gap under
    * the scrub cursor. Both are properties of the two drawn curves, nothing more. */
@@ -1349,35 +1832,48 @@ Instance.prototype.render = function () {
     }
   }
 
-  /* annotation 1 — the low-frequency excess, as a dimension bar */
-  fadeLF = clamp(1 - st.lf * 1.15, 0, 1);
-  if (el.annLF) { el.annLF.setAttribute('opacity', n1(fadeLF) + ''); }
-  i = this.annLFi;
+  /* ---- callout 1: the SHAPE. A dimension bar between the two curves where
+   *      their shapes differ most. As LF closes the gap the bar shrinks to
+   *      nothing, so the label stops claiming a shape error and says so. ---- */
+  i = this.annShapeI;
   ax = this.xs[i]; sY = this.ys[i]; tY = this.tys[i];
-  if (el.gapStem) {
-    el.gapStem.setAttribute('x1', n1(ax)); el.gapStem.setAttribute('x2', n1(ax));
-    el.gapStem.setAttribute('y1', n1(sY)); el.gapStem.setAttribute('y2', n1(tY));
+  done = st.lf >= ANN_DONE_AT;
+  if (done !== this.lastShapeDone) {
+    this.lastShapeDone = done;
+    lines = done ? this.opts.shapeAnnotationDone : this.opts.shapeAnnotation;
+    if (el.shapeT1) { el.shapeT1.textContent = lines[0]; }
+    if (el.shapeT2) { el.shapeT2.textContent = lines[1]; }
   }
-  if (el.gapTop) {
-    el.gapTop.setAttribute('x1', n1(ax - GAP_CAP)); el.gapTop.setAttribute('x2', n1(ax + GAP_CAP));
-    el.gapTop.setAttribute('y1', n1(sY)); el.gapTop.setAttribute('y2', n1(sY));
-  }
-  if (el.gapBot) {
-    el.gapBot.setAttribute('x1', n1(ax - GAP_CAP)); el.gapBot.setAttribute('x2', n1(ax + GAP_CAP));
-    el.gapBot.setAttribute('y1', n1(tY)); el.gapBot.setAttribute('y2', n1(tY));
-  }
+  if (el.annShape) { el.annShape.setAttribute('opacity', n1(0.45 + 0.55 * (1 - st.lf)) + ''); }
+  setLine(el.gapStem, ax, sY, ax, tY);
+  setLine(el.gapTop, ax - ANN_SHAPE.cap, sY, ax + ANN_SHAPE.cap, sY);
+  setLine(el.gapBot, ax - ANN_SHAPE.cap, tY, ax + ANN_SHAPE.cap, tY);
+  top = Math.min(sY, tY) - 4;
+  setLine(el.shapeLead, ax, ANN_SHAPE.leadTop, ax,
+          top > ANN_SHAPE.leadTop ? top : ANN_SHAPE.leadTop);
 
-  /* annotation 2 — the spurious ripple, as a dropline onto the live curve */
-  fadeHF = clamp(1 - st.hf * 1.15, 0, 1);
-  if (el.annHF) { el.annHF.setAttribute('opacity', n1(fadeHF) + ''); }
-  i = this.annHFi;
-  ax = this.xs[i]; sY = this.ys[i];
-  if (el.hfDrop) {
-    el.hfDrop.setAttribute('x1', n1(ax)); el.hfDrop.setAttribute('x2', n1(ax));
-    el.hfDrop.setAttribute('y2', n1(sY - 7));
+  /* ---- callout 2: the DETAIL. A bracket over the stretch where the dense
+   *      scan's texture is strongest; HF is what fills it in. ---- */
+  x1 = this.xs[this.detailFrom]; x2 = this.xs[this.detailTo];
+  brY = Infinity;
+  for (i = this.detailFrom; i <= this.detailTo; i++) {
+    if (this.ys[i] < brY) { brY = this.ys[i]; }
+    if (this.tys[i] < brY) { brY = this.tys[i]; }
   }
-  if (el.hfHalo) { el.hfHalo.setAttribute('cx', n1(ax)); el.hfHalo.setAttribute('cy', n1(sY)); }
-  if (el.hfDot) { el.hfDot.setAttribute('cx', n1(ax)); el.hfDot.setAttribute('cy', n1(sY)); }
+  brY -= 9;
+  if (!(brY > ANN_DETAIL.minY)) { brY = ANN_DETAIL.minY; }
+  done = st.hf >= ANN_DONE_AT;
+  if (done !== this.lastDetailDone) {
+    this.lastDetailDone = done;
+    lines = done ? this.opts.detailAnnotationDone : this.opts.detailAnnotation;
+    if (el.detailT1) { el.detailT1.textContent = lines[0]; }
+    if (el.detailT2) { el.detailT2.textContent = lines[1]; }
+  }
+  if (el.annDetail) { el.annDetail.setAttribute('opacity', n1(0.45 + 0.55 * (1 - st.hf)) + ''); }
+  if (el.detailBr) { el.detailBr.setAttribute('d', bracketPath(x1, x2, brY, ANN_DETAIL.drop)); }
+  cx = (x1 + x2) / 2;
+  setLine(el.detailLead, cx, ANN_DETAIL.leadTop, cx,
+          brY - 3 > ANN_DETAIL.leadTop ? brY - 3 : ANN_DETAIL.leadTop);
 
   /* faders */
   for (key in this.faders) {
@@ -1425,10 +1921,8 @@ Instance.prototype.destroy = function () {
     f.group.removeEventListener('pointerdown', this.onDown, false);
     f.group.removeEventListener('keydown', this.onKey, false);
   }
-  for (i = 0; this.grabs && i < this.grabs.length; i++) {
-    this.grabs[i].removeEventListener('pointerdown', this.onCurveDown, false);
-    this.grabs[i].removeEventListener('pointerover', this.onCurveOver, false);
-    this.grabs[i].removeEventListener('pointerout', this.onCurveOut, false);
+  if (this.el && this.el.hit) {
+    this.el.hit.removeEventListener('pointerdown', this.onHitDown, false);
   }
   for (i = 0; i < this.chips.length; i++) {
     this.chips[i].removeEventListener('click', this.onChipDown, false);
@@ -1452,7 +1946,7 @@ Instance.prototype.destroy = function () {
 };
 
 /* ==============================================================
- * 9.  Entry points
+ * 8.  Entry points
  * ============================================================== */
 
 function currentDoc() {
@@ -1462,11 +1956,7 @@ function currentDoc() {
 /* Build the SVG source for a given option set without touching the DOM.
  * Paths are left empty; render() fills them. Used by the test harness. */
 function renderMarkup(opts, uid) {
-  var o = extend(extend({}, DEFAULTS), opts);
-  o.lfAnnotation = normLines(o.lfAnnotation, DEFAULTS.lfAnnotation);
-  o.hfAnnotation = normLines(o.hfAnnotation, DEFAULTS.hfAnnotation);
-  o.hint = normLines(o.hint, DEFAULTS.hint);
-  return svgMarkup(uid || 'T', o);
+  return svgMarkup(uid || 'T', normOpts(extend(extend({}, DEFAULTS), opts)));
 }
 
 function init(target, opts) {
@@ -1519,6 +2009,11 @@ function autoInit() {
   }
 })();
 
+/* The model every instance starts from, built once so the page and the test
+ * harness are looking at the same numbers. */
+var MODEL = buildModel({ n: N_SAMPLES });
+var MODEL_REACH = reach(MODEL.student, MODEL.teacher, FULL_SCALE_RESIDUAL);
+
 return {
   version: VERSION,
   init: init,
@@ -1531,15 +2026,38 @@ return {
   presets: PRESETS,
   Instance: Instance,
   PluckState: PluckState,
-  curves: { teacher: parseCurve(TEACHER_SRC), student: parseCurve(STUDENT_SRC) },
+  curves: {
+    teacher: MODEL.teacher,
+    student: MODEL.student,
+    teacherEnvelope: MODEL.teacherEnvelope,
+    teacherRipple: MODEL.teacherRipple,
+    studentEnvelope: MODEL.studentEnvelope,
+    studentRipple: MODEL.studentRipple,
+    n: MODEL.n,
+    vmax: modelVmax(MODEL, MODEL_REACH),
+    reach: MODEL_REACH,
+    shapeDepartureIndex: shapeDepartureIndex(MODEL.studentEnvelope, MODEL.teacherEnvelope)
+  },
   constants: {
+    N_SAMPLES: N_SAMPLES,
+    EDGE_TAPER: EDGE_TAPER,
+    TEACHER_LOBES: TEACHER_LOBES,
+    STUDENT_LOBES: STUDENT_LOBES,
+    RIPPLE: RIPPLE,
+    STUDENT_RIPPLE_KEEP: STUDENT_RIPPLE_KEEP,
     FULL_SCALE_RESIDUAL: FULL_SCALE_RESIDUAL,
+    GRAB_RADIUS: GRAB_RADIUS,
+    GRAB_RADIUS_TOUCH: GRAB_RADIUS_TOUCH,
+    GRAB_WINDOW: GRAB_WINDOW,
     PLUCK_SPAN_FRAC: PLUCK_SPAN_FRAC,
     PLUCK_ZETA: PLUCK_ZETA,
     PLUCK_FREQ: PLUCK_FREQ,
     PLUCK_SETTLE_EPS: PLUCK_SETTLE_EPS,
     PLUCK_MIN_TIME: PLUCK_MIN_TIME,
-    PLUCK_MAX_AMP: PLUCK_MAX_AMP
+    PLUCK_MAX_AMP: PLUCK_MAX_AMP,
+    ANN_DETAIL_FROM: ANN_DETAIL_FROM,
+    ANN_DETAIL_TO: ANN_DETAIL_TO,
+    ANN_DONE_AT: ANN_DONE_AT
   },
   math: {
     clamp: clamp,
@@ -1550,17 +2068,30 @@ return {
     reach: reach,
     bump: bump,
     spring: spring,
+    linePath: linePath,
     catmullPath: catmullPath,
-    parseCurve: parseCurve
+    areaPath: areaPath,
+    bracketPath: bracketPath,
+    parseCurve: parseCurve,
+    lobeSum: lobeSum,
+    edgeWindow: edgeWindow,
+    lcg: lcg,
+    buildRipple: buildRipple,
+    buildModel: buildModel,
+    modelVmax: modelVmax,
+    shapeDepartureIndex: shapeDepartureIndex,
+    pickCurve: pickCurve,
+    curveDist: curveDist,
+    segDist: segDist
   },
   geometry: {
     VB_W: VB_W, VB_H: VB_H, PLOT: PLOT, PLOT_HEAD: PLOT_HEAD,
     RACK: RACK, TRACK: TRACK, FADER_X: FADER_X, INSET: VB_INSET, LEGEND: LEGEND,
-    CHIP: CHIP, chipWidth: chipWidth,
+    CHIP: CHIP, chipWidth: chipWidth, hintWidth: hintWidth, advance: advance,
     ROW: { tick: ROW_TICK, title: ROW_TITLE, chip: ROW_CHIP, readout: ROW_READOUT },
     HINT: HINT,
-    ANN: { lfTextX: ANN_LF_TEXT_X, hfTextX: ANN_HF_TEXT_X, gapCap: GAP_CAP,
-           lfFrac: ANN_LF_FRAC, hfFrac: ANN_HF_FRAC }
+    ANN: { shape: ANN_SHAPE, detail: ANN_DETAIL,
+           detailFrom: ANN_DETAIL_FROM, detailTo: ANN_DETAIL_TO, doneAt: ANN_DONE_AT }
   }
 };
 

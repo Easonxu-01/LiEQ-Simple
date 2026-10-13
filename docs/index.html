@@ -16,6 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/motion.css" />
 <style>
 /* ============================================================
    LiEqualizer project page — single flattened stylesheet.
@@ -132,6 +133,10 @@ h1,h2,h3,h4{font-family:var(--disp);font-weight:700;letter-spacing:-.01em;line-h
 .fig .fig-media img, .fig .fig-media video{border-radius:11px;width:100%}
 .fig figcaption{font-size:12.5px;line-height:1.58;color:#59677a;margin-top:13px}
 .fig figcaption b{color:var(--text)}
+/* the chart modules' MEASUREMENT BASIS notes must span their figure, not stop
+   at a 80ch measure; the cap lives in the modules' injected CSS (0,1,0) so it
+   is overridden here at 0,2,0 rather than edited there. */
+.lqp-fig > .lqp-note,.lqc-fig > .lqc-note{max-width:none}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:20px}
 .chip{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10px;
   font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#b4591f;
@@ -172,6 +177,19 @@ table.data tbody tr:last-child td{border-bottom:0}
 table.data tbody tr.hero-row td{background:rgba(42,120,214,.06);font-weight:600}
 table.data .up{color:#1f9d55} table.data .dn{color:#c0392b}
 table.data .best{font-weight:700} table.data .second{text-decoration:underline}
+
+/* disclosure — same chrome as the charts' SHOW DATA TABLE control -- */
+.fold{margin:12px 0 0}
+.fold > button{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;
+  text-transform:uppercase;color:#377fba;background:transparent;
+  border:1px solid var(--line);border-radius:999px;padding:5px 11px;cursor:pointer}
+.fold > button:hover{color:var(--blue);border-color:var(--blue)}
+.fold > button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.fold-body{margin-top:12px}
+.fold-body[hidden]{display:none}
+/* on the dark instrument card the same control reads in the hero's palette */
+.instrument .fold > button{color:#8ea6c4;border-color:rgba(134,182,239,.28)}
+.instrument .fold > button:hover{color:#bfe0ff;border-color:#56adf0}
 
 /* cards grid ---------------------------------------------------- */
 .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:26px}
@@ -222,6 +240,28 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
 .lightbox button{position:absolute;top:-44px;right:0;background:transparent;border:1px solid rgba(159,178,203,.4);
   color:#cfe3fb;border-radius:999px;padding:7px 14px;font-family:var(--mono);font-size:11px;cursor:pointer}
 
+/* video slots (ported from the sibling page's #video) ------------ */
+.video-list{display:flex;flex-direction:column;gap:36px}
+.video-block .video-part-title{font-family:var(--disp);font-weight:600;font-size:1.06rem;
+  line-height:1.48;color:var(--text);margin:0 0 12px}
+.video-block .video-part-title span{font-family:var(--mono);font-size:12px;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--blue);margin-right:10px}
+.video-frame{position:relative;aspect-ratio:16/9;overflow:hidden;background:#0c1322;
+  border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.video-frame video,.video-frame iframe{position:absolute;inset:0;width:100%;height:100%;
+  display:block;border:0;border-radius:0;background:#000}
+.video-frame .video-poster{position:absolute;inset:0;width:100%;height:100%;
+  object-fit:cover;pointer-events:none}
+/* a reserved, not-yet-filled slot: framed still, dimmed, with a standing label */
+.video-frame.is-pending .video-poster{object-fit:contain;opacity:.42}
+.video-frame.is-pending::after{content:attr(data-pending);position:absolute;left:50%;top:50%;
+  transform:translate(-50%,-50%);font-family:var(--mono);font-size:10.5px;font-weight:700;
+  letter-spacing:.14em;text-transform:uppercase;color:#cfe3fb;
+  background:rgba(12,19,34,.74);border:1px solid rgba(134,182,239,.34);
+  padding:8px 15px;border-radius:999px;white-space:nowrap}
+.video-note{font-size:12.5px;line-height:1.58;color:#59677a;margin:11px 0 0}
+@media(max-width:680px){.video-list{gap:28px}}
+
 /* reveal -------------------------------------------------------- */
 .reveal{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
 .reveal.in{opacity:1;transform:none}
@@ -235,6 +275,11 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
 @media(max-width:680px){.hero h1{font-size:clamp(1.9rem,8.6vw,2.4rem)}
   .instrument{padding:14px;border-radius:20px}}
 </style>
+<noscript><style>
+/* With no JS the buttons cannot open anything, so show the prose and hide them. */
+[data-fold]{display:none}
+.fold-body[hidden]{display:block}
+</style></noscript>
 </head>
 <body>
 <div id="page-progress" aria-hidden="true"></div>
@@ -247,9 +292,9 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
       <a href="#idea">Idea</a>
       <a href="#method">Method</a>
       <a href="#results">Results</a>
-      <a href="#spectrum">Spectrum</a>
       <a href="#deploy">On-vehicle</a>
       <a href="#downloads">Downloads</a>
+      <a href="#spectrum">Protocol</a>
     </div>
     <a class="nav-cta" href="https://github.com/Easonxu-01/LiEQ-Simple" target="_blank" rel="noopener">Code ↗</a>
   </div>
@@ -285,15 +330,21 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
     <figure class="instrument" id="eq-instrument">
       <div id="eq-mount"></div>
       <figcaption>
-        <b>Drag the two faders</b> and the <span class="k-orange">sparse student's profile</span> is pulled toward the
-        <span class="k-blue">dense teacher's</span>: <b>LF</b> restores the shape sampling weakened, <b>HF</b> removes
-        the detail sampling faked. They move continuously and stay where you leave them; both rest at zero, which is
-        the undistilled student. At full travel a small gap is left on purpose — a distilled student lands near the
-        teacher, not on it. <b>You can also pluck either curve</b> — grab it anywhere, pull, and it springs back to the
-        shape the faders imply. Hover to read the local gap.
-        <span class="eq-disclose" data-eq-caption>Illustrative, not measured: both curves are traced from the paper's
-        insight figure, and the student's high-frequency ripple is synthesised so the HF fader has something to
-        remove.</span>
+        <b>Drag the two faders.</b> <b>LF</b> pulls the <span class="k-orange">sparse student's</span> overall shape
+        onto the <span class="k-blue">dense teacher's</span>; <b>HF</b> brings its fine ripple up to the teacher's.
+        <div class="fold">
+          <button type="button" data-fold aria-expanded="false" aria-controls="eq-howto"
+                  data-open="Show how it works" data-shut="Hide how it works">Show how it works</button>
+          <div class="fold-body" id="eq-howto" hidden>
+            The faders move continuously and stay where you leave them; both rest at zero, which is the undistilled
+            student. At full travel a small gap is left on purpose — a distilled student lands near the teacher, not
+            on it. <b>You can also pluck either curve</b> — grab it anywhere, pull, and it springs back to the shape
+            the faders imply. Hover to read the local gap. Low frequency is the curve's envelope; high frequency is
+            the fine ripple riding on it. The axis is spatial position, so nothing about a curve's height is a
+            frequency.
+          </div>
+        </div>
+        <span class="eq-disclose" data-eq-caption>Illustrative, not measured: both profiles are drawn procedurally after the paper’s insight figure — one dominant shape carrying fine detail for the dense scan, a smoothed two-hump shape for the sparse one — and not plotted from logged features.</span>
       </figcaption>
     </figure>
   </div>
@@ -327,7 +378,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
       low-frequency shape left intact. A filter can only do the first. A sampler does both, which is why the method has two branches.</p>
     </div>
     <figure class="fig reveal">
-      <div class="fig-media"><a href="assets/insight.pdf" target="_blank" rel="noopener" title="Open the vector PDF"><img src="assets/insight.jpg" alt="Conceptual illustration: the sparse spectrum against the dense spectrum, showing low-frequency excess and spurious high-frequency response." loading="lazy" /></a></div>
+      <div class="fig-media"><a href="assets/insight.pdf" target="_blank" rel="noopener" title="Open the vector PDF"><img src="assets/insight.jpg" alt="Conceptual illustration: against spatial position, the dense teacher's profile carries fine ripple all along its envelope while the sparse student's profile is smooth and its envelope sits in the wrong place." loading="lazy" /></a></div>
       <figcaption><b>Fig 1.</b> Different LiDARs observe different spectra of the same world. Sparse sampling attenuates real
       high frequencies in the point domain and, unlike a filter, creates near-white fake high frequencies on the voxel grid.
       LiEqualizer distills the spectrum from a teacher trained on densified scenes and equalizes the student's spectral
@@ -409,10 +460,10 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
 
     <figure class="fig reveal">
       <div class="fig-media">
-        <video src="assets/table1_3d_build.mp4" poster="assets/table1_3d.jpg" controls playsinline preload="none"
-               style="width:100%;border-radius:11px"></video>
+        <a href="#video" title="Play the build-up in the Video section"><img src="assets/table1_3d.jpg"
+           alt="The main table drawn as grouped 3-D bars: grey single-sensor baseline, orange randomized-sampling baseline, blue LiEqualizer." loading="lazy" /></a>
       </div>
-      <figcaption><b>Fig 5.</b> The same table, built up. Grey is the single-sensor baseline, orange the randomized-sampling
+      <figcaption><b>Fig 5.</b> The same table, as bars. Grey is the single-sensor baseline, orange the randomized-sampling
       baseline, blue LiEqualizer. Arrows mark the gain over the orange bars.</figcaption>
     </figure>
 
@@ -447,26 +498,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
   </div>
 </section>
 
-<section class="section" id="spectrum">
-  <div class="container">
-    <div class="section-head reveal">
-      <div class="eyebrow">Spectrum</div>
-      <h2>An open protocol for measuring what a sensor loses</h2>
-      <p class="lead">The diagnosis is a separate contribution: a measurement protocol that reports what sparse sampling does
-      to a signal, and whether distillation repaired it. Every figure below is rendered live from the released measurements.</p>
-    </div>
-    <div class="reveal" style="display:grid;gap:30px">
-      <div data-lieq-chart="qprofiles"></div>
-      <div data-lieq-chart="rolloff-hfshare"></div>
-      <div data-lieq-chart="class-retention"></div>
-      <div data-lieq-chart="gap-heatmap"></div>
-      <div data-lieq-chart="b0-trend"></div>
-      <div data-lieq-chart="band-profiles"></div>
-    </div>
-  </div>
-</section>
-
-<section class="section tint" id="deploy">
+<section class="section" id="deploy">
   <div class="container">
     <div class="section-head reveal">
       <div class="eyebrow">On-vehicle</div>
@@ -504,22 +536,43 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
   </div>
 </section>
 
-<section class="section" id="video">
+<section class="section tint" id="video">
   <div class="container">
     <div class="section-head reveal">
       <div class="eyebrow">Video</div>
-      <h2>Overview</h2>
-      <p class="lead">A narrated overview is in preparation. The build-up of the main table is below.</p>
+      <h2>Three parts</h2>
+      <p class="lead">The film, the table it is built on, and the vehicles. Parts I and III are in preparation.</p>
     </div>
-    <figure class="fig reveal">
-      <div class="fig-media"><video src="assets/table1_3d_build.mp4" controls playsinline preload="none"
-        poster="assets/table1_3d.jpg" style="width:100%;border-radius:11px"></video></div>
-      <figcaption><b>Video 1.</b> Cross-sensor generalization, built up cell by cell.</figcaption>
-    </figure>
+    <div class="video-list">
+      <article class="video-block reveal">
+        <h3 class="video-part-title"><span>Part I</span>Overview: the lost spectrum in two minutes</h3>
+        <div class="video-frame is-pending" data-pending="In preparation">
+          <img class="video-poster" src="assets/insight.jpg" alt="" aria-hidden="true" loading="lazy" decoding="async" />
+        </div>
+        <p class="video-note">A two-minute overview film, in preparation. Until it lands, Fig 1 carries the same
+        argument. Subtitled, not narrated.</p>
+      </article>
+      <article class="video-block reveal">
+        <h3 class="video-part-title"><span>Part II</span>Cross-sensor generalization, built up cell by cell</h3>
+        <div class="video-frame">
+          <video src="assets/table1_3d_build.mp4" poster="assets/table1_3d.jpg" controls playsinline preload="none"></video>
+        </div>
+        <p class="video-note">Grey is the single-sensor baseline, orange the randomized-sampling baseline, blue
+        LiEqualizer. Arrows mark the gain over the orange bars.</p>
+      </article>
+      <article class="video-block reveal">
+        <h3 class="video-part-title"><span>Part III</span>On three vehicles, with LiDARs the model never saw</h3>
+        <div class="video-frame is-pending" data-pending="In preparation">
+          <img class="video-poster" src="assets/realdata.jpg" alt="" aria-hidden="true" loading="lazy" decoding="async" />
+        </div>
+        <p class="video-note">Real-vehicle clips, in preparation — the same ones the Downloads list promises. The
+        still frames are in the On-vehicle section above.</p>
+      </article>
+    </div>
   </div>
 </section>
 
-<section class="section tint" id="downloads">
+<section class="section" id="downloads">
   <div class="container">
     <div class="section-head reveal">
       <div class="eyebrow">Downloads</div>
@@ -544,7 +597,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
   </div>
 </section>
 
-<section class="section" id="cite">
+<section class="section tint" id="cite">
   <div class="container">
     <div class="section-head reveal">
       <div class="eyebrow">Citation</div>
@@ -559,6 +612,25 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
   year    = {2026},
   note    = {Preprint}
 }</pre>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="spectrum">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="eyebrow">Spectrum</div>
+      <h2>An open protocol for measuring what a sensor loses</h2>
+      <p class="lead">The diagnosis is a separate contribution: a measurement protocol that reports what sparse sampling does
+      to a signal, and whether distillation repaired it. Every figure below is rendered live from the released measurements.</p>
+    </div>
+    <div class="reveal" style="display:grid;gap:30px">
+      <div data-lieq-chart="qprofiles"></div>
+      <div data-lieq-chart="rolloff-hfshare"></div>
+      <div data-lieq-chart="class-retention"></div>
+      <div data-lieq-chart="gap-heatmap"></div>
+      <div data-lieq-chart="b0-trend"></div>
+      <div data-lieq-chart="band-profiles"></div>
     </div>
   </div>
 </section>
@@ -595,6 +667,7 @@ window.addEventListener('load', function () {
 <script src="assets/charts-main.js" defer></script>
 <script src="assets/charts-native.js" defer></script>
 <script src="assets/charts-paper.js" defer></script>
+<script src="assets/motion.js" defer></script>
 <script>
 (function(){
   "use strict";
@@ -631,6 +704,19 @@ window.addEventListener('load', function () {
   });
   document.addEventListener('keydown', function(ev){
     if (ev.key === 'Escape'){ lb.classList.remove('open'); lb.setAttribute('aria-hidden','true'); }
+  });
+
+  /* disclosures — the same contract as the charts' SHOW DATA TABLE button:
+     type=button, aria-expanded, aria-controls, and the label swaps. */
+  document.addEventListener('click', function(ev){
+    var b = ev.target.closest ? ev.target.closest('button[data-fold]') : null;
+    if (!b) return;
+    var box = document.getElementById(b.getAttribute('aria-controls'));
+    if (!box) return;
+    var open = b.getAttribute('aria-expanded') === 'true';
+    b.setAttribute('aria-expanded', open ? 'false' : 'true');
+    if (open) { box.setAttribute('hidden','hidden'); } else { box.removeAttribute('hidden'); }
+    b.textContent = open ? b.getAttribute('data-open') : b.getAttribute('data-shut');
   });
 })();
 

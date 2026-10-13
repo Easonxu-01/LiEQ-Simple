@@ -1,392 +1,325 @@
-# `eq-widget.js` — the hero spectral equaliser
+# `eq-widget.js` — the hero spatial-profile equaliser
 
 A self-contained interactive instrument for the LiEqualizer project page. Two vertical
-faders, **LF EQUALIZER** and **HF EQUALIZER**, continuously morph the sparse student's
-profile toward the dense teacher's — LF moves the low-frequency *envelope*, HF moves the
-high-frequency *detail*. Both rest at 0, which is the undistilled student. Either curve can
-also be **plucked** with the pointer: pull it anywhere and it springs back like a cord.
+faders, **LF / SHAPE** and **HF / DETAIL**, continuously morph the sparse student's profile
+toward the dense teacher's. Both rest at 0, which is the undistilled student. Either curve
+can also be **plucked** with the pointer: pull it anywhere and it springs back like a cord.
 Three preset pills jump the faders to the three states of the paper's insight figure.
-
-The plot is in the **spatial domain** — x is a spatial coordinate and y a signal/feature
-value, exactly as the source figure's own axis is labelled. At full travel the student lands
-*close to but not on* the teacher: a 4% residual is left, as the paper's own measurements
-show.
 
 One file. Native inline SVG plus one injected `<style>`. No framework, no bundler, no build
 step, no CDN, no chart library. ES5-compatible; safe to serve straight from GitHub Pages.
 
+## The one fact that governs everything here
+
+**The plot is in the SPATIAL domain.** x is a spatial position, y is a signal / feature
+response — exactly as the source figure's own axis is labelled. The *height* of a curve
+therefore carries **no frequency information whatsoever**, and nothing in this widget labels
+a region of a curve with a frequency, a spectrum or a band. What the two words mean on a
+spatial plot is what they mean in the paper's figure:
+
+| | in the spatial domain |
+|---|---|
+| **low frequency** | the **envelope** — the gross shape of the curve |
+| **high frequency** | the fine **spiky ripple** riding on top of that envelope |
+
+So **LF moves the shape** and **HF grows the fine detail**. The LF/HF fader captions are
+kept (they name the two distillation branches in the paper); every other label on the plot
+is a plain spatial statement.
+
 ---
 
-## 1. Integration
+## What changed in version 3
 
-The page already carries everything it needs. For reference, this is the whole contract:
+Three defects in v2 are fixed. All three were visible on the live page.
+
+### Defect 1 — the curve semantics were backwards
+
+v2 synthesised a high-frequency **ripple on the student** and left the **teacher smooth**,
+then had the HF fader *remove* that ripple. The paper's figure is the other way round: the
+dense scan carries dense fine detail, the sparse scan lost it, and panel 3 shows the student
+*acquiring* the teacher's texture. v3 rebuilds the model as four generated arrays:
+
+```
+teacherEnvelope   one dominant hump plus subordinate shoulders
+teacherRipple     dense, sharp, varied spikes — detail a DENSE scan keeps
+studentEnvelope   a different, WRONG shape: two humps where the dense scan has one
+studentRipple     5% of the teacher's texture — what survived sparse sampling
+```
+
+and the drawn student at `(lf, hf)` is exactly
+
+```
+env[i]    = lerp(studentEnvelope[i], teacherEnvelope[i], lf)
+ripple[i] = lerp(studentRipple[i],   teacherRipple[i],   hf)
+y[i]      = env[i] + ripple[i]
+```
+
+At rest the student is smooth and its shape is wrong; LF pulls the shape onto the dense
+scan's and leaves it smooth; HF grows the spikes until the texture matches. Measured by the
+harness: the teacher's second difference is **15.4x** the student's at rest, and HF
+multiplies the student's ripple energy by **19x**.
+
+### Defect 2 — the in-plot callouts were domain-wrong
+
+`LOW-FREQUENCY EXCESS` and `SPURIOUS HIGH-FREQUENCY RESPONSE` pinned a frequency to a region
+of a spatial curve, which is meaningless. **Both are deleted**, options and all. In their
+place, two callouts that are true as spatial statements and that change wording as the
+faders move:
+
+| | at rest | past `ANN_DONE_AT` (0.55) |
+|---|---|---|
+| left bay | `SHAPE THE SPARSE / SCAN GOT WRONG` | `SHAPE BROUGHT / BACK IN LINE` |
+| right bay | `DETAIL THE SPARSE SCAN / NEVER RECORDED` | `DETAIL BACK FROM / THE DENSE SCAN` |
+
+The SHAPE callout drops a dimension bar between the two drawn curves at the sample where the
+sparse shape departs upward most (`curves.shapeDepartureIndex`); the bar shrinks to nothing
+as LF closes it. The DETAIL callout brackets `ANN_DETAIL_FROM..ANN_DETAIL_TO` — a stretch
+chosen because the two **shapes agree there to better than 0.06**, so the only visible
+difference in that stretch really is the fine detail.
+
+The x axis also lost its `X MAX` tick: that axis is a spatial coordinate with no units in
+the source figure, so it now carries tick *marks* and the title `Spatial position` and no
+numbers at all. `lowTick` / `highTick` still exist as options and default to `''`.
+
+### Defect 3 — the teacher could not be grabbed where the curves run close
+
+v2 painted two invisible `.lieq-grab` strokes, 22 user units wide, `pointer-events:stroke`,
+with the **student's painted last**. Wherever the curves came within ~11 units of each other
+the student's band covered the teacher's. Measured with real pointer events: **3 of 9** drags
+along the teacher moved it; at the 6 failures `elementFromPoint` returned the student's band.
+
+v3 deletes both bands and paints **one transparent hit surface** over the plot. On
+`pointerdown` it picks the **nearest curve in y** at that x — `math.pickCurve`, a pure
+function the harness probes directly — and plucks that one. The same function runs on
+`pointermove`, so the curve that *would* be grabbed is highlighted first (thicker, brighter
+stroke plus a ring on the curve at the pointer), and the cursor is `grab` / `grabbing`.
+Ties go to the teacher. The harness now measures **9 of 9** on each curve, and **9 of 9 at
+every sample where the two curves are within 11 units**.
+
+Discoverability, which was the user's first report ("the curves cannot be dragged"):
+
+* a bordered pill at the top right of the plot, `⇕ DRAG EITHER CURVE`, with a slow nudge;
+* it **retires permanently** the first time anyone plucks (`data-lieq-plucked` on the stage);
+* `cursor:grab` only when a curve is actually in reach, so the cursor never lies;
+* the hover highlight + grab ring, which say *which* curve you are about to take.
+
+---
+
+## Integration
+
+**Unchanged.** The page contract is still:
 
 ```html
-<!-- in the hero's right-hand grid column -->
-<figure class="instrument" id="eq-instrument">
-  <div id="eq-mount"></div>
-  <figcaption>
-    <b>Drag the two faders.</b> The <span class="k-orange">sparse student's spectrum</span> is
-    pulled toward the <span class="k-blue">dense teacher's</span>. <b>LF</b> restores the shape
-    sampling weakened; <b>HF</b> removes the detail sampling faked. Both rest at zero — that is
-    the undistilled student.
-  </figcaption>
-</figure>
-
-<!-- before </body> -->
+<div id="eq-mount"></div>
 <script src="assets/eq-widget.js" defer></script>
 ```
 
-That is all. On `DOMContentLoaded` the script mounts itself into every
-`[data-lieq-equalizer]` element, and — if there are none — into `#eq-mount`. Nothing else to
-call.
+`autoInit()` mounts into every `[data-lieq-equalizer]`, or into `#eq-mount` if there are
+none. `index.html` also copies `window.LiEQEqualizer.caption` into
+`[data-eq-caption]` on load; that still works and is still the single source of the
+disclosure wording.
 
-To mount it somewhere else, or to pass options:
+### Two strings in `index.html` are now stale
 
-```html
-<div data-lieq-equalizer></div>
-```
+This file does not own `index.html`, so they are listed here for whoever does:
 
-```js
-var eq = LiEQEqualizer.init('#eq-mount', {
-  lf: 0, hf: 0,
-  xLabel: 'Spatial position',
-  onChange: function (lf, hf) { /* ... */ }
-});
-```
+1. The no-JS fallback inside `<figcaption>` still reads *"…the student's high-frequency
+   ripple is synthesised so the HF fader has something to remove."* That is v2's inverted
+   story. JS overwrites it on load, so it is only visible with JS off — but it should be
+   replaced with the new `caption` text:
 
-### What it injects
+   > Illustrative, not measured: both profiles are drawn procedurally after the paper's
+   > insight figure — one dominant shape carrying fine detail for the dense scan, a smoothed
+   > two-hump shape for the sparse one — and not plotted from logged features.
 
-Into the mount element:
-
-```html
-<div class="lieq-shell">            <!-- or .lieq-card when chrome:true -->
-  <div class="lieq-stage">
-    <i class="lieq-scan"></i>       <!-- the 'powered on' scan sweep -->
-    <svg class="lieq-svg" viewBox="0 0 480 248" role="group" aria-label="...">…</svg>
-  </div>
-</div>
-```
-
-Plus one `<style id="lieq-equalizer-css">` in `<head>`, once per document however many
-widgets are on the page. Every CSS class and every SVG `id` is prefixed `lieq`, and the
-`<defs>` ids are additionally suffixed with a per-instance counter, so two widgets on one
-page cannot collide.
-
-### The card around it
-
-`chrome` defaults to `false` because **the page's own `.instrument` rule already paints the
-dark card** — border-radius 25px, the two-layer `#16223a → #0c1322` background, the 34px
-masked graph-paper `::before`, the figcaption hairline. The widget only adds the scan line
-the sibling page had and the page's `.instrument` does not.
-
-Pass `chrome: true` to get a standalone `.lieq-card` with the full shell (two-layer
-background, four-part box-shadow, graph paper) for use outside the hero.
+2. The same `<figcaption>` says *"**HF** removes the detail sampling faked."* That is the
+   paper's description of the HF branch and is correct about the paper; it is **not** what
+   this widget's HF fader does, which is to grow the dense scan's fine detail on the sparse
+   profile. Suggested: *"**LF** restores the shape sampling weakened, **HF** restores the
+   fine detail sampling lost."*
 
 ---
 
-## 2. Options
+## Options
 
-Every option is optional. Strings are HTML-escaped before they reach the markup.
+Everything is optional; these are the defaults.
 
 | option | default | what it does |
 |---|---|---|
-| `lf`, `hf` | `0`, `0` | initial fader positions, 0–1 |
-| `chrome` | `false` | `true` also paints the dark card shell (see above) |
-| `smoothRadius` | `3` | box-blur radius for the envelope/detail split |
-| `smoothPasses` | `3` | how many blur passes |
-| `xLabel` | `'Spatial position'` | x-axis title — the source figure's own label |
-| `yLabel` | `'Signal / feature response'` | rotated y-axis title |
-| `lowTick`, `highTick` | `'0'`, `'X MAX'` | the two x-axis end ticks |
-| `residual` | `0.04` | what full travel CANNOT recover, in signal units (see §4) |
-| `scrubLabel` | `'GAP HERE'` | readout label while the scrub cursor is up |
-| `hint` | `['PLUCK','A CURVE']` | two lines, top right; retires on the first pluck |
-| `presets` | 3 pills | `[{label, lf, hf, aria}]` |
-| `caption` | the disclosure line | see §4 |
-| `teacherLabel` | `'DENSE TEACHER'` | blue legend entry |
-| `studentLabel` | `'SPARSE STUDENT'` | orange legend entry |
-| `rackLabel` | `'SPECTRAL EQ'` | eyebrow above the faders |
-| `readoutLabel` | `'PEAK GAP'` | label for the live readout |
-| `lfAnnotation` | `['LOW-FREQUENCY','EXCESS']` | two lines; fades out as LF rises |
-| `hfAnnotation` | `['SPURIOUS HIGH-FREQUENCY','RESPONSE']` | two lines; fades out as HF rises |
-| `lfAria`, `hfAria` | see source | `aria-label` on each fader |
-| `ariaLabel`, `desc` | see source | the `<svg>` name and its `<desc>` |
-| `teacher`, `student` | built-in | override the curves: an array, or a comma-separated string, of y values on a uniform x grid. Both are resampled to the shorter length; 4 samples minimum. |
-| `onChange` | `null` | `function (lf, hf, instance)`, called on every render |
+| `lf`, `hf` | `0`, `0` | starting fader positions |
+| `chrome` | `false` | also paint the dark card shell (`.lieq-card`) |
+| `residual` | `0.04` | signal units left between student and teacher at full travel |
+| `samples` | `181` | samples on the shared x grid |
+| `xLabel` | `Spatial position` | x axis title |
+| `yLabel` | `Signal / feature response` | y axis title |
+| `lowTick`, `highTick` | `''`, `''` | optional end ticks; empty means none is drawn |
+| `teacherLabel`, `studentLabel` | `DENSE TEACHER`, `SPARSE STUDENT` | legend |
+| `rackLabel` | `SPECTRAL EQ` | the rack eyebrow (the instrument's name, not a region label) |
+| `readoutLabel`, `scrubLabel` | `PEAK GAP`, `GAP HERE` | the two readout modes |
+| `hint` | `DRAG EITHER CURVE` | the pluck pill's text |
+| `shapeAnnotation`, `shapeAnnotationDone` | see above | two lines each |
+| `detailAnnotation`, `detailAnnotationDone` | see above | two lines each |
+| `lfSub`, `hfSub` | `SHAPE`, `DETAIL` | the caption under each fader |
+| `lfAria`, `hfAria`, `ariaLabel`, `desc` | see source | accessibility strings |
+| `caption` | `LiEQEqualizer.caption` | the illustrative-not-measured line |
+| `presets` | BYPASS / LF / LF+HF | the pills |
+| `teacher`, `student` | `null` | host-supplied curves; split into shape + detail with `smoothRadius` / `smoothPasses` |
+| `onChange(lf, hf, inst)` | `null` | called at the end of every render |
 
-Anything a caller throws inside `onChange` is swallowed, so a bad callback cannot break the
-instrument.
+`lfAnnotation` and `hfAnnotation` **no longer exist**: they were the two frequency-domain
+callouts, and they are gone rather than renamed.
 
-## 3. Instance API
+## Instance API
 
 ```js
-var eq = LiEQEqualizer.init('#eq-mount');
-
-eq.getValues()            // -> { lf: 0, hf: 0 }
-eq.setValues(0.4, 0.8)    // set both; omit one with null
-eq.setValue('lf', 0.4)    // set one
-eq.morph(lf, hf)          // -> Array, the curve that pose would draw (pure, no DOM)
-eq.render()               // force a synchronous redraw
-eq.destroy()              // unbind everything and empty the mount
-eq.element  eq.svg  eq.state  eq.teacher  eq.student
+var eq = LiEQEqualizer.init('#eq-mount', { lf: 0.4 });
+eq.getValues();            // -> {lf: 0.4, hf: 0}
+eq.setValues(1, 1);        // jump both faders
+eq.setValue('hf', 0.25);   // one fader
+eq.morph(0.5, 0.5);        // the curve that pose would draw — pure, no DOM
+eq.envAt(0.5);             // that pose's ENVELOPE alone
+eq.destroy();              // unbind everything, empty the mount
 ```
 
-Module level:
-
-```js
-LiEQEqualizer.version                 // '2.0.0'
-LiEQEqualizer.init(target, opts)      // -> instance | null   (never throws)
-LiEQEqualizer.initAll(selector, opts) // -> [instance]
-LiEQEqualizer.caption                 // the illustrative-not-measured line (print it)
-LiEQEqualizer.curves                  // { teacher: [...], student: [...] }
-LiEQEqualizer.constants               // residual + pluck spring constants
-LiEQEqualizer.math                    // { clamp lerp smooth split morph reach bump spring
-                                      //   catmullPath parseCurve }
-LiEQEqualizer.PluckState              // the DOM-free pluck/spring state machine
-LiEQEqualizer.Instance                // the constructor (its prototype is testable)
-LiEQEqualizer.geometry                // the viewBox layout constants
-LiEQEqualizer.css                     // the stylesheet, as a string
-LiEQEqualizer.renderMarkup(opts, uid) // the SVG source, no DOM needed
-LiEQEqualizer.defaults
-```
-
-`init` returns `null` rather than throwing when the target is missing, is not an element, or
-when the curves are unusable. The file also loads cleanly in node with no DOM at all — it
-touches `document` only from the auto-init block, which is guarded.
+Module surface: `init` `initAll` `autoInit` `renderMarkup` `css` `caption` `defaults`
+`presets` `Instance` `PluckState` `curves` `constants` `math` `geometry` — unchanged from
+v2 except that `curves` now also carries `teacherEnvelope`, `teacherRipple`,
+`studentEnvelope`, `studentRipple`, `n`, `vmax`, `reach` and `shapeDepartureIndex`, and
+`math` gains `linePath` `areaPath` `bracketPath` `lobeSum` `edgeWindow` `lcg` `buildRipple`
+`buildModel` `modelVmax` `shapeDepartureIndex` `pickCurve`.
 
 ---
 
-## 4. How the morph works
+## The curve model
 
-Both curves are sampled on one shared, uniform x grid of 97 points. At init each is split
-into a low-frequency envelope and a high-frequency residual, using three passes of a
-radius-3 box moving average with clamped edges:
-
-```
-lo = smooth(y, 3, 3)
-hi = y - lo                    // so lo + hi === y, exactly
-```
-
-Every frame the drawn curve is two independent linear interpolations:
-
-```
-y[i] = lerp(studentLo[i], teacherLo[i], lf · reach)
-     + lerp(studentHi[i], teacherHi[i], hf · reach)
-```
-
-There is no cross term and no easing, so:
-
-* the response is **continuous (无极)** — every intermediate fader position gives a
-  proportional intermediate curve, and a step of `d` in `lf` moves sample `i` by exactly
-  `d · (teacherLo[i] − studentLo[i])`;
-* it is **monotone** in each fader at every sample;
-* the four corners are exact — `(0,0)` is the student; `(1,0)` is the teacher's envelope
-  carrying the student's own wiggle, `(0,1)` the reverse; `(1,1)` is the **limit curve**,
-  not the teacher (next section);
-* because the family is separately linear in each fader, its extremes over the whole unit
-  square are attained at those four corners. The vertical scale is derived from exactly
-  that, so no pose can ever overflow the frame.
-
-The result is drawn as a uniform Catmull-Rom spline converted to cubic Béziers (one segment
-per interval, end tangents clamped), with coordinates quantised to 0.1 user units. Render is
-coalesced into one `requestAnimationFrame` per burst of pointer events.
-
-### The residual: full travel does not reach the teacher
-
-`FULL_SCALE_RESIDUAL = 0.04`. The faders travel over
-
-```
-reach = 1 − residual / max|student − teacher|          // 0.91389 on the shipped curves
-```
-
-of the student-to-teacher path, so the limit curve is
-
-```
-L = teacher + (1 − reach) · (student − teacher)        // teacher + 8.6% of the original error
-```
-
-and `max|L − teacher|` is *exactly* `0.04` — 4% of the plotted 0..1 range, 91.4% of the
-original 0.4645 peak gap closed. The `PEAK GAP` readout therefore reads `0.04` at full
-travel, never `0.00`. Because `reach` only shortens the path, the family stays exactly
-linear, monotone and continuous in each fader.
-
-This is both a design choice and an honesty one: the paper reports a distilled student
-*close to* the dense teacher, never equal to it, and a widget whose two curves snapped into
-one line would claim more than the paper does.
-
-### Releasing a fader does nothing. Releasing a *curve* springs back.
-
-Two different gestures, deliberately opposite:
-
-| gesture | on release |
-|---|---|
-| **fader** (drag, press-the-track, keyboard, preset) | nothing. No spring-back, no reset, no settle. The value *is* the state. |
-| **curve pluck** (drag either curve directly) | springs back to the shape the faders imply, with a short underdamped settle. |
-
-A pluck cannot move a fader: the whole pluck path runs through `PluckState`, which has no
-reference to `lf` or `hf`, and the three `Instance` methods that drive it
-(`pluckBegin` / `pluckTo` / `pluckRelease`) never read or write `this.state`. Once the cord
-settles, `PluckState` clears itself and the drawn array is bit-for-bit `morph(lf, hf)` again.
-
-```
-deform[i] += amp · ½(1 + cos(π · (i − i₀)/w))          // raised cosine, w = 0.14·(n−1) ≈ 13.4
-amp(t)     = a₀ e^(−ζω₀t) [cos(ω_d t) + (ζω₀/ω_d) sin(ω_d t)]   // ζ = 0.34, 7.2 Hz
-```
-
-The bump is smooth, not a spike (the apex rises 1.4% of the pull per sample) and strictly
-local (nothing outside ±13.4 samples moves). The spring is time-based, so a dropped frame
-changes nothing; it overshoots 32% of the pull, crosses zero twice, and is below the
-`0.0015` settle threshold — a quarter of a user unit on screen — after **192 ms**. Under
-`prefers-reduced-motion` the pluck is simply dropped on release instead of animated.
-
-### Where the curves come from
-
-Traced column by column off the left half of the paper's insight figure — the teacher from
-the top-left panel (rescaled by the 1.046 factor that least-squares-fits the dashed teacher
-drawn in the student's own axes, 2.5px RMS over 82 observed columns), the student from the
-bottom-left panel. The student additionally carries a small decaying ripple over its right
-half: the paper's *unsupported / spurious high-frequency response*, which is the thing the
-HF fader exists to remove. Measured on the shipped arrays: the student's envelope runs
-0.118 above the teacher's over the low third, and carries 1.49× the teacher's
-high-frequency residual energy over the right half.
-
-**These curves are illustrative.** They are a trace of a schematic figure, not measured
-data, and the `PEAK GAP` readout is simply the largest vertical distance between the two
-drawn curves. Nothing here should be quoted as a result.
-
-The module says so out loud, in one line the page should print under the instrument:
+Everything that shapes the two profiles is a named constant in section 1 of the source.
+There is no table of typed coordinates: the four arrays are generated, so a change of mind
+is a change of one number.
 
 ```js
-LiEQEqualizer.caption   // also eq.caption, and overridable as opts.caption
+TEACHER_LOBES        Gaussian lobes: {c: centre, w: half-width, a: height} over u in [0,1]
+STUDENT_LOBES        the sparse scan's two wrong humps + the shoulders it did get right
+EDGE_TAPER   0.035   both curves window to exactly 0 at both ends
+RIPPLE               the spike train: amp, minH, accentEvery, accentGain, wing,
+                     strideMin/Max, flip, maskPow, edge, seed
+STUDENT_RIPPLE_KEEP  0.05
+FULL_SCALE_RESIDUAL  0.04
+N_SAMPLES    181
 ```
 
-> Illustrative, not measured: both curves are traced from the paper's insight figure, and
-> the student's high-frequency ripple is synthesised so the HF fader has something to remove.
+**Why the spikes are built the way they are.** A soft sine would not read as "detail": the
+ripple is a train of single-sample excursions with two short wings, spaced 2–4 samples
+apart, mostly alternating in sign, with every 7th spike taller — so it reads as structure
+rather than as noise or as a comb. Heights come from a seeded LCG, never `Math.random`, so
+every visitor and the test harness see the same curve. The amplitude is masked by the
+envelope to the power `maskPow`, because detail rides on signal: where there is no signal
+there is no detail, and both curves stay non-negative so the filled areas behave.
 
-The same sentence is appended to the `<svg>`'s `<desc>`, so a screen reader gets it too.
+**Why the student keeps 5% rather than 0.** A sparse scan is not perfectly smooth, and a
+scaled copy of the teacher's own texture makes the HF fader exactly a gain on it — which
+makes the drawn ripple energy provably monotone in `hf`. At 5% of a 0.082 spike it is 0.66
+user units on screen: invisible, which is the point.
+
+**Both curves are drawn as filled areas with a solid outline**, as the paper figure draws
+them, and the two live curves are **polylines** (`math.linePath`), not splines: at 1.67 units
+per sample the envelope still reads as a smooth curve, and a spike keeps a sharp tip instead
+of the rounded overshoot a Catmull-Rom would put on it. The dashed reference envelope, which
+has no spikes to blunt, is still a spline.
+
+### The dashed reference
+
+The paper overlays a dashed copy of the teacher on the student's panel. Both profiles share
+one pair of axes here, so a dashed copy of the teacher's *drawn* curve would vanish inside
+the teacher's own ink. What is drawn instead is the teacher's **envelope** — the shape the
+LF fader is aiming at — dashed, *on top* of both curves, fading out as LF arrives
+(`0.72 -> 0` over the first 85% of LF travel). It is the one line on the plot that is not
+already there, and it is exactly what LF closes.
+
+### The residual
+
+The faders travel over `reach = 1 - residual / peakGap` of the student-to-teacher path, so
+at `lf = hf = 1` the largest remaining difference is exactly `FULL_SCALE_RESIDUAL = 0.04`:
+the student lands *near* the teacher, never on it, as the paper's own measurements show.
+With the v3 curves `peakGap = 0.877`, so `reach = 0.954` and full travel closes 95.4% of a
+0.805 shape error. The `PEAK GAP` readout therefore reads `0.04` at full travel, never
+`0.00`.
 
 ---
 
-## 5. Design
+## Layout
 
-Colours, fonts and the card chrome follow the sibling LiSeer page, so the two read as one
-family.
+viewBox `480 x 248`, plot `46..346 x 30..200`, rack `362..472`. The two callouts live in the
+only two bays the curves leave empty, and the harness proves it: for every pose on the fader
+square it computes the topmost curve ink under each label box and asserts the label clears
+it.
 
-| | |
-|---|---|
-| teacher / reference | `#56adf0` core, `#bfe0ff` flow overlay, `#9cc8f3` label |
-| student | `#e58236` core, `#f6bd8c` flow overlay, `#eab089` annotations |
-| on-dark text | `#dbe7f5`, dimmed `#8d99ab`, focus `#58b9eb` |
-| card | `#0c1322` base with a `#16223a` gradient terminus, radius 25px, padding `clamp(18px,2vw,25px)` |
-| type | everything is `var(--mono)` — this is instrument chrome, not body copy |
-
-Both curves use the sibling's **beam idiom**: a fat opaque core plus a thin bright dashed
-"flow" overlay marching with `steps(18,end)`. The teacher additionally carries a soft
-9-unit halo at 0.24 opacity, so when the two curves coincide at `lf=hf=1` you see the orange
-line sitting inside a blue sheath rather than the blue simply vanishing. The student's core
-and flow brighten from 0.62/0.75 toward full opacity as it converges, reusing the sibling's
-"suppressed versus clean" opacity language.
-
-The two annotations are live. `LOW-FREQUENCY EXCESS` is drawn as a **dimension bar** between
-the two curves at the sample where the student's envelope most exceeds the teacher's; it
-shrinks as you raise LF and fades out. `SPURIOUS HIGH-FREQUENCY RESPONSE` drops a leader
-onto the live curve inside the ripple and fades out as you raise HF.
-
-### Rest pose
-
-`lf=0, hf=0` is composed to read as a finished static figure from the paper, because that is
-what most visitors will see: legend, axes, both annotated defects, the gap readout, and both
-faders at the bottom of their travel.
-
-### Layout
-
-viewBox `0 0 480 248` (aspect **1.935**, was 1.679). Plot `46..346 × 30..200`, rack
-`362..472 × 20..236`, faders at x 389 and 445 with 134 units of travel. Below the axis sit
-the three preset pills (left) and the readout (right). Everything sits inside an 8-unit
-viewBox inset.
-
-**Footprint.** Measured in headless Chrome at a 1440px viewport, in the page's own hero
-grid (`minmax(0,.78fr) minmax(560px,1.22fr)`), the card paints 639 px wide:
-
-| | SVG | card |
+| bay | contents | clearance at phone type sizes |
 |---|---|---|
-| this widget at 470 × 280 | 587 × 350 | 639 × **480** |
-| this widget at 480 × 248 | 587 × 303 | 639 × **433** |
-| sibling LiSeer `.splitter` | 587 × 350 | 639 × **444** |
+| plot top-left | SHAPE callout, baselines 44 / 55 | text bottom 55, nearest ink 75 |
+| plot top-right | hint pill 34–47, DETAIL callout 60 / 71 | text bottom 71, nearest ink 135 |
 
-So the card lost 46 px of height (−10%) and now sits 11 px *under* the sibling's, which is
-what "match the sibling's footprint" was asked for. The grid was not touched; only the
-widget's own aspect was. A `@media (max-width:760px)` block enlarges the type in user units so the labels stay
-legible when the card shrinks to phone width; every size in it is collision-checked by the
-test harness at both sizes.
+The SHAPE leader is vertical by construction: the dimension bar sits under its own text
+block, so no leader ever crosses the drawing. The DETAIL bracket is recomputed every frame
+as `min(both curves over the stretch) - 9`, clamped to `ANN_DETAIL.minY = 82` so it can
+never climb into the text.
 
 ---
 
-## 6. Interaction and accessibility
+## Interaction and accessibility
 
-* **Pointer Events throughout**, with `setPointerCapture` / `releasePointerCapture`, a
-  `pointercancel` handler, and `pointerId` filtering so a second finger cannot hijack a
-  drag. `touch-action:none` on each fader stops the page scrolling mid-drag. Move/up/cancel
-  are also bound at the window so a drag survives both the pointer leaving the SVG and a
-  browser that refuses capture on SVG elements.
-* **Press the track** to jump the cap there; **press the cap** to drag it from where you
-  grabbed it, with the offset preserved so it never jumps under your finger.
-* **Touch targets**: faders 50 × 156 user units — about 33 × 104 CSS px on a 390px phone.
-  The pluck band is a 22-unit invisible stroke along each curve (15 CSS px on a phone, 27 in
-  the desktop hero); the preset pills carry a 24-unit hit rect (16 / 29 CSS px). The pills
-  are the smallest target on the card and are a convenience: everything they do is also on
-  the faders, which are keyboard-reachable.
-* **Plucking**: `pointerdown` on either curve's band grabs the nearest sample, `pointermove`
-  pulls it, `pointerup` releases it to the spring. The gesture takes pointer capture, is
-  filtered by `pointerId`, is cancelled by `pointercancel`, and sets `touch-action:none` on
-  the band only — so the page still scrolls everywhere else on the card.
-* **Scrub**: moving the pointer across the plot raises a dotted cursor with a dot on each
-  curve and switches the readout from `PEAK GAP` to `GAP HERE` — the local distance between
-  the two drawn curves at that sample.
-* **Presets** are `role="button"` with `tabindex="0"`, `aria-pressed` reflecting whether the
-  faders currently sit on that pose, Enter/Space keyboard activation and their own focus
-  ring. They jump; they never rebound.
-* **Each fader is a real `role="slider"`** with `tabindex="0"`, `aria-orientation="vertical"`,
-  `aria-valuemin="0"`, `aria-valuemax="100"`, and live `aria-valuenow` / `aria-valuetext`.
-* **Keyboard**: `↑ ↓ ← →` step ±0.05, with <kbd>Shift</kbd> ±0.2; `PageUp`/`PageDown` ±0.2;
-  `Home` 0; `End` 1. Unknown keys fall through untouched.
-* **Focus** is shown by a drawn ring element, not only a CSS `outline` (which several engines
-  will not paint on SVG), progressively narrowed to `:focus-visible` where supported.
-* The `<svg>` is `role="group"` with an `aria-label` and a long `<desc>` — *not* `role="img"`,
-  which would have made the whole subtree presentational and the sliders unreachable. All
-  static decoration is inside one `aria-hidden` group; the faders are deliberately outside it.
-* `prefers-reduced-motion: reduce` stops the flow dashes, the scan sweep, the hint pulse and
-  every transition, and makes a released pluck drop instead of spring. Once you stop moving,
-  the JS is completely quiet.
+* **Faders** — pointer drag, or keyboard: arrows ±0.05, shift-arrows / PageUp/PageDown ±0.2,
+  Home / End. `role="slider"` with live `aria-valuenow` / `aria-valuetext`. They do not
+  spring back; the value *is* the state.
+* **Curves** — one hit surface, nearest curve wins, `setPointerCapture` plus window-level
+  `pointermove` / `pointerup` so a drag survives leaving the SVG. A pluck **never** touches a
+  fader: `PluckState` cannot see `lf` or `hf`, and the harness asserts it.
+* **Grab radius** — 14 user units for a mouse (~17 CSS px on the hero, ~10 on a phone),
+  26 for a touch or a pen, searched over ±2 samples so a steep flank still catches.
+* **Presets** — `role="button"`, Enter / Space, `aria-pressed` tracks the faders.
+* **Reduced motion** — the scan line, the hint nudge and every transition are dropped, and a
+  released pluck snaps home instead of ringing.
+* **Phone** — one `@media (max-width:760px)` block grows the type in user units; it must stay
+  **last** in the sheet because the harness parses its tail.
+
+**One known trade-off.** The hit surface carries `touch-action:none` over the whole plot, so
+a touch that *starts* inside the plot scrolls nothing — that is what makes a vertical pluck
+possible on a phone at all. v2 had the same property over most of the plot (two 22-unit
+bands). If page scrolling inside the plot ever matters more than plucking on touch, change
+`.lieq-hitfield` to `touch-action:pan-y` and accept that a touch pluck will fight the
+scroller.
 
 ---
 
-## 7. Tests
+## Tests
 
 ```
-node docs/assets/eq-widget.test.js
+node docs/assets/eq-widget.test.js     # 278 assertions, plain node, no DOM, no framework
+node --check docs/assets/eq-widget.js
 ```
 
-138 assertions, no DOM, no framework, no dependencies. Covers the morph algebra (the four
-corner identities, linearity, monotonicity, the corner bound on the drawn range), the
-residual (`max|c₁₁ − teacher| − 0.04 = 3.5e-17`), the pluck kernel and spring (deform,
-locality, smoothness, overshoot, settle time, and that a settled pluck returns the array
-*bit-for-bit*), the proof that `pluckBegin`/`pluckTo`/`pluckRelease` leave `lf` and `hf`
-untouched, the Catmull-Rom path, the footprint, the fader travel and its pixel↔value round
-trip, label collisions at both type sizes — read out of the exported stylesheet so they
-cannot drift from what the browser paints — markup balance, the accessibility attributes,
-the caption, and the no-throw paths.
+Sections: the four arrays and the spatial-domain claims (smooth student vs spiky teacher,
+spike density / sharpness / height variation, two humps vs one); the residual; the fader
+semantics (LF strictly closes the envelope distance, HF strictly raises the ripple energy,
+neither interferes with the other); the morph algebra, continuity and monotonicity; the
+pluck kernel and spring; **the hit test**, including the 9-of-9 measurement and every sample
+where the curves are within 11 units; the path builders; the geometry, including
+label-versus-ink clearance at both type sizes; a render-path smoke test driven with stub
+nodes (every `setAttribute` the draw path makes); the markup and accessibility; the caption;
+and robustness.
 
-A second, browser-side pass (headless Chrome, synthetic `PointerEvent`s against the real
-handlers) checks the parts a node harness cannot see: that a curve drag rewrites the path
-and leaves both `aria-valuenow`s alone, that the curve is byte-identical again after the
-spring, that the faders stay where keyboard and pointer leave them, that the presets drive
-both faders and mark themselves `aria-pressed`, that the scrub cursor and its readout come
-up, and that `destroy()` empties the mount — 29 assertions, no uncaught errors.
+Assertions that encoded v2's inverted semantics were **replaced, not deleted**, and each
+replacement says so in its name:
 
-The envelope/detail claim is checked two ways. The exact one is the corner identity: at
-`lf=1, hf=0` the output *is* `teacherLo + studentHi`, to 1.1e-16. The cross-check then takes
-the output back apart with two instruments the widget does not itself use — a wider moving
-average for the envelope, a second difference for the ripple — because re-running the
-widget's own box blur over its own output would measure the blur as much as the result (a
-box blur is not a projection: `S(S(x)) ≠ S(x)`).
+| v2 assertion | v3 replacement |
+|---|---|
+| "student envelope exceeds teacher at low frequency" | "the student OVERSHOOTS the dense shape in one place" / "falls far SHORT of it where the dense scan peaks" — same geometry, no frequency claim |
+| "student carries more high-frequency energy on the right half" | "the teacher is an order of magnitude kinkier than the student" + the whole *DEFECT 1* section, inverted |
+| "LF alone leaves the wiggle the student's own" | "LF alone leaves the student SMOOTH: it does not grow detail" |
+| "HF alone puts the wiggle on the teacher's" | "HF alone DOES grow the fine detail" |
+| "both annotations from the paper figure are present" (matched `LOW-FREQUENCY` / `SPURIOUS HIGH-FREQUENCY`) | three assertions that those exact strings are **gone**, plus one that no callout, axis title, tick, legend or readout contains `FREQ`, `SPECTR` or `BAND` |
+| "it names what was synthesised" (`ripple is synthesised`) | "it names what is illustrative: both profiles are generated" + one that the old inverted sentence is gone |
+| end-tick collision checks against `X MAX` | "the meaningless X MAX tick is gone, and no tick pretends to be a coordinate" |
+| "the pluck band is 22 user units wide" (a note) | the grab-radius note, plus the one-hit-surface and no-`lieq-grab` assertions |
+
+`split()` and `smooth()` are still exported and still tested: a host may pass its own
+`teacher` / `student` curves, which are split into shape + detail exactly as v2 did.

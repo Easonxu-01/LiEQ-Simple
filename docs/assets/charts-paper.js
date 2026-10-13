@@ -121,7 +121,8 @@
     '.lqp-note b{font-family:var(--lqp-mono);font-size:10px;font-weight:600;',
     '  letter-spacing:.09em;text-transform:uppercase;color:var(--lqp-eyebrow);',
     '  margin-right:.45em}',
-    '.lqp-foot{margin:10px 0 0}',
+    '.lqp-foot{margin:10px 0 0;display:flex;flex-wrap:wrap;gap:8px}',
+    '.lqp-note[hidden]{display:none}',
     '.lqp-toggle{font-family:var(--lqp-mono);font-size:10.5px;letter-spacing:.06em;',
     '  text-transform:uppercase;color:var(--lqp-eyebrow);background:transparent;',
     '  border:1px solid var(--lqp-hair);border-radius:999px;padding:5px 11px;cursor:pointer}',
@@ -697,6 +698,9 @@
     var body = hEl('div', 'lqp-body', inner);
 
     var note = hEl('figcaption', 'lqp-note', inner);
+    var noteId = uid('note');
+    note.setAttribute('id', noteId);
+    note.setAttribute('hidden', 'hidden');
     hEl('b', null, note, cfg.noteLabel || 'Measurement basis');
     note.appendChild(D.createTextNode(cfg.note));
 
@@ -720,6 +724,22 @@
         setCls(srBox, open ? 'lqp-sr' : 'lqp-sr is-open');
         clear(btn);
         btn.appendChild(D.createTextNode(open ? 'Show data table' : 'Hide data table'));
+      });
+    }
+
+    /* the measurement basis, same control, same strip - second, so that
+       byTag(fig,'button')[0] is still the data-table toggle */
+    var nBtn = hEl('button', 'lqp-toggle', foot, 'Show measurement basis');
+    nBtn.setAttribute('type', 'button');
+    nBtn.setAttribute('aria-expanded', 'false');
+    nBtn.setAttribute('aria-controls', noteId);
+    if (nBtn.addEventListener) {
+      nBtn.addEventListener('click', function () {
+        var nOpen = nBtn.getAttribute('aria-expanded') === 'true';
+        nBtn.setAttribute('aria-expanded', nOpen ? 'false' : 'true');
+        if (nOpen) { note.setAttribute('hidden', 'hidden'); } else { note.removeAttribute('hidden'); }
+        clear(nBtn);
+        nBtn.appendChild(D.createTextNode(nOpen ? 'Show measurement basis' : 'Hide measurement basis'));
       });
     }
 

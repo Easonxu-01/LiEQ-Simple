@@ -1355,7 +1355,8 @@
     '.lqc-note b{font-family:var(--lqc-mono);font-size:10px;font-weight:600;',
     '  letter-spacing:.09em;text-transform:uppercase;color:var(--lqc-eyebrow);',
     '  margin-right:.45em}',
-    '.lqc-foot{margin:10px 0 0}',
+    '.lqc-foot{margin:10px 0 0;display:flex;flex-wrap:wrap;gap:8px}',
+    '.lqc-note[hidden]{display:none}',
     '.lqc-toggle{font-family:var(--lqc-mono);font-size:10.5px;letter-spacing:.06em;',
     '  text-transform:uppercase;color:var(--lqc-eyebrow);background:transparent;',
     '  border:1px solid var(--lqc-hair);border-radius:999px;padding:5px 11px;cursor:pointer}',
@@ -1921,6 +1922,9 @@
     setStyle(panels, '--lqc-cols:' + cfg.cols + (cfg.panelMax ? ';--lqc-pmax:' + cfg.panelMax + 'px' : ''));
 
     var note = hEl('figcaption', 'lqc-note', inner);
+    var noteId = uid('note');
+    note.setAttribute('id', noteId);
+    note.setAttribute('hidden', 'hidden');
     hEl('b', null, note, cfg.noteLabel || 'Measurement basis');
     note.appendChild(D.createTextNode(noteText(cfg.key)));
 
@@ -1944,6 +1948,22 @@
         setCls(srBox, open ? 'lqc-sr' : 'lqc-sr is-open');
         clear(btn);
         btn.appendChild(D.createTextNode(open ? 'Show data table' : 'Hide data table'));
+      });
+    }
+
+    /* the measurement basis, same control, same strip - second, so that
+       byTag(fig,'button')[0] is still the data-table toggle */
+    var nBtn = hEl('button', 'lqc-toggle', foot, 'Show measurement basis');
+    nBtn.setAttribute('type', 'button');
+    nBtn.setAttribute('aria-expanded', 'false');
+    nBtn.setAttribute('aria-controls', noteId);
+    if (nBtn.addEventListener) {
+      nBtn.addEventListener('click', function () {
+        var nOpen = nBtn.getAttribute('aria-expanded') === 'true';
+        nBtn.setAttribute('aria-expanded', nOpen ? 'false' : 'true');
+        if (nOpen) { note.setAttribute('hidden', 'hidden'); } else { note.removeAttribute('hidden'); }
+        clear(nBtn);
+        nBtn.appendChild(D.createTextNode(nOpen ? 'Show measurement basis' : 'Hide measurement basis'));
       });
     }
 

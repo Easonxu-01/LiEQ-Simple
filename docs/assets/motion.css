@@ -1,0 +1,159 @@
+/*! motion.css — LiEqualizer project page, figure motion layer (declarative half).
+ *
+ * Partner of assets/motion.js. Nothing here animates anything on its own, and
+ * nothing here hides anything: every selector is keyed on an attribute that only
+ * motion.js ever writes (data-lqm-mark / data-lqm-hot / data-lqm-on / data-lqm-state).
+ * So with this stylesheet loaded and the script missing, broken or disabled, every
+ * figure renders exactly as the chart modules drew it. The reveal's start state is
+ * applied by JS, never by CSS — that is deliberate and must stay that way.
+ *
+ * Namespace: .lqm-* / data-lqm-*. Nothing else is touched.
+ * No @import, no font, no url(). ES5-era CSS only: custom properties, attribute
+ * selectors, :focus-visible.
+ */
+
+:root {
+  --lqm-dim: .34;                        /* marks that are not the hovered one */
+  --lqm-ring: rgba(42, 120, 214, .9);    /* keyboard focus ring on a hit target */
+  --lqm-ring-wash: rgba(42, 120, 214, .07);
+  --lqm-chip: #0c1322;                   /* readout chip, same ink as .lq-tip */
+  --lqm-chip-ink: #dbe7f5;
+  --lqm-chip-key: #9cc8f3;
+  --lqm-ease: cubic-bezier(.22, .61, .36, 1);
+}
+
+/* On the dark instrument card the three chart modules all flip theme through a
+   data attribute. Follow them, so the focus ring stays visible there. */
+[data-lqc-theme="dark"],
+[data-lqp-theme="dark"],
+[data-lq-theme="dark"],
+[data-theme="dark"] {
+  --lqm-ring: rgba(86, 173, 240, .95);
+  --lqm-ring-wash: rgba(86, 173, 240, .10);
+}
+
+/* ------------------------------------------------------------------ hover ---
+   Emphasis is subtraction: the hovered mark keeps its own paint, its siblings
+   step back. Nothing moves, nothing grows, nothing glows.
+   Only marks that carry data — blocks (bars, cells), points (markers, diamonds)
+   and the printed value labels — take part. Lines, ribbons and reference rules
+   are context and stay at full strength, because dimming the line a hovered
+   marker sits on reads as a mistake rather than as emphasis. */
+[data-lqm-hot] [data-lqm-mark="block"],
+[data-lqm-hot] [data-lqm-mark="point"],
+[data-lqm-hot] [data-lqm-mark="value"] {
+  opacity: var(--lqm-dim, .34);
+}
+
+[data-lqm-hot] [data-lqm-mark][data-lqm-on] {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-lqm-state="done"] [data-lqm-mark="block"],
+  [data-lqm-state="done"] [data-lqm-mark="point"],
+  [data-lqm-state="done"] [data-lqm-mark="value"] {
+    transition: opacity .16s var(--lqm-ease, ease-out);
+  }
+}
+
+/* ------------------------------------------------------------------ focus ---
+   The hit targets are transparent rects and circles the chart modules draw on
+   top of their marks. motion.js never makes them focusable by itself; it only
+   does so inside a figure that opts in with data-lq-motion-keys. Either way, if
+   anything in a figure takes focus, it gets a ring here — an SVG outline is not
+   reliable across browsers, so the ring is a stroke on the hit itself. */
+svg .hit:focus,
+svg .lq-hit:focus {
+  outline: none;
+}
+
+svg .hit:focus-visible,
+svg .lq-hit:focus-visible {
+  outline: none;
+  fill: var(--lqm-ring);
+  fill-opacity: .07;
+  stroke: var(--lqm-ring);
+  stroke-width: 1.4px;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Keyboard selection reuses the pointer emphasis, so the two never disagree. */
+[data-lqm-hot] [data-lqm-mark][data-lqm-focus] {
+  opacity: 1;
+}
+
+/* --------------------------------------------------------------- readout ---
+   One shared chip, created lazily by motion.js and appended to <body>. It is
+   only used where a figure has no tooltip of its own, and for the keyboard
+   path, where the modules' own pointer tooltips never fire. Pointer-events are
+   off, so it can never eat a hover. */
+.lqm-readout {
+  position: fixed;
+  z-index: 70;
+  left: 0;
+  top: 0;
+  max-width: 17rem;
+  padding: 6px 9px;
+  border-radius: 8px;
+  background: var(--lqm-chip, #0c1322);
+  color: var(--lqm-chip-ink, #dbe7f5);
+  font-family: var(--mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-size: 10.5px;
+  line-height: 1.5;
+  letter-spacing: .01em;
+  white-space: pre;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -112%);
+  box-shadow: 0 10px 24px -14px rgba(12, 19, 34, .8);
+}
+
+.lqm-readout.is-on {
+  opacity: 1;
+}
+
+.lqm-readout b {
+  display: block;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.lqm-readout span {
+  color: var(--lqm-chip-key, #9cc8f3);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lqm-readout {
+    transition: opacity .12s linear;
+  }
+}
+
+/* ----------------------------------------------------------------- print ---
+   A print or a headless screenshot may land mid-reveal. motion.js writes its
+   start state as inline style; an !important declaration in a stylesheet beats
+   an inline one, so these four lines guarantee the printed figure is the
+   finished figure whatever the script is doing at the time. */
+@media print {
+  [data-lqm-mark] {
+    opacity: 1 !important;
+    transform: none !important;
+    stroke-dasharray: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+  .lqm-readout {
+    display: none !important;
+  }
+}
+
+/* -------------------------------------------------------- reduced motion ---
+   motion.js already skips every animation under this preference. This is the
+   belt to its braces: if a transition is somehow still attached, it is dropped,
+   and no mark can be left part-way. */
+@media (prefers-reduced-motion: reduce) {
+  [data-lqm-mark],
+  .lqm-readout {
+    transition: none !important;
+    animation: none !important;
+  }
+}
