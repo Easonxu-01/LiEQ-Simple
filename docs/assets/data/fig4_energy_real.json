@@ -1,0 +1,2566 @@
+{
+ "figure": "fig_main_energy_real_v2",
+ "paper_ref": "Fig. 4",
+ "description": "Band-wise energy of LiSeer and LiEqualizer relative to the Dense teacher on TPV xy features (left column) and voxel logits (right column): energy share per band (a, b), split into teacher-explained real and unexplained pseudo energy (c, d), and the paired LiEqualizer − LiSeer change in each (e, f).",
+ "protocol": {
+  "frames": {
+   "count": 199,
+   "frame_ids": [
+    20,
+    41,
+    61,
+    82,
+    102,
+    123,
+    143,
+    164,
+    184,
+    205,
+    225,
+    245,
+    266,
+    286,
+    307,
+    327,
+    348,
+    368,
+    389,
+    409,
+    429,
+    450,
+    470,
+    491,
+    511,
+    532,
+    552,
+    573,
+    593,
+    614,
+    634,
+    654,
+    675,
+    695,
+    716,
+    736,
+    757,
+    777,
+    798,
+    818,
+    839,
+    859,
+    879,
+    900,
+    920,
+    941,
+    961,
+    982,
+    1002,
+    1023,
+    1043,
+    1064,
+    1084,
+    1104,
+    1125,
+    1145,
+    1166,
+    1186,
+    1207,
+    1227,
+    1248,
+    1268,
+    1288,
+    1309,
+    1329,
+    1350,
+    1370,
+    1391,
+    1411,
+    1432,
+    1452,
+    1473,
+    1493,
+    1513,
+    1534,
+    1554,
+    1575,
+    1595,
+    1616,
+    1636,
+    1657,
+    1677,
+    1698,
+    1718,
+    1738,
+    1759,
+    1779,
+    1800,
+    1820,
+    1841,
+    1861,
+    1882,
+    1902,
+    1923,
+    1943,
+    1963,
+    1984,
+    2004,
+    2025,
+    2045,
+    2066,
+    2086,
+    2107,
+    2127,
+    2147,
+    2168,
+    2188,
+    2209,
+    2229,
+    2250,
+    2270,
+    2291,
+    2311,
+    2332,
+    2352,
+    2372,
+    2393,
+    2413,
+    2434,
+    2454,
+    2475,
+    2495,
+    2516,
+    2536,
+    2557,
+    2577,
+    2597,
+    2618,
+    2638,
+    2659,
+    2679,
+    2700,
+    2720,
+    2741,
+    2761,
+    2782,
+    2802,
+    2822,
+    2843,
+    2863,
+    2884,
+    2904,
+    2925,
+    2945,
+    2966,
+    2986,
+    3006,
+    3027,
+    3047,
+    3068,
+    3088,
+    3109,
+    3129,
+    3150,
+    3170,
+    3191,
+    3211,
+    3231,
+    3252,
+    3272,
+    3293,
+    3313,
+    3334,
+    3354,
+    3375,
+    3395,
+    3416,
+    3436,
+    3456,
+    3477,
+    3497,
+    3518,
+    3538,
+    3559,
+    3579,
+    3600,
+    3620,
+    3641,
+    3661,
+    3681,
+    3702,
+    3722,
+    3743,
+    3763,
+    3784,
+    3804,
+    3825,
+    3845,
+    3865,
+    3886,
+    3906,
+    3927,
+    3947,
+    3968,
+    3988,
+    4009,
+    4029,
+    4050,
+    4070
+   ],
+   "selection": "evaluation frames = round(linspace(0, 4070, 200)) de-duplicated, minus the 3 development frames 0, 1357, 2714"
+  },
+  "dataset": "SemanticKITTI",
+  "sequence": "08",
+  "field": {
+   "tpv": "TPV feature plane xy (ρ × φ cylindrical grid, 240 × 180 cells, 128 channels) at neck scale s0, i.e. after backbone + neck and before FiLM (the plane the low-frequency distiller acts on and the aggregator samples)",
+   "logits": "8-class voxel logits on the teacher support Ω_T of the cylindrical voxel grid [8, 240, 180, 16] (ρ, φ, z); every variant is queried at the Ω_T voxel centres"
+  },
+  "preprocessing": "within Ω_T: per-channel mean removal, then division by the RMS over Ω_T (\"standard\" scale)",
+  "operator": {
+   "tpv": "4-neighbour normalized grid Laplacian on the full plane, λ(f) = 1 − ½(cos 2πf₁ + cos 2πf₂); exact eigenbasis via DCT-II (all axes treated as non-periodic); 11 bands with square-root raised-cosine tight-frame windows (band energies sum to the total); statistics restricted to the teacher support Ω_T. Same operator as the low-frequency distiller.",
+   "logits": "3-D support-subgraph Laplacian L_Ω on Ω_T (the operator used by the high-frequency distiller); 11 band-pass filters by Jackson–Chebyshev polynomial approximation, order K = 1024 (partition of unity; Σ_k‖y_k‖²/‖x‖² ≈ 0.99, not an exact energy-tight frame)"
+  },
+  "bands": {
+   "count": 11,
+   "edges": [
+    -0.05,
+    0.01,
+    0.03,
+    0.08,
+    0.15,
+    0.25,
+    0.4,
+    0.6,
+    0.85,
+    1.15,
+    1.5,
+    2.02
+   ],
+   "high_frequency": "λ ≥ 0.60 (bands 7-10)",
+   "low_frequency": "λ < 0.08 (bands 0-2)",
+   "note": "same 11-band partition as the earlier voxel-level spectral analysis"
+  },
+  "models": [
+   {
+    "name": "Dense teacher",
+    "variant": "T_union",
+    "role": "reference (target of every comparison)",
+    "input": "union of raw and refined point clouds, randomly truncated to 500,000 points (the input it receives as distillation teacher)",
+    "checkpoint": "dense teacher trained on SemanticKITTI (final release teacher)"
+   },
+   {
+    "name": "Teacher, re-truncated input",
+    "variant": "T_union2",
+    "role": "noise ceiling (teacher vs. itself under a different truncation seed)",
+    "input": "same union input, different random 500,000-point truncation seed",
+    "checkpoint": "same as Dense teacher"
+   },
+   {
+    "name": "Teacher, sparse input",
+    "variant": "T_raw",
+    "role": "input-effect control (not in the main tests)",
+    "input": "the student's raw sparse scan",
+    "checkpoint": "same as Dense teacher"
+   },
+   {
+    "name": "LiSeer",
+    "variant": "S_liseer",
+    "role": "baseline without distillation",
+    "input": "student test input: raw scan (about 120k points), identical points for both students",
+    "checkpoint": "LiSeer student on SemanticKITTI, trained without distillation (epoch-21 checkpoint)"
+   },
+   {
+    "name": "LiEqualizer",
+    "variant": "S_lieq",
+    "role": "distilled student (LiEQ)",
+    "input": "same as LiSeer",
+    "checkpoint": "LiEqualizer student on SemanticKITTI (final model; SK→SK val mIoU 0.749)"
+   }
+  ],
+  "energy_share_ratio_a_b": "r_k = ln( s_k(model) / s_k(Dense teacher) ), s_k = band-k energy share on Ω_T (TPV: local energy attribution of the full-plane band decomposition to Ω_T cells; channels pooled); plotted as r_k / ln 2",
+  "real_pseudo_c_d": "per band, cross-fitted ridge regression of the student band-k field from the Dense-teacher band-k field: outer 2-fold split by alternating 60° φ sectors, inner leave-one-sector-out choice of the ridge parameter from {1e-3, 1e-2, 1e-1, 1, 10, 100, 1000} × tr(XᵀX)/C, R² relative to the training-half mean. real_k = clip(R²(S_k←T_k), 0, 1) × student band-k energy share; pseudo_k = remainder. Both are divided per frame by the band-k energy share of the re-truncated teacher (its real + pseudo), then the median over frames is taken. Real energy is a lower bound and pseudo an upper bound (only same-band linear relations count). The grey segment is the same quantity for the re-truncated teacher (what the teacher itself reproduces).",
+  "paired_e_f": "per frame (LiEqualizer − LiSeer) of real (resp. pseudo) energy ÷ the same denominator, median over frames",
+  "null_flag": "† marks bands where the cross-scene null (student frame f vs. teacher frame g, 13 pairs) median R²(S←T) exceeds 0.05 for either student",
+  "statistic": "a, b: per-band median (line/markers) and interquartile range (ribbon) across frames, NaN-aware; c-f: per-band median across frames (no spread drawn)"
+ },
+ "units": {
+  "x": "graph-frequency band index 0-10 (tick label = lower λ edge of the band)",
+  "y_a_b": "log2 of the band energy-share ratio model ÷ Dense teacher (0 = ×1, −1 = ×0.5, −2 = ×0.25, 1 = ×2)",
+  "y_c_d": "energy relative to the Dense teacher in that band (fraction of the teacher band energy)",
+  "y_e_f": "difference LiEqualizer − LiSeer, in fraction of the teacher band energy"
+ },
+ "colors": {
+  "C_TEACHER": "#52514e",
+  "C_LISEER": "#eb6834",
+  "C_LIEQ": "#2a78d6",
+  "C_LIEQ_LIGHT": "#86b6ef",
+  "C_NOISE": "#8f8d88",
+  "SHADE": "#f3f2ef",
+  "INK": "#0b0b0b",
+  "INK2": "#52514e",
+  "MUTED": "#8a8883",
+  "GRID": "#e8e7e3",
+  "AXIS": "#bdbbb5",
+  "SURFACE": "#ffffff",
+  "C_LISEER_LIGHT": "#f5b896",
+  "pseudo_label_text": "#5a95db",
+  "roles": {
+   "Dense teacher": "#52514e",
+   "LiSeer": "#eb6834",
+   "LiEqualizer": "#2a78d6",
+   "LiSeer, real": "#eb6834",
+   "LiSeer, pseudo": "#f5b896",
+   "LiEqualizer, real": "#2a78d6",
+   "LiEqualizer, pseudo": "#86b6ef",
+   "Teacher, re-truncated: reproducible part": "#52514e",
+   "Δ real energy": "#2a78d6",
+   "Δ pseudo energy": "#86b6ef",
+   "zero line (e, f)": "#bdbbb5",
+   "high-frequency shading": "#f3f2ef"
+  }
+ },
+ "figure_size_in": [
+  7.2,
+  6.8
+ ],
+ "figure_legends": [
+  {
+   "entries": [
+    {
+     "label": "Dense teacher (= ×1)",
+     "kind": "line",
+     "color": "#52514e",
+     "linewidth_pt": 1.0,
+     "style": "solid"
+    },
+    {
+     "label": "LiSeer",
+     "kind": "line",
+     "color": "#eb6834",
+     "linewidth_pt": 1.5,
+     "style": "solid",
+     "marker": {
+      "shape": "o",
+      "face": "#eb6834",
+      "edge": "#ffffff",
+      "size_pt": 3.6
+     }
+    },
+    {
+     "label": "LiEqualizer",
+     "kind": "line",
+     "color": "#2a78d6",
+     "linewidth_pt": 1.5,
+     "style": "solid",
+     "marker": {
+      "shape": "o",
+      "face": "#2a78d6",
+      "edge": "#ffffff",
+      "size_pt": 3.6
+     }
+    }
+   ],
+   "loc": "upper center",
+   "ncol": 3,
+   "bbox_to_anchor_fig_fraction": [
+    0.5,
+    0.997
+   ]
+  },
+  {
+   "entries": [
+    {
+     "label": "LiSeer, real",
+     "kind": "patch",
+     "color": "#eb6834"
+    },
+    {
+     "label": "LiSeer, pseudo",
+     "kind": "patch",
+     "color": "#f5b896"
+    },
+    {
+     "label": "LiEqualizer, real",
+     "kind": "patch",
+     "color": "#2a78d6"
+    },
+    {
+     "label": "LiEqualizer, pseudo",
+     "kind": "patch",
+     "color": "#86b6ef"
+    },
+    {
+     "label": "Teacher, re-truncated: reproducible part",
+     "kind": "line",
+     "color": "#52514e",
+     "linewidth_pt": 1.1,
+     "style": "solid"
+    },
+    {
+     "label": "Dense teacher (= 1)",
+     "kind": "line",
+     "color": "#52514e",
+     "linewidth_pt": 0.8,
+     "style": "dashed"
+    }
+   ],
+   "loc": "lower center",
+   "ncol": 6,
+   "bbox_to_anchor_fig_fraction": [
+    0.5,
+    0.606779
+   ]
+  }
+ ],
+ "figure_texts": [
+  {
+   "text": "TPV features (xy plane)",
+   "x_fig_fraction": 0.31,
+   "y_fig_fraction": 0.928,
+   "ha": "center",
+   "va": "baseline",
+   "color": "#0b0b0b",
+   "fontsize_pt": 8.0,
+   "bold": true
+  },
+  {
+   "text": "Voxel logits",
+   "x_fig_fraction": 0.785,
+   "y_fig_fraction": 0.928,
+   "ha": "center",
+   "va": "baseline",
+   "color": "#0b0b0b",
+   "fontsize_pt": 8.0,
+   "bold": true
+  },
+  {
+   "text": "199 frames (SemanticKITTI 08); a, b: medians with interquartile bands; e, f: median of per-frame LiEQ − LiSeer differences (dark = real, light = pseudo). † cross-scene null R² > 0.05.",
+   "x_fig_fraction": 0.985,
+   "y_fig_fraction": 0.006,
+   "ha": "right",
+   "va": "bottom",
+   "color": "#8a8883",
+   "fontsize_pt": 6.0,
+   "bold": false
+  }
+ ],
+ "panels": [
+  {
+   "id": "a",
+   "column": "TPV features (xy plane)",
+   "field": "tpv",
+   "title": "a   Energy per band",
+   "position_fig_fraction": [
+    0.085,
+    0.690288,
+    0.481476,
+    0.885
+   ],
+   "x": {
+    "label": "Graph-frequency band  (lower edge of λ)",
+    "lim": [
+     -0.4,
+     10.4
+    ],
+    "scale": "linear",
+    "ticks": [
+     0.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0,
+     7.0,
+     8.0,
+     9.0,
+     10.0
+    ],
+    "tick_labels": [
+     "0",
+     "",
+     ".03",
+     "",
+     ".15",
+     "",
+     "",
+     ".60",
+     "",
+     "",
+     "1.50"
+    ],
+    "tick_label_side": "bottom",
+    "quantity": "graph-frequency band index (0-10)",
+    "band_index": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10
+    ],
+    "band_lambda_edges": [
+     -0.05,
+     0.01,
+     0.03,
+     0.08,
+     0.15,
+     0.25,
+     0.4,
+     0.6,
+     0.85,
+     1.15,
+     1.5,
+     2.02
+    ],
+    "band_lower_edge_labels_all": [
+     "0",
+     ".01",
+     ".03",
+     ".08",
+     ".15",
+     ".25",
+     ".40",
+     ".60",
+     ".85",
+     "1.15",
+     "1.50"
+    ],
+    "band_lower_edge_note": "tick labels give the lower λ edge of each band; band 0 is labelled 0 (its computational lower edge is -0.05, i.e. it includes λ = 0)",
+    "labelled_bands": [
+     0,
+     2,
+     4,
+     7,
+     10
+    ],
+    "hf_first_band": 7,
+    "hf_lambda_min": 0.6,
+    "hf_shading": {
+     "from_x": 6.5,
+     "to_x": 10.5,
+     "color": "#f3f2ef",
+     "meaning": "high-frequency bands, λ ≥ .60 (bands 7-10)"
+    }
+   },
+   "y": {
+    "label": "Energy share relative to\nDense teacher (amount)",
+    "lim": [
+     -2.3,
+     0.45
+    ],
+    "scale": "linear",
+    "ticks": [
+     -2.0,
+     -1.0,
+     0.0
+    ],
+    "tick_labels": [
+     "×0.25",
+     "×0.5",
+     "×1"
+    ],
+    "tick_label_side": "left"
+   },
+   "series": [
+    {
+     "name": "Dense teacher (= ×1)",
+     "variant": "T_union",
+     "kind": "hline",
+     "y": 0.0,
+     "color": "#52514e",
+     "linewidth_pt": 1.0,
+     "zorder": 2,
+     "style": "solid"
+    },
+    {
+     "name": "LiSeer",
+     "variant": "S_liseer",
+     "kind": "line",
+     "x": [
+      0.0,
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0,
+      7.0,
+      8.0,
+      9.0,
+      10.0
+     ],
+     "q25": [
+      0.140441,
+      -0.265292,
+      -0.356366,
+      -0.339892,
+      -0.296755,
+      -0.217721,
+      -0.193822,
+      -0.280088,
+      -0.430606,
+      -0.614993,
+      -1.117747
+     ],
+     "q50": [
+      0.17809,
+      -0.21443,
+      -0.280918,
+      -0.275108,
+      -0.213047,
+      -0.115271,
+      -0.076632,
+      -0.161802,
+      -0.302231,
+      -0.483281,
+      -0.984752
+     ],
+     "q75": [
+      0.234417,
+      -0.162679,
+      -0.225517,
+      -0.184433,
+      -0.14536,
+      -0.0401,
+      -0.000303,
+      -0.062147,
+      -0.211368,
+      -0.365695,
+      -0.860349
+     ],
+     "n_frames_finite": [
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199
+     ],
+     "color": "#eb6834",
+     "draw": {
+      "line": "q50",
+      "ribbon": [
+       "q25",
+       "q75"
+      ],
+      "ribbon_alpha": 0.14,
+      "linewidth_pt": 1.5,
+      "markers": "filled",
+      "zorder": 4
+     },
+     "statistic": "per-band 25th/50th/75th percentile across frames (nanpercentile) of log2( band-k energy share of model / band-k energy share of Dense teacher ), i.e. r_k / ln 2",
+     "value_to_ratio": "ratio = 2 ** value"
+    },
+    {
+     "name": "LiEqualizer",
+     "variant": "S_lieq",
+     "kind": "line",
+     "x": [
+      0.0,
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0,
+      7.0,
+      8.0,
+      9.0,
+      10.0
+     ],
+     "q25": [
+      0.112923,
+      -0.044862,
+      -0.14693,
+      -0.236239,
+      -0.380589,
+      -0.553407,
+      -0.805277,
+      -1.032746,
+      -1.232377,
+      -1.673256,
+      -1.654342
+     ],
+     "q50": [
+      0.144937,
+      -0.011888,
+      -0.090004,
+      -0.18146,
+      -0.311804,
+      -0.47584,
+      -0.692627,
+      -0.922165,
+      -1.118551,
+      -1.561481,
+      -1.54785
+     ],
+     "q75": [
+      0.175293,
+      0.023882,
+      -0.043058,
+      -0.119421,
+      -0.242375,
+      -0.393933,
+      -0.606601,
+      -0.786305,
+      -0.95207,
+      -1.448751,
+      -1.433583
+     ],
+     "n_frames_finite": [
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199
+     ],
+     "color": "#2a78d6",
+     "draw": {
+      "line": "q50",
+      "ribbon": [
+       "q25",
+       "q75"
+      ],
+      "ribbon_alpha": 0.14,
+      "linewidth_pt": 1.5,
+      "markers": "filled",
+      "zorder": 6
+     },
+     "statistic": "per-band 25th/50th/75th percentile across frames (nanpercentile) of log2( band-k energy share of model / band-k energy share of Dense teacher ), i.e. r_k / ln 2",
+     "value_to_ratio": "ratio = 2 ** value"
+    }
+   ],
+   "annotations": [
+    {
+     "text": "high frequency\n(λ ≥ .60)",
+     "x": 10.3,
+     "y": -2.22,
+     "coords": "data",
+     "ha": "right",
+     "va": "bottom",
+     "color": "#52514e",
+     "fontsize_pt": 6.3,
+     "bold": false
+    },
+    {
+     "text": "Dense teacher",
+     "x": 2.2,
+     "y": 0.06,
+     "coords": "data",
+     "ha": "left",
+     "va": "bottom",
+     "color": "#52514e",
+     "fontsize_pt": 6.3,
+     "bold": false
+    }
+   ],
+   "legend": null
+  },
+  {
+   "id": "b",
+   "column": "Voxel logits",
+   "field": "logits",
+   "title": "b   Energy per band",
+   "position_fig_fraction": [
+    0.588524,
+    0.690288,
+    0.985,
+    0.885
+   ],
+   "x": {
+    "label": "Graph-frequency band  (lower edge of λ)",
+    "lim": [
+     -0.4,
+     10.4
+    ],
+    "scale": "linear",
+    "ticks": [
+     0.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0,
+     7.0,
+     8.0,
+     9.0,
+     10.0
+    ],
+    "tick_labels": [
+     "0",
+     "",
+     ".03",
+     "",
+     ".15",
+     "",
+     "",
+     ".60",
+     "",
+     "",
+     "1.50"
+    ],
+    "tick_label_side": "bottom",
+    "quantity": "graph-frequency band index (0-10)",
+    "band_index": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10
+    ],
+    "band_lambda_edges": [
+     -0.05,
+     0.01,
+     0.03,
+     0.08,
+     0.15,
+     0.25,
+     0.4,
+     0.6,
+     0.85,
+     1.15,
+     1.5,
+     2.02
+    ],
+    "band_lower_edge_labels_all": [
+     "0",
+     ".01",
+     ".03",
+     ".08",
+     ".15",
+     ".25",
+     ".40",
+     ".60",
+     ".85",
+     "1.15",
+     "1.50"
+    ],
+    "band_lower_edge_note": "tick labels give the lower λ edge of each band; band 0 is labelled 0 (its computational lower edge is -0.05, i.e. it includes λ = 0)",
+    "labelled_bands": [
+     0,
+     2,
+     4,
+     7,
+     10
+    ],
+    "hf_first_band": 7,
+    "hf_lambda_min": 0.6,
+    "hf_shading": {
+     "from_x": 6.5,
+     "to_x": 10.5,
+     "color": "#f3f2ef",
+     "meaning": "high-frequency bands, λ ≥ .60 (bands 7-10)"
+    }
+   },
+   "y": {
+    "label": "Energy share relative to\nDense teacher (amount)",
+    "lim": [
+     -1.15,
+     1.3
+    ],
+    "scale": "linear",
+    "ticks": [
+     -1.0,
+     0.0,
+     1.0
+    ],
+    "tick_labels": [
+     "×0.5",
+     "×1",
+     "×2"
+    ],
+    "tick_label_side": "left"
+   },
+   "series": [
+    {
+     "name": "Dense teacher (= ×1)",
+     "variant": "T_union",
+     "kind": "hline",
+     "y": 0.0,
+     "color": "#52514e",
+     "linewidth_pt": 1.0,
+     "zorder": 2,
+     "style": "solid"
+    },
+    {
+     "name": "LiSeer",
+     "variant": "S_liseer",
+     "kind": "line",
+     "x": [
+      0.0,
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0,
+      7.0,
+      8.0,
+      9.0,
+      10.0
+     ],
+     "q25": [
+      -0.019597,
+      -0.280432,
+      -0.158103,
+      0.039628,
+      0.329463,
+      0.595463,
+      0.620615,
+      0.715214,
+      0.606301,
+      0.485197,
+      -0.020829
+     ],
+     "q50": [
+      -0.003053,
+      -0.149311,
+      -0.031466,
+      0.148181,
+      0.45806,
+      0.721966,
+      0.77071,
+      0.843466,
+      0.738854,
+      0.624422,
+      0.17437
+     ],
+     "q75": [
+      0.014838,
+      -0.049673,
+      0.088824,
+      0.307028,
+      0.598313,
+      0.86462,
+      0.907391,
+      1.004613,
+      0.888422,
+      0.770906,
+      0.360266
+     ],
+     "n_frames_finite": [
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199
+     ],
+     "color": "#eb6834",
+     "draw": {
+      "line": "q50",
+      "ribbon": [
+       "q25",
+       "q75"
+      ],
+      "ribbon_alpha": 0.14,
+      "linewidth_pt": 1.5,
+      "markers": "filled",
+      "zorder": 4
+     },
+     "statistic": "per-band 25th/50th/75th percentile across frames (nanpercentile) of log2( band-k energy share of model / band-k energy share of Dense teacher ), i.e. r_k / ln 2",
+     "value_to_ratio": "ratio = 2 ** value"
+    },
+    {
+     "name": "LiEqualizer",
+     "variant": "S_lieq",
+     "kind": "line",
+     "x": [
+      0.0,
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0,
+      7.0,
+      8.0,
+      9.0,
+      10.0
+     ],
+     "q25": [
+      0.01178,
+      -0.13873,
+      -0.248479,
+      -0.2734,
+      -0.216971,
+      -0.136114,
+      -0.144521,
+      -0.248139,
+      -0.278963,
+      -0.220843,
+      -0.206328
+     ],
+     "q50": [
+      0.017081,
+      -0.0892,
+      -0.173744,
+      -0.202061,
+      -0.134919,
+      -0.042672,
+      -0.042835,
+      -0.129363,
+      -0.163812,
+      -0.125787,
+      -0.064434
+     ],
+     "q75": [
+      0.02342,
+      -0.042097,
+      -0.11908,
+      -0.137673,
+      -0.048161,
+      0.068577,
+      0.044919,
+      -0.043155,
+      -0.089621,
+      -0.031946,
+      0.052604
+     ],
+     "n_frames_finite": [
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199
+     ],
+     "color": "#2a78d6",
+     "draw": {
+      "line": "q50",
+      "ribbon": [
+       "q25",
+       "q75"
+      ],
+      "ribbon_alpha": 0.14,
+      "linewidth_pt": 1.5,
+      "markers": "filled",
+      "zorder": 6
+     },
+     "statistic": "per-band 25th/50th/75th percentile across frames (nanpercentile) of log2( band-k energy share of model / band-k energy share of Dense teacher ), i.e. r_k / ln 2",
+     "value_to_ratio": "ratio = 2 ** value"
+    }
+   ],
+   "annotations": [
+    {
+     "text": "high frequency\n(λ ≥ .60)",
+     "x": 1.0,
+     "y": 1.0,
+     "coords": "axes_fraction",
+     "offset_pt": [
+      -4.0,
+      -4.0
+     ],
+     "ha": "right",
+     "va": "top",
+     "color": "#52514e",
+     "fontsize_pt": 6.3
+    }
+   ],
+   "legend": null
+  },
+  {
+   "id": "c",
+   "column": "TPV features (xy plane)",
+   "field": "tpv",
+   "title": "c   Real vs. pseudo energy",
+   "position_fig_fraction": [
+    0.085,
+    0.367067,
+    0.481476,
+    0.561779
+   ],
+   "x": {
+    "label": "Graph-frequency band  (lower edge of λ)",
+    "lim": [
+     -0.6,
+     10.6
+    ],
+    "scale": "linear",
+    "ticks": [
+     0.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0,
+     7.0,
+     8.0,
+     9.0,
+     10.0
+    ],
+    "tick_labels": [
+     "0",
+     "",
+     ".03",
+     "",
+     ".15",
+     "",
+     "",
+     ".60",
+     "",
+     "",
+     "1.50"
+    ],
+    "tick_label_side": "bottom",
+    "quantity": "graph-frequency band index (0-10)",
+    "band_index": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10
+    ],
+    "band_lambda_edges": [
+     -0.05,
+     0.01,
+     0.03,
+     0.08,
+     0.15,
+     0.25,
+     0.4,
+     0.6,
+     0.85,
+     1.15,
+     1.5,
+     2.02
+    ],
+    "band_lower_edge_labels_all": [
+     "0",
+     ".01",
+     ".03",
+     ".08",
+     ".15",
+     ".25",
+     ".40",
+     ".60",
+     ".85",
+     "1.15",
+     "1.50"
+    ],
+    "band_lower_edge_note": "tick labels give the lower λ edge of each band; band 0 is labelled 0 (its computational lower edge is -0.05, i.e. it includes λ = 0)",
+    "labelled_bands": [
+     0,
+     2,
+     4,
+     7,
+     10
+    ],
+    "hf_first_band": 7,
+    "hf_lambda_min": 0.6,
+    "hf_shading": {
+     "from_x": 6.5,
+     "to_x": 10.5,
+     "color": "#f3f2ef",
+     "meaning": "high-frequency bands, λ ≥ .60 (bands 7-10)"
+    }
+   },
+   "y": {
+    "label": "Energy relative to\nDense teacher",
+    "lim": [
+     0.0,
+     1.5
+    ],
+    "scale": "linear",
+    "ticks": [
+     0.0,
+     0.5,
+     1.0
+    ],
+    "tick_labels": [
+     "0.0",
+     "0.5",
+     "1.0"
+    ],
+    "tick_label_side": "left"
+   },
+   "series": [
+    {
+     "name": "LiSeer, real",
+     "variant": "S_liseer",
+     "part": "real",
+     "kind": "bar",
+     "band_index": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "x": [
+      -0.2,
+      0.8,
+      1.8,
+      2.8,
+      3.8,
+      4.8,
+      5.8,
+      6.8,
+      7.8,
+      8.8,
+      9.8
+     ],
+     "offset": -0.2,
+     "width": 0.36,
+     "y": [
+      0.743238,
+      0.418265,
+      0.290815,
+      0.223693,
+      0.194572,
+      0.176767,
+      0.172231,
+      0.148874,
+      0.095012,
+      0.012127,
+      9.9e-05
+     ],
+     "color": "#eb6834",
+     "zorder": 3,
+     "statistic": "median over frames of (real energy of band k) / (re-truncated teacher band-k energy share)"
+    },
+    {
+     "name": "LiSeer, pseudo",
+     "variant": "S_liseer",
+     "part": "pseudo",
+     "kind": "bar",
+     "band_index": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "x": [
+      -0.2,
+      0.8,
+      1.8,
+      2.8,
+      3.8,
+      4.8,
+      5.8,
+      6.8,
+      7.8,
+      8.8,
+      9.8
+     ],
+     "offset": -0.2,
+     "width": 0.36,
+     "y": [
+      0.391493,
+      0.441008,
+      0.525449,
+      0.602171,
+      0.670843,
+      0.742444,
+      0.775481,
+      0.743176,
+      0.712291,
+      0.70391,
+      0.5033
+     ],
+     "color": "#f5b896",
+     "zorder": 3,
+     "bottom": [
+      0.743238,
+      0.418265,
+      0.290815,
+      0.223693,
+      0.194572,
+      0.176767,
+      0.172231,
+      0.148874,
+      0.095012,
+      0.012127,
+      9.9e-05
+     ],
+     "stacked_on": "LiSeer, real",
+     "statistic": "median over frames of (pseudo energy of band k) / (re-truncated teacher band-k energy share)"
+    },
+    {
+     "name": "LiEqualizer, real",
+     "variant": "S_lieq",
+     "part": "real",
+     "kind": "bar",
+     "band_index": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "x": [
+      0.2,
+      1.2,
+      2.2,
+      3.2,
+      4.2,
+      5.2,
+      6.2,
+      7.2,
+      8.2,
+      9.2,
+      10.2
+     ],
+     "offset": 0.2,
+     "width": 0.36,
+     "y": [
+      0.893667,
+      0.696492,
+      0.562425,
+      0.461606,
+      0.376344,
+      0.284312,
+      0.200841,
+      0.140676,
+      0.084998,
+      0.006123,
+      6.1e-05
+     ],
+     "color": "#2a78d6",
+     "zorder": 3,
+     "statistic": "median over frames of (real energy of band k) / (re-truncated teacher band-k energy share)"
+    },
+    {
+     "name": "LiEqualizer, pseudo",
+     "variant": "S_lieq",
+     "part": "pseudo",
+     "kind": "bar",
+     "band_index": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "x": [
+      0.2,
+      1.2,
+      2.2,
+      3.2,
+      4.2,
+      5.2,
+      6.2,
+      7.2,
+      8.2,
+      9.2,
+      10.2
+     ],
+     "offset": 0.2,
+     "width": 0.36,
+     "y": [
+      0.21435,
+      0.301394,
+      0.375898,
+      0.416225,
+      0.428651,
+      0.431816,
+      0.409956,
+      0.381218,
+      0.371117,
+      0.333404,
+      0.344653
+     ],
+     "color": "#86b6ef",
+     "zorder": 3,
+     "bottom": [
+      0.893667,
+      0.696492,
+      0.562425,
+      0.461606,
+      0.376344,
+      0.284312,
+      0.200841,
+      0.140676,
+      0.084998,
+      0.006123,
+      6.1e-05
+     ],
+     "stacked_on": "LiEqualizer, real",
+     "statistic": "median over frames of (pseudo energy of band k) / (re-truncated teacher band-k energy share)"
+    },
+    {
+     "name": "Teacher, re-truncated: reproducible part",
+     "variant": "T_union2",
+     "part": "real",
+     "kind": "segments",
+     "band_index": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "x": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "y": [
+      0.987863,
+      0.979721,
+      0.969653,
+      0.952914,
+      0.932327,
+      0.900432,
+      0.85673,
+      0.806062,
+      0.724602,
+      0.46469,
+      0.306997
+     ],
+     "x0": [
+      -0.42,
+      0.58,
+      1.58,
+      2.58,
+      3.58,
+      4.58,
+      5.58,
+      6.58,
+      7.58,
+      8.58,
+      9.58
+     ],
+     "x1": [
+      0.42,
+      1.42,
+      2.42,
+      3.42,
+      4.42,
+      5.42,
+      6.42,
+      7.42,
+      8.42,
+      9.42,
+      10.42
+     ],
+     "color": "#52514e",
+     "linewidth_pt": 1.1,
+     "zorder": 4,
+     "statistic": "median over frames of (re-truncated teacher real energy of band k) / (its own band-k energy share)",
+     "note": "one short horizontal segment per band from x0 to x1 at height y"
+    },
+    {
+     "name": "Dense teacher (= 1)",
+     "kind": "hline",
+     "y": 1.0,
+     "color": "#52514e",
+     "linewidth_pt": 0.8,
+     "zorder": 2,
+     "style": "dashed",
+     "dash_pattern_pt": [
+      3,
+      2
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "text": "†",
+     "x": 0.0,
+     "y": 1.164731,
+     "coords": "data",
+     "ha": "center",
+     "va": "bottom",
+     "color": "#52514e",
+     "fontsize_pt": 7.0,
+     "bold": false
+    }
+   ],
+   "legend": null,
+   "flagged_bands": [
+    0
+   ],
+   "flag_meaning": "† = cross-scene null R² > 0.05 in this band (real energy may be slightly overestimated)",
+   "n_frames": 199
+  },
+  {
+   "id": "d",
+   "column": "Voxel logits",
+   "field": "logits",
+   "title": "d   Real vs. pseudo energy",
+   "position_fig_fraction": [
+    0.588524,
+    0.367067,
+    0.985,
+    0.561779
+   ],
+   "x": {
+    "label": "Graph-frequency band  (lower edge of λ)",
+    "lim": [
+     -0.6,
+     10.6
+    ],
+    "scale": "linear",
+    "ticks": [
+     0.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0,
+     7.0,
+     8.0,
+     9.0,
+     10.0
+    ],
+    "tick_labels": [
+     "0",
+     "",
+     ".03",
+     "",
+     ".15",
+     "",
+     "",
+     ".60",
+     "",
+     "",
+     "1.50"
+    ],
+    "tick_label_side": "bottom",
+    "quantity": "graph-frequency band index (0-10)",
+    "band_index": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10
+    ],
+    "band_lambda_edges": [
+     -0.05,
+     0.01,
+     0.03,
+     0.08,
+     0.15,
+     0.25,
+     0.4,
+     0.6,
+     0.85,
+     1.15,
+     1.5,
+     2.02
+    ],
+    "band_lower_edge_labels_all": [
+     "0",
+     ".01",
+     ".03",
+     ".08",
+     ".15",
+     ".25",
+     ".40",
+     ".60",
+     ".85",
+     "1.15",
+     "1.50"
+    ],
+    "band_lower_edge_note": "tick labels give the lower λ edge of each band; band 0 is labelled 0 (its computational lower edge is -0.05, i.e. it includes λ = 0)",
+    "labelled_bands": [
+     0,
+     2,
+     4,
+     7,
+     10
+    ],
+    "hf_first_band": 7,
+    "hf_lambda_min": 0.6,
+    "hf_shading": {
+     "from_x": 6.5,
+     "to_x": 10.5,
+     "color": "#f3f2ef",
+     "meaning": "high-frequency bands, λ ≥ .60 (bands 7-10)"
+    }
+   },
+   "y": {
+    "label": "Energy relative to\nDense teacher",
+    "lim": [
+     0.0,
+     2.0
+    ],
+    "scale": "linear",
+    "ticks": [
+     0.0,
+     0.5,
+     1.0,
+     1.5
+    ],
+    "tick_labels": [
+     "0.0",
+     "0.5",
+     "1.0",
+     "1.5"
+    ],
+    "tick_label_side": "left"
+   },
+   "series": [
+    {
+     "name": "LiSeer, real",
+     "variant": "S_liseer",
+     "part": "real",
+     "kind": "bar",
+     "band_index": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "x": [
+      -0.2,
+      0.8,
+      1.8,
+      2.8,
+      3.8,
+      4.8,
+      5.8,
+      6.8,
+      7.8,
+      8.8,
+      9.8
+     ],
+     "offset": -0.2,
+     "width": 0.36,
+     "y": [
+      0.628131,
+      0.422782,
+      0.29669,
+      0.200873,
+      0.184877,
+      0.244302,
+      0.14254,
+      0.133143,
+      0.163966,
+      0.226747,
+      0.116846
+     ],
+     "color": "#eb6834",
+     "zorder": 3,
+     "statistic": "median over frames of (real energy of band k) / (re-truncated teacher band-k energy share)"
+    },
+    {
+     "name": "LiSeer, pseudo",
+     "variant": "S_liseer",
+     "part": "pseudo",
+     "kind": "bar",
+     "band_index": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "x": [
+      -0.2,
+      0.8,
+      1.8,
+      2.8,
+      3.8,
+      4.8,
+      5.8,
+      6.8,
+      7.8,
+      8.8,
+      9.8
+     ],
+     "offset": -0.2,
+     "width": 0.36,
+     "y": [
+      0.370024,
+      0.461325,
+      0.669212,
+      0.897136,
+      1.180888,
+      1.408527,
+      1.564003,
+      1.66935,
+      1.495102,
+      1.302999,
+      1.003887
+     ],
+     "color": "#f5b896",
+     "zorder": 3,
+     "bottom": [
+      0.628131,
+      0.422782,
+      0.29669,
+      0.200873,
+      0.184877,
+      0.244302,
+      0.14254,
+      0.133143,
+      0.163966,
+      0.226747,
+      0.116846
+     ],
+     "stacked_on": "LiSeer, real",
+     "statistic": "median over frames of (pseudo energy of band k) / (re-truncated teacher band-k energy share)"
+    },
+    {
+     "name": "LiEqualizer, real",
+     "variant": "S_lieq",
+     "part": "real",
+     "kind": "bar",
+     "band_index": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "x": [
+      0.2,
+      1.2,
+      2.2,
+      3.2,
+      4.2,
+      5.2,
+      6.2,
+      7.2,
+      8.2,
+      9.2,
+      10.2
+     ],
+     "offset": 0.2,
+     "width": 0.36,
+     "y": [
+      0.908714,
+      0.735155,
+      0.608338,
+      0.525128,
+      0.484897,
+      0.489165,
+      0.395969,
+      0.340935,
+      0.363742,
+      0.431625,
+      0.455591
+     ],
+     "color": "#2a78d6",
+     "zorder": 3,
+     "statistic": "median over frames of (real energy of band k) / (re-truncated teacher band-k energy share)"
+    },
+    {
+     "name": "LiEqualizer, pseudo",
+     "variant": "S_lieq",
+     "part": "pseudo",
+     "kind": "bar",
+     "band_index": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "x": [
+      0.2,
+      1.2,
+      2.2,
+      3.2,
+      4.2,
+      5.2,
+      6.2,
+      7.2,
+      8.2,
+      9.2,
+      10.2
+     ],
+     "offset": 0.2,
+     "width": 0.36,
+     "y": [
+      0.103386,
+      0.204573,
+      0.278507,
+      0.346911,
+      0.428481,
+      0.490412,
+      0.574226,
+      0.567183,
+      0.524239,
+      0.491539,
+      0.493361
+     ],
+     "color": "#86b6ef",
+     "zorder": 3,
+     "bottom": [
+      0.908714,
+      0.735155,
+      0.608338,
+      0.525128,
+      0.484897,
+      0.489165,
+      0.395969,
+      0.340935,
+      0.363742,
+      0.431625,
+      0.455591
+     ],
+     "stacked_on": "LiEqualizer, real",
+     "statistic": "median over frames of (pseudo energy of band k) / (re-truncated teacher band-k energy share)"
+    },
+    {
+     "name": "Teacher, re-truncated: reproducible part",
+     "variant": "T_union2",
+     "part": "real",
+     "kind": "segments",
+     "band_index": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "x": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "y": [
+      0.997733,
+      0.99284,
+      0.986025,
+      0.977882,
+      0.968795,
+      0.964565,
+      0.939341,
+      0.905035,
+      0.890702,
+      0.901779,
+      0.947452
+     ],
+     "x0": [
+      -0.42,
+      0.58,
+      1.58,
+      2.58,
+      3.58,
+      4.58,
+      5.58,
+      6.58,
+      7.58,
+      8.58,
+      9.58
+     ],
+     "x1": [
+      0.42,
+      1.42,
+      2.42,
+      3.42,
+      4.42,
+      5.42,
+      6.42,
+      7.42,
+      8.42,
+      9.42,
+      10.42
+     ],
+     "color": "#52514e",
+     "linewidth_pt": 1.1,
+     "zorder": 4,
+     "statistic": "median over frames of (re-truncated teacher real energy of band k) / (its own band-k energy share)",
+     "note": "one short horizontal segment per band from x0 to x1 at height y"
+    },
+    {
+     "name": "Dense teacher (= 1)",
+     "kind": "hline",
+     "y": 1.0,
+     "color": "#52514e",
+     "linewidth_pt": 0.8,
+     "zorder": 2,
+     "style": "dashed",
+     "dash_pattern_pt": [
+      3,
+      2
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "text": "†",
+     "x": 0.0,
+     "y": 1.0421,
+     "coords": "data",
+     "ha": "center",
+     "va": "bottom",
+     "color": "#52514e",
+     "fontsize_pt": 7.0,
+     "bold": false
+    },
+    {
+     "text": "†",
+     "x": 8.0,
+     "y": 1.689067,
+     "coords": "data",
+     "ha": "center",
+     "va": "bottom",
+     "color": "#52514e",
+     "fontsize_pt": 7.0,
+     "bold": false
+    },
+    {
+     "text": "†",
+     "x": 9.0,
+     "y": 1.559745,
+     "coords": "data",
+     "ha": "center",
+     "va": "bottom",
+     "color": "#52514e",
+     "fontsize_pt": 7.0,
+     "bold": false
+    }
+   ],
+   "legend": null,
+   "flagged_bands": [
+    0,
+    8,
+    9
+   ],
+   "flag_meaning": "† = cross-scene null R² > 0.05 in this band (real energy may be slightly overestimated)",
+   "n_frames": 199
+  },
+  {
+   "id": "e",
+   "column": "TPV features (xy plane)",
+   "field": "tpv",
+   "title": "e   What LiEQ changes vs. LiSeer (paired)",
+   "position_fig_fraction": [
+    0.085,
+    0.075,
+    0.481476,
+    0.269712
+   ],
+   "x": {
+    "label": "Graph-frequency band  (lower edge of λ)",
+    "lim": [
+     -0.6,
+     10.6
+    ],
+    "scale": "linear",
+    "ticks": [
+     0.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0,
+     7.0,
+     8.0,
+     9.0,
+     10.0
+    ],
+    "tick_labels": [
+     "0",
+     "",
+     ".03",
+     "",
+     ".15",
+     "",
+     "",
+     ".60",
+     "",
+     "",
+     "1.50"
+    ],
+    "tick_label_side": "bottom",
+    "quantity": "graph-frequency band index (0-10)",
+    "band_index": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10
+    ],
+    "band_lambda_edges": [
+     -0.05,
+     0.01,
+     0.03,
+     0.08,
+     0.15,
+     0.25,
+     0.4,
+     0.6,
+     0.85,
+     1.15,
+     1.5,
+     2.02
+    ],
+    "band_lower_edge_labels_all": [
+     "0",
+     ".01",
+     ".03",
+     ".08",
+     ".15",
+     ".25",
+     ".40",
+     ".60",
+     ".85",
+     "1.15",
+     "1.50"
+    ],
+    "band_lower_edge_note": "tick labels give the lower λ edge of each band; band 0 is labelled 0 (its computational lower edge is -0.05, i.e. it includes λ = 0)",
+    "labelled_bands": [
+     0,
+     2,
+     4,
+     7,
+     10
+    ],
+    "hf_first_band": 7,
+    "hf_lambda_min": 0.6,
+    "hf_shading": {
+     "from_x": 6.5,
+     "to_x": 10.5,
+     "color": "#f3f2ef",
+     "meaning": "high-frequency bands, λ ≥ .60 (bands 7-10)"
+    }
+   },
+   "y": {
+    "label": "LiEQ − LiSeer\n(÷ Dense teacher)",
+    "lim": [
+     -0.6,
+     0.5
+    ],
+    "scale": "linear",
+    "ticks": [
+     -0.4,
+     0.0,
+     0.4
+    ],
+    "tick_labels": [
+     "−0.4",
+     "0",
+     "+0.4"
+    ],
+    "tick_label_side": "left"
+   },
+   "series": [
+    {
+     "name": "Δ real energy (LiEqualizer − LiSeer)",
+     "part": "real",
+     "kind": "bar",
+     "band_index": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "x": [
+      -0.19,
+      0.81,
+      1.81,
+      2.81,
+      3.81,
+      4.81,
+      5.81,
+      6.81,
+      7.81,
+      8.81,
+      9.81
+     ],
+     "offset": -0.19,
+     "width": 0.36,
+     "y": [
+      0.141203,
+      0.284219,
+      0.271311,
+      0.240776,
+      0.187338,
+      0.107978,
+      0.027515,
+      -0.007184,
+      -0.008339,
+      -0.006292,
+      -3.6e-05
+     ],
+     "color": "#2a78d6",
+     "zorder": 3,
+     "statistic": "median over frames of the per-frame paired difference (LiEqualizer − LiSeer) of real energy ÷ re-truncated teacher band-k energy share"
+    },
+    {
+     "name": "Δ pseudo energy (LiEqualizer − LiSeer)",
+     "part": "pseudo",
+     "kind": "bar",
+     "band_index": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "x": [
+      0.19,
+      1.19,
+      2.19,
+      3.19,
+      4.19,
+      5.19,
+      6.19,
+      7.19,
+      8.19,
+      9.19,
+      10.19
+     ],
+     "offset": 0.19,
+     "width": 0.36,
+     "y": [
+      -0.170997,
+      -0.14524,
+      -0.153495,
+      -0.183918,
+      -0.23216,
+      -0.303716,
+      -0.361965,
+      -0.359569,
+      -0.33125,
+      -0.367176,
+      -0.163869
+     ],
+     "color": "#86b6ef",
+     "zorder": 3,
+     "statistic": "median over frames of the per-frame paired difference (LiEqualizer − LiSeer) of pseudo energy ÷ re-truncated teacher band-k energy share"
+    },
+    {
+     "name": "zero",
+     "kind": "hline",
+     "y": 0.0,
+     "color": "#bdbbb5",
+     "linewidth_pt": 0.8,
+     "zorder": 2,
+     "style": "solid"
+    }
+   ],
+   "annotations": [
+    {
+     "text": "real ↑",
+     "x": 0.97,
+     "y": 0.95,
+     "coords": "axes_fraction",
+     "ha": "right",
+     "va": "top",
+     "color": "#2a78d6",
+     "fontsize_pt": 6.8,
+     "bold": true
+    },
+    {
+     "text": "pseudo ↓",
+     "x": 0.97,
+     "y": 0.05,
+     "coords": "axes_fraction",
+     "ha": "right",
+     "va": "bottom",
+     "color": "#5a95db",
+     "fontsize_pt": 6.8,
+     "bold": true
+    }
+   ],
+   "legend": null,
+   "note": "dark and light bars are separate medians, not stacked; their sum is not the median of the total difference",
+   "n_frames": 199
+  },
+  {
+   "id": "f",
+   "column": "Voxel logits",
+   "field": "logits",
+   "title": "f   What LiEQ changes vs. LiSeer (paired)",
+   "position_fig_fraction": [
+    0.588524,
+    0.075,
+    0.985,
+    0.269712
+   ],
+   "x": {
+    "label": "Graph-frequency band  (lower edge of λ)",
+    "lim": [
+     -0.6,
+     10.6
+    ],
+    "scale": "linear",
+    "ticks": [
+     0.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0,
+     7.0,
+     8.0,
+     9.0,
+     10.0
+    ],
+    "tick_labels": [
+     "0",
+     "",
+     ".03",
+     "",
+     ".15",
+     "",
+     "",
+     ".60",
+     "",
+     "",
+     "1.50"
+    ],
+    "tick_label_side": "bottom",
+    "quantity": "graph-frequency band index (0-10)",
+    "band_index": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10
+    ],
+    "band_lambda_edges": [
+     -0.05,
+     0.01,
+     0.03,
+     0.08,
+     0.15,
+     0.25,
+     0.4,
+     0.6,
+     0.85,
+     1.15,
+     1.5,
+     2.02
+    ],
+    "band_lower_edge_labels_all": [
+     "0",
+     ".01",
+     ".03",
+     ".08",
+     ".15",
+     ".25",
+     ".40",
+     ".60",
+     ".85",
+     "1.15",
+     "1.50"
+    ],
+    "band_lower_edge_note": "tick labels give the lower λ edge of each band; band 0 is labelled 0 (its computational lower edge is -0.05, i.e. it includes λ = 0)",
+    "labelled_bands": [
+     0,
+     2,
+     4,
+     7,
+     10
+    ],
+    "hf_first_band": 7,
+    "hf_lambda_min": 0.6,
+    "hf_shading": {
+     "from_x": 6.5,
+     "to_x": 10.5,
+     "color": "#f3f2ef",
+     "meaning": "high-frequency bands, λ ≥ .60 (bands 7-10)"
+    }
+   },
+   "y": {
+    "label": "LiEQ − LiSeer\n(÷ Dense teacher)",
+    "lim": [
+     -1.2,
+     0.6
+    ],
+    "scale": "linear",
+    "ticks": [
+     -1.0,
+     -0.6,
+     -0.2,
+     0.2,
+     0.6
+    ],
+    "tick_labels": [
+     "−1",
+     "−0.6",
+     "−0.2",
+     "+0.2",
+     "+0.6"
+    ],
+    "tick_label_side": "left"
+   },
+   "series": [
+    {
+     "name": "Δ real energy (LiEqualizer − LiSeer)",
+     "part": "real",
+     "kind": "bar",
+     "band_index": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "x": [
+      -0.19,
+      0.81,
+      1.81,
+      2.81,
+      3.81,
+      4.81,
+      5.81,
+      6.81,
+      7.81,
+      8.81,
+      9.81
+     ],
+     "offset": -0.19,
+     "width": 0.36,
+     "y": [
+      0.268901,
+      0.301772,
+      0.297981,
+      0.311928,
+      0.290072,
+      0.241026,
+      0.248549,
+      0.195187,
+      0.188878,
+      0.192451,
+      0.33489
+     ],
+     "color": "#2a78d6",
+     "zorder": 3,
+     "statistic": "median over frames of the per-frame paired difference (LiEqualizer − LiSeer) of real energy ÷ re-truncated teacher band-k energy share"
+    },
+    {
+     "name": "Δ pseudo energy (LiEqualizer − LiSeer)",
+     "part": "pseudo",
+     "kind": "bar",
+     "band_index": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "x": [
+      0.19,
+      1.19,
+      2.19,
+      3.19,
+      4.19,
+      5.19,
+      6.19,
+      7.19,
+      8.19,
+      9.19,
+      10.19
+     ],
+     "offset": 0.19,
+     "width": 0.36,
+     "y": [
+      -0.25265,
+      -0.253783,
+      -0.383702,
+      -0.55792,
+      -0.751514,
+      -0.889952,
+      -0.982126,
+      -1.089376,
+      -0.973153,
+      -0.809372,
+      -0.500368
+     ],
+     "color": "#86b6ef",
+     "zorder": 3,
+     "statistic": "median over frames of the per-frame paired difference (LiEqualizer − LiSeer) of pseudo energy ÷ re-truncated teacher band-k energy share"
+    },
+    {
+     "name": "zero",
+     "kind": "hline",
+     "y": 0.0,
+     "color": "#bdbbb5",
+     "linewidth_pt": 0.8,
+     "zorder": 2,
+     "style": "solid"
+    }
+   ],
+   "annotations": [
+    {
+     "text": "real ↑",
+     "x": 0.97,
+     "y": 0.95,
+     "coords": "axes_fraction",
+     "ha": "right",
+     "va": "top",
+     "color": "#2a78d6",
+     "fontsize_pt": 6.8,
+     "bold": true
+    },
+    {
+     "text": "pseudo ↓",
+     "x": 0.97,
+     "y": 0.05,
+     "coords": "axes_fraction",
+     "ha": "right",
+     "va": "bottom",
+     "color": "#5a95db",
+     "fontsize_pt": 6.8,
+     "bold": true
+    }
+   ],
+   "legend": null,
+   "note": "dark and light bars are separate medians, not stacked; their sum is not the median of the total difference",
+   "n_frames": 199
+  }
+ ]
+}

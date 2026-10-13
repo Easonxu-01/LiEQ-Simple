@@ -9,6 +9,6 @@ dist/
 .DS_Store
 .vscode/
 .history/
-data/
+/data/
 ckpts/
 work_dirs/

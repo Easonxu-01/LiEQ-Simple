@@ -1,0 +1,1468 @@
+{
+ "figure": "fig1_band_cka",
+ "paper_ref": "Fig. 3a",
+ "description": "Per-band CKA between each model and the Dense teacher on the TPV xy feature plane, divided by the teacher's re-truncation noise ceiling, in cells observed by both (left) and by the teacher only (middle), with the share of the LiSeer-to-ceiling gap closed by LiEqualizer (right).",
+ "protocol": {
+  "frames": {
+   "count": 199,
+   "frame_ids": [
+    20,
+    41,
+    61,
+    82,
+    102,
+    123,
+    143,
+    164,
+    184,
+    205,
+    225,
+    245,
+    266,
+    286,
+    307,
+    327,
+    348,
+    368,
+    389,
+    409,
+    429,
+    450,
+    470,
+    491,
+    511,
+    532,
+    552,
+    573,
+    593,
+    614,
+    634,
+    654,
+    675,
+    695,
+    716,
+    736,
+    757,
+    777,
+    798,
+    818,
+    839,
+    859,
+    879,
+    900,
+    920,
+    941,
+    961,
+    982,
+    1002,
+    1023,
+    1043,
+    1064,
+    1084,
+    1104,
+    1125,
+    1145,
+    1166,
+    1186,
+    1207,
+    1227,
+    1248,
+    1268,
+    1288,
+    1309,
+    1329,
+    1350,
+    1370,
+    1391,
+    1411,
+    1432,
+    1452,
+    1473,
+    1493,
+    1513,
+    1534,
+    1554,
+    1575,
+    1595,
+    1616,
+    1636,
+    1657,
+    1677,
+    1698,
+    1718,
+    1738,
+    1759,
+    1779,
+    1800,
+    1820,
+    1841,
+    1861,
+    1882,
+    1902,
+    1923,
+    1943,
+    1963,
+    1984,
+    2004,
+    2025,
+    2045,
+    2066,
+    2086,
+    2107,
+    2127,
+    2147,
+    2168,
+    2188,
+    2209,
+    2229,
+    2250,
+    2270,
+    2291,
+    2311,
+    2332,
+    2352,
+    2372,
+    2393,
+    2413,
+    2434,
+    2454,
+    2475,
+    2495,
+    2516,
+    2536,
+    2557,
+    2577,
+    2597,
+    2618,
+    2638,
+    2659,
+    2679,
+    2700,
+    2720,
+    2741,
+    2761,
+    2782,
+    2802,
+    2822,
+    2843,
+    2863,
+    2884,
+    2904,
+    2925,
+    2945,
+    2966,
+    2986,
+    3006,
+    3027,
+    3047,
+    3068,
+    3088,
+    3109,
+    3129,
+    3150,
+    3170,
+    3191,
+    3211,
+    3231,
+    3252,
+    3272,
+    3293,
+    3313,
+    3334,
+    3354,
+    3375,
+    3395,
+    3416,
+    3436,
+    3456,
+    3477,
+    3497,
+    3518,
+    3538,
+    3559,
+    3579,
+    3600,
+    3620,
+    3641,
+    3661,
+    3681,
+    3702,
+    3722,
+    3743,
+    3763,
+    3784,
+    3804,
+    3825,
+    3845,
+    3865,
+    3886,
+    3906,
+    3927,
+    3947,
+    3968,
+    3988,
+    4009,
+    4029,
+    4050,
+    4070
+   ],
+   "selection": "evaluation frames = round(linspace(0, 4070, 200)) de-duplicated, minus the 3 development frames 0, 1357, 2714"
+  },
+  "dataset": "SemanticKITTI",
+  "sequence": "08",
+  "field": "TPV feature plane xy (ρ × φ cylindrical grid, 240 × 180 cells, 128 channels) at neck scale s0, i.e. after backbone + neck and before FiLM (the plane the low-frequency distiller acts on and the aggregator samples)",
+  "preprocessing": "within Ω_T: per-channel mean removal, then division by the RMS over Ω_T (\"standard\" scale)",
+  "operator": "4-neighbour normalized grid Laplacian on the full plane, λ(f) = 1 − ½(cos 2πf₁ + cos 2πf₂); exact eigenbasis via DCT-II (all axes treated as non-periodic); 11 bands with square-root raised-cosine tight-frame windows (band energies sum to the total); statistics restricted to the teacher support Ω_T. Same operator as the low-frequency distiller.",
+  "bands": {
+   "count": 11,
+   "edges": [
+    -0.05,
+    0.01,
+    0.03,
+    0.08,
+    0.15,
+    0.25,
+    0.4,
+    0.6,
+    0.85,
+    1.15,
+    1.5,
+    2.02
+   ],
+   "high_frequency": "λ ≥ 0.60 (bands 7-10)",
+   "low_frequency": "λ < 0.08 (bands 0-2)",
+   "note": "same 11-band partition as the earlier voxel-level spectral analysis"
+  },
+  "regions": {
+   "O_ST": "observed by both teacher and student input (Ω_S ∩ Ω_T)",
+   "O_T": "observed by the teacher only (Ω_T \\ Ω_S)",
+   "min_cells": 50,
+   "min_cells_note": "a region with fewer than 50 cells gives NaN for that frame"
+  },
+  "metric": "linear CKA between the band-k filtered model field and the band-k filtered Dense-teacher field over the cells/voxels of the region, CKA = ‖Y_Sᵀ Y_T‖²_F / (‖Y_Sᵀ Y_S‖_F ‖Y_Tᵀ Y_T‖_F), channels centred within the region",
+  "normalisation": "per frame and band: CKA(model, Dense teacher) / CKA(Teacher re-truncated input, Dense teacher)",
+  "gap_closed": "100 × median over frames of (CKA_LiEqualizer − CKA_LiSeer) / (CKA_ceiling − CKA_LiSeer), per band and region (raw CKA values)",
+  "models": [
+   {
+    "name": "Dense teacher",
+    "variant": "T_union",
+    "role": "reference (target of every comparison)",
+    "input": "union of raw and refined point clouds, randomly truncated to 500,000 points (the input it receives as distillation teacher)",
+    "checkpoint": "dense teacher trained on SemanticKITTI (final release teacher)"
+   },
+   {
+    "name": "Teacher, re-truncated input",
+    "variant": "T_union2",
+    "role": "noise ceiling (teacher vs. itself under a different truncation seed)",
+    "input": "same union input, different random 500,000-point truncation seed",
+    "checkpoint": "same as Dense teacher"
+   },
+   {
+    "name": "Teacher, sparse input",
+    "variant": "T_raw",
+    "role": "input-effect control (not in the main tests)",
+    "input": "the student's raw sparse scan",
+    "checkpoint": "same as Dense teacher"
+   },
+   {
+    "name": "LiSeer",
+    "variant": "S_liseer",
+    "role": "baseline without distillation",
+    "input": "student test input: raw scan (about 120k points), identical points for both students",
+    "checkpoint": "LiSeer student on SemanticKITTI, trained without distillation (epoch-21 checkpoint)"
+   },
+   {
+    "name": "LiEqualizer",
+    "variant": "S_lieq",
+    "role": "distilled student (LiEQ)",
+    "input": "same as LiSeer",
+    "checkpoint": "LiEqualizer student on SemanticKITTI (final model; SK→SK val mIoU 0.749)"
+   }
+  ],
+  "statistic": "per band: median across frames (line/markers) and interquartile range (ribbon), NaN-aware; frames are the unit"
+ },
+ "units": {
+  "x": "graph-frequency band index 0-10 (tick label = lower λ edge of the band)",
+  "y_left_middle": "CKA ÷ noise ceiling (dimensionless; 1 = Teacher, re-truncated input)",
+  "y_right": "percent of the LiSeer-to-ceiling CKA gap closed by LiEqualizer"
+ },
+ "colors": {
+  "C_TEACHER": "#52514e",
+  "C_LISEER": "#eb6834",
+  "C_LIEQ": "#2a78d6",
+  "C_LIEQ_LIGHT": "#86b6ef",
+  "C_NOISE": "#8f8d88",
+  "SHADE": "#f3f2ef",
+  "INK": "#0b0b0b",
+  "INK2": "#52514e",
+  "MUTED": "#8a8883",
+  "GRID": "#e8e7e3",
+  "AXIS": "#bdbbb5",
+  "SURFACE": "#ffffff",
+  "roles": {
+   "Teacher, re-truncated input": "#8f8d88",
+   "Teacher, sparse input": "#52514e",
+   "LiSeer": "#eb6834",
+   "LiEqualizer": "#2a78d6",
+   "gap bars, observed by both": "#2a78d6",
+   "gap bars, teacher only": "#86b6ef",
+   "high-frequency shading": "#f3f2ef"
+  }
+ },
+ "figure_size_in": [
+  7.2,
+  3.0
+ ],
+ "figure_legends": [
+  {
+   "entries": [
+    {
+     "label": "Teacher, re-truncated input (= 1)",
+     "kind": "line",
+     "color": "#8f8d88",
+     "linewidth_pt": 1.2,
+     "style": "solid"
+    },
+    {
+     "label": "Teacher, sparse input",
+     "kind": "line",
+     "color": "#52514e",
+     "linewidth_pt": 1.2,
+     "style": "solid",
+     "marker": {
+      "shape": "o",
+      "face": "#ffffff",
+      "edge": "#52514e",
+      "size_pt": 3.6
+     }
+    },
+    {
+     "label": "LiSeer",
+     "kind": "line",
+     "color": "#eb6834",
+     "linewidth_pt": 1.5,
+     "style": "solid",
+     "marker": {
+      "shape": "o",
+      "face": "#eb6834",
+      "edge": "#ffffff",
+      "size_pt": 3.6
+     }
+    },
+    {
+     "label": "LiEqualizer",
+     "kind": "line",
+     "color": "#2a78d6",
+     "linewidth_pt": 1.5,
+     "style": "solid",
+     "marker": {
+      "shape": "o",
+      "face": "#2a78d6",
+      "edge": "#ffffff",
+      "size_pt": 3.6
+     }
+    }
+   ],
+   "loc": "upper center",
+   "ncol": 4,
+   "bbox_to_anchor_fig_fraction": [
+    0.5,
+    0.995
+   ]
+  }
+ ],
+ "figure_texts": [
+  {
+   "text": "Graph-frequency band  (lower edge of λ)",
+   "x_fig_fraction": 0.5085,
+   "y_fig_fraction": 0.04,
+   "ha": "center",
+   "va": "bottom",
+   "color": "#0b0b0b",
+   "fontsize_pt": 7.5,
+   "bold": false
+  }
+ ],
+ "panels": [
+  {
+   "id": "left_O_ST",
+   "region": "O_ST",
+   "region_definition": "cells observed by both teacher and student, Ω_S ∩ Ω_T",
+   "title": "Observed by both  ↑",
+   "position_fig_fraction": [
+    0.072,
+    0.155,
+    0.346302,
+    0.8
+   ],
+   "x": {
+    "label": "Graph-frequency band  (lower edge of λ)",
+    "lim": [
+     -0.4,
+     10.4
+    ],
+    "scale": "linear",
+    "ticks": [
+     0.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0,
+     7.0,
+     8.0,
+     9.0,
+     10.0
+    ],
+    "tick_labels": [
+     "0",
+     "",
+     ".03",
+     "",
+     ".15",
+     "",
+     "",
+     ".60",
+     "",
+     "",
+     "1.50"
+    ],
+    "tick_label_side": "bottom",
+    "label_is_shared_figure_text": true,
+    "quantity": "graph-frequency band index (0-10)",
+    "band_index": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10
+    ],
+    "band_lambda_edges": [
+     -0.05,
+     0.01,
+     0.03,
+     0.08,
+     0.15,
+     0.25,
+     0.4,
+     0.6,
+     0.85,
+     1.15,
+     1.5,
+     2.02
+    ],
+    "band_lower_edge_labels_all": [
+     "0",
+     ".01",
+     ".03",
+     ".08",
+     ".15",
+     ".25",
+     ".40",
+     ".60",
+     ".85",
+     "1.15",
+     "1.50"
+    ],
+    "band_lower_edge_note": "tick labels give the lower λ edge of each band; band 0 is labelled 0 (its computational lower edge is -0.05, i.e. it includes λ = 0)",
+    "labelled_bands": [
+     0,
+     2,
+     4,
+     7,
+     10
+    ],
+    "hf_first_band": 7,
+    "hf_lambda_min": 0.6,
+    "hf_shading": {
+     "from_x": 6.5,
+     "to_x": 10.5,
+     "color": "#f3f2ef",
+     "meaning": "high-frequency bands, λ ≥ .60 (bands 7-10)"
+    }
+   },
+   "y": {
+    "label": "CKA to Dense teacher\n(÷ noise ceiling)",
+    "lim": [
+     0.0,
+     1.22
+    ],
+    "scale": "linear",
+    "ticks": [
+     0.0,
+     0.25,
+     0.5,
+     0.75,
+     1.0
+    ],
+    "tick_labels": [
+     "0.00",
+     "0.25",
+     "0.50",
+     "0.75",
+     "1.00"
+    ],
+    "tick_label_side": "left"
+   },
+   "series": [
+    {
+     "name": "Teacher, re-truncated input (= 1)",
+     "variant": "T_union2",
+     "kind": "hline",
+     "y": 1.0,
+     "color": "#8f8d88",
+     "linewidth_pt": 1.2,
+     "zorder": 2,
+     "note": "noise ceiling; every curve is divided by it per frame and band, so it is 1 by construction"
+    },
+    {
+     "name": "Teacher, sparse input",
+     "variant": "T_raw",
+     "kind": "line",
+     "x": [
+      0.0,
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0,
+      7.0,
+      8.0,
+      9.0,
+      10.0
+     ],
+     "q25": [
+      0.671098,
+      0.545533,
+      0.470695,
+      0.44044,
+      0.405197,
+      0.36172,
+      0.322061,
+      0.290218,
+      0.222243,
+      0.141648,
+      0.113001
+     ],
+     "q50": [
+      0.730537,
+      0.611703,
+      0.556126,
+      0.51116,
+      0.466648,
+      0.420544,
+      0.370042,
+      0.324026,
+      0.249474,
+      0.165098,
+      0.130821
+     ],
+     "q75": [
+      0.772024,
+      0.680099,
+      0.62646,
+      0.568945,
+      0.512488,
+      0.466144,
+      0.406949,
+      0.362354,
+      0.286977,
+      0.186103,
+      0.154422
+     ],
+     "n_frames_finite": [
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199
+     ],
+     "color": "#52514e",
+     "draw": {
+      "line": "q50",
+      "ribbon": [
+       "q25",
+       "q75"
+      ],
+      "ribbon_alpha": 0.14,
+      "linewidth_pt": 1.2,
+      "markers": "hollow",
+      "zorder": 3
+     },
+     "statistic": "per-band 25th/50th/75th percentile across frames (nanpercentile) of CKA(model, Dense teacher) / CKA(re-truncated teacher, Dense teacher)"
+    },
+    {
+     "name": "LiSeer",
+     "variant": "S_liseer",
+     "kind": "line",
+     "x": [
+      0.0,
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0,
+      7.0,
+      8.0,
+      9.0,
+      10.0
+     ],
+     "q25": [
+      0.803604,
+      0.682631,
+      0.585498,
+      0.490395,
+      0.423651,
+      0.381476,
+      0.362839,
+      0.330702,
+      0.250304,
+      0.121826,
+      0.07484
+     ],
+     "q50": [
+      0.836926,
+      0.723967,
+      0.62509,
+      0.527054,
+      0.455389,
+      0.40717,
+      0.384705,
+      0.362507,
+      0.280245,
+      0.138232,
+      0.082332
+     ],
+     "q75": [
+      0.866731,
+      0.764127,
+      0.665623,
+      0.55905,
+      0.488563,
+      0.442683,
+      0.414423,
+      0.388892,
+      0.313113,
+      0.15708,
+      0.09126
+     ],
+     "n_frames_finite": [
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199
+     ],
+     "color": "#eb6834",
+     "draw": {
+      "line": "q50",
+      "ribbon": [
+       "q25",
+       "q75"
+      ],
+      "ribbon_alpha": 0.14,
+      "linewidth_pt": 1.5,
+      "markers": "filled",
+      "zorder": 4
+     },
+     "statistic": "per-band 25th/50th/75th percentile across frames (nanpercentile) of CKA(model, Dense teacher) / CKA(re-truncated teacher, Dense teacher)"
+    },
+    {
+     "name": "LiEqualizer",
+     "variant": "S_lieq",
+     "kind": "line",
+     "x": [
+      0.0,
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0,
+      7.0,
+      8.0,
+      9.0,
+      10.0
+     ],
+     "q25": [
+      0.889134,
+      0.797768,
+      0.736848,
+      0.688551,
+      0.64372,
+      0.602128,
+      0.56618,
+      0.511006,
+      0.388388,
+      0.157551,
+      0.102763
+     ],
+     "q50": [
+      0.921059,
+      0.831885,
+      0.775219,
+      0.726668,
+      0.680847,
+      0.634418,
+      0.593457,
+      0.549419,
+      0.425595,
+      0.181704,
+      0.114177
+     ],
+     "q75": [
+      0.935319,
+      0.855882,
+      0.808508,
+      0.756334,
+      0.70713,
+      0.663077,
+      0.627138,
+      0.593396,
+      0.476142,
+      0.204538,
+      0.128106
+     ],
+     "n_frames_finite": [
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199
+     ],
+     "color": "#2a78d6",
+     "draw": {
+      "line": "q50",
+      "ribbon": [
+       "q25",
+       "q75"
+      ],
+      "ribbon_alpha": 0.14,
+      "linewidth_pt": 1.5,
+      "markers": "filled",
+      "zorder": 6
+     },
+     "statistic": "per-band 25th/50th/75th percentile across frames (nanpercentile) of CKA(model, Dense teacher) / CKA(re-truncated teacher, Dense teacher)"
+    }
+   ],
+   "annotations": [
+    {
+     "text": "high frequency\n(λ ≥ .60)",
+     "x": 1.0,
+     "y": 1.0,
+     "coords": "axes_fraction",
+     "offset_pt": [
+      -4.0,
+      -4.0
+     ],
+     "ha": "right",
+     "va": "top",
+     "color": "#52514e",
+     "fontsize_pt": 6.3
+    }
+   ],
+   "legend": null
+  },
+  {
+   "id": "middle_O_T",
+   "region": "O_T",
+   "region_definition": "cells observed by the teacher only, Ω_T \\ Ω_S",
+   "title": "Observed by teacher only  ↑",
+   "position_fig_fraction": [
+    0.360017,
+    0.155,
+    0.634319,
+    0.8
+   ],
+   "x": {
+    "label": "Graph-frequency band  (lower edge of λ)",
+    "lim": [
+     -0.4,
+     10.4
+    ],
+    "scale": "linear",
+    "ticks": [
+     0.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0,
+     7.0,
+     8.0,
+     9.0,
+     10.0
+    ],
+    "tick_labels": [
+     "0",
+     "",
+     ".03",
+     "",
+     ".15",
+     "",
+     "",
+     ".60",
+     "",
+     "",
+     "1.50"
+    ],
+    "tick_label_side": "bottom",
+    "label_is_shared_figure_text": true,
+    "quantity": "graph-frequency band index (0-10)",
+    "band_index": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10
+    ],
+    "band_lambda_edges": [
+     -0.05,
+     0.01,
+     0.03,
+     0.08,
+     0.15,
+     0.25,
+     0.4,
+     0.6,
+     0.85,
+     1.15,
+     1.5,
+     2.02
+    ],
+    "band_lower_edge_labels_all": [
+     "0",
+     ".01",
+     ".03",
+     ".08",
+     ".15",
+     ".25",
+     ".40",
+     ".60",
+     ".85",
+     "1.15",
+     "1.50"
+    ],
+    "band_lower_edge_note": "tick labels give the lower λ edge of each band; band 0 is labelled 0 (its computational lower edge is -0.05, i.e. it includes λ = 0)",
+    "labelled_bands": [
+     0,
+     2,
+     4,
+     7,
+     10
+    ],
+    "hf_first_band": 7,
+    "hf_lambda_min": 0.6,
+    "hf_shading": {
+     "from_x": 6.5,
+     "to_x": 10.5,
+     "color": "#f3f2ef",
+     "meaning": "high-frequency bands, λ ≥ .60 (bands 7-10)"
+    }
+   },
+   "y": {
+    "label": "",
+    "lim": [
+     0.0,
+     1.22
+    ],
+    "scale": "linear",
+    "ticks": [
+     0.0,
+     0.25,
+     0.5,
+     0.75,
+     1.0
+    ],
+    "tick_labels": [
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    "tick_label_side": "none",
+    "shared_with_panel": "left_O_ST"
+   },
+   "series": [
+    {
+     "name": "Teacher, re-truncated input (= 1)",
+     "variant": "T_union2",
+     "kind": "hline",
+     "y": 1.0,
+     "color": "#8f8d88",
+     "linewidth_pt": 1.2,
+     "zorder": 2,
+     "note": "noise ceiling; every curve is divided by it per frame and band, so it is 1 by construction"
+    },
+    {
+     "name": "Teacher, sparse input",
+     "variant": "T_raw",
+     "kind": "line",
+     "x": [
+      0.0,
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0,
+      7.0,
+      8.0,
+      9.0,
+      10.0
+     ],
+     "q25": [
+      0.599707,
+      0.460101,
+      0.374186,
+      0.339173,
+      0.303518,
+      0.266333,
+      0.229129,
+      0.214467,
+      0.137823,
+      0.087866,
+      0.078391
+     ],
+     "q50": [
+      0.655144,
+      0.544342,
+      0.46716,
+      0.422675,
+      0.37556,
+      0.318625,
+      0.287709,
+      0.259726,
+      0.162969,
+      0.098933,
+      0.086054
+     ],
+     "q75": [
+      0.714782,
+      0.627349,
+      0.544181,
+      0.4914,
+      0.441381,
+      0.383122,
+      0.33132,
+      0.303278,
+      0.193393,
+      0.115533,
+      0.098665
+     ],
+     "n_frames_finite": [
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199
+     ],
+     "color": "#52514e",
+     "draw": {
+      "line": "q50",
+      "ribbon": [
+       "q25",
+       "q75"
+      ],
+      "ribbon_alpha": 0.14,
+      "linewidth_pt": 1.2,
+      "markers": "hollow",
+      "zorder": 3
+     },
+     "statistic": "per-band 25th/50th/75th percentile across frames (nanpercentile) of CKA(model, Dense teacher) / CKA(re-truncated teacher, Dense teacher)"
+    },
+    {
+     "name": "LiSeer",
+     "variant": "S_liseer",
+     "kind": "line",
+     "x": [
+      0.0,
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0,
+      7.0,
+      8.0,
+      9.0,
+      10.0
+     ],
+     "q25": [
+      0.703284,
+      0.603454,
+      0.495245,
+      0.399522,
+      0.328043,
+      0.293861,
+      0.284854,
+      0.263634,
+      0.182376,
+      0.087476,
+      0.065643
+     ],
+     "q50": [
+      0.746819,
+      0.645266,
+      0.545452,
+      0.44627,
+      0.371799,
+      0.324382,
+      0.30829,
+      0.297768,
+      0.20934,
+      0.098091,
+      0.069895
+     ],
+     "q75": [
+      0.774905,
+      0.687384,
+      0.599295,
+      0.504121,
+      0.422216,
+      0.3626,
+      0.345408,
+      0.337147,
+      0.243888,
+      0.112678,
+      0.074028
+     ],
+     "n_frames_finite": [
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199
+     ],
+     "color": "#eb6834",
+     "draw": {
+      "line": "q50",
+      "ribbon": [
+       "q25",
+       "q75"
+      ],
+      "ribbon_alpha": 0.14,
+      "linewidth_pt": 1.5,
+      "markers": "filled",
+      "zorder": 4
+     },
+     "statistic": "per-band 25th/50th/75th percentile across frames (nanpercentile) of CKA(model, Dense teacher) / CKA(re-truncated teacher, Dense teacher)"
+    },
+    {
+     "name": "LiEqualizer",
+     "variant": "S_lieq",
+     "kind": "line",
+     "x": [
+      0.0,
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0,
+      7.0,
+      8.0,
+      9.0,
+      10.0
+     ],
+     "q25": [
+      0.849753,
+      0.733645,
+      0.627979,
+      0.561793,
+      0.542279,
+      0.522979,
+      0.496797,
+      0.448095,
+      0.305288,
+      0.122692,
+      0.083848
+     ],
+     "q50": [
+      0.873883,
+      0.778865,
+      0.673316,
+      0.617835,
+      0.597408,
+      0.568643,
+      0.528494,
+      0.488123,
+      0.337566,
+      0.142382,
+      0.091154
+     ],
+     "q75": [
+      0.889456,
+      0.814999,
+      0.713301,
+      0.673613,
+      0.64126,
+      0.603544,
+      0.571905,
+      0.532943,
+      0.387078,
+      0.162838,
+      0.099846
+     ],
+     "n_frames_finite": [
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199
+     ],
+     "color": "#2a78d6",
+     "draw": {
+      "line": "q50",
+      "ribbon": [
+       "q25",
+       "q75"
+      ],
+      "ribbon_alpha": 0.14,
+      "linewidth_pt": 1.5,
+      "markers": "filled",
+      "zorder": 6
+     },
+     "statistic": "per-band 25th/50th/75th percentile across frames (nanpercentile) of CKA(model, Dense teacher) / CKA(re-truncated teacher, Dense teacher)"
+    }
+   ],
+   "annotations": [
+    {
+     "text": "high frequency\n(λ ≥ .60)",
+     "x": 1.0,
+     "y": 1.0,
+     "coords": "axes_fraction",
+     "offset_pt": [
+      -4.0,
+      -4.0
+     ],
+     "ha": "right",
+     "va": "top",
+     "color": "#52514e",
+     "fontsize_pt": 6.3
+    }
+   ],
+   "legend": null
+  },
+  {
+   "id": "right_gap",
+   "title": "Gap to teacher closed by LiEQ",
+   "position_fig_fraction": [
+    0.663841,
+    0.155,
+    0.945,
+    0.8
+   ],
+   "x": {
+    "label": "Graph-frequency band  (lower edge of λ)",
+    "lim": [
+     -0.6,
+     10.6
+    ],
+    "scale": "linear",
+    "ticks": [
+     0.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0,
+     7.0,
+     8.0,
+     9.0,
+     10.0
+    ],
+    "tick_labels": [
+     "0",
+     "",
+     ".03",
+     "",
+     ".15",
+     "",
+     "",
+     ".60",
+     "",
+     "",
+     "1.50"
+    ],
+    "tick_label_side": "bottom",
+    "label_is_shared_figure_text": true,
+    "quantity": "graph-frequency band index (0-10)",
+    "band_index": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10
+    ],
+    "band_lambda_edges": [
+     -0.05,
+     0.01,
+     0.03,
+     0.08,
+     0.15,
+     0.25,
+     0.4,
+     0.6,
+     0.85,
+     1.15,
+     1.5,
+     2.02
+    ],
+    "band_lower_edge_labels_all": [
+     "0",
+     ".01",
+     ".03",
+     ".08",
+     ".15",
+     ".25",
+     ".40",
+     ".60",
+     ".85",
+     "1.15",
+     "1.50"
+    ],
+    "band_lower_edge_note": "tick labels give the lower λ edge of each band; band 0 is labelled 0 (its computational lower edge is -0.05, i.e. it includes λ = 0)",
+    "labelled_bands": [
+     0,
+     2,
+     4,
+     7,
+     10
+    ],
+    "hf_first_band": 7,
+    "hf_lambda_min": 0.6,
+    "hf_shading": {
+     "from_x": 6.5,
+     "to_x": 10.5,
+     "color": "#f3f2ef",
+     "meaning": "high-frequency bands, λ ≥ .60 (bands 7-10)"
+    }
+   },
+   "y": {
+    "label": "",
+    "lim": [
+     0.0,
+     60.0
+    ],
+    "scale": "linear",
+    "ticks": [
+     0.0,
+     20.0,
+     40.0,
+     60.0
+    ],
+    "tick_labels": [
+     "0%",
+     "20%",
+     "40%",
+     "60%"
+    ],
+    "tick_label_side": "right",
+    "unit": "percent"
+   },
+   "series": [
+    {
+     "name": "observed by both",
+     "region": "O_ST",
+     "kind": "bar",
+     "band_index": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "x": [
+      -0.19,
+      0.81,
+      1.81,
+      2.81,
+      3.81,
+      4.81,
+      5.81,
+      6.81,
+      7.81,
+      8.81,
+      9.81
+     ],
+     "offset": -0.19,
+     "width": 0.38,
+     "y": [
+      48.492387,
+      36.644924,
+      40.011473,
+      41.728279,
+      40.531904,
+      37.508479,
+      33.647335,
+      29.174196,
+      20.28044,
+      4.740577,
+      3.434026
+     ],
+     "n_frames_finite": [
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199
+     ],
+     "color": "#2a78d6",
+     "zorder": 3,
+     "statistic": "gap = 100 × nanmedian over frames of (CKA_LiEQ − CKA_LiSeer) / (CKA_ceiling − CKA_LiSeer), per band"
+    },
+    {
+     "name": "teacher only",
+     "region": "O_T",
+     "kind": "bar",
+     "band_index": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "x": [
+      0.19,
+      1.19,
+      2.19,
+      3.19,
+      4.19,
+      5.19,
+      6.19,
+      7.19,
+      8.19,
+      9.19,
+      10.19
+     ],
+     "offset": 0.19,
+     "width": 0.38,
+     "y": [
+      49.997711,
+      37.138139,
+      27.430338,
+      30.791105,
+      34.700742,
+      34.955988,
+      31.475896,
+      26.865908,
+      16.75884,
+      4.555084,
+      2.335116
+     ],
+     "n_frames_finite": [
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199,
+      199
+     ],
+     "color": "#86b6ef",
+     "zorder": 3,
+     "statistic": "gap = 100 × nanmedian over frames of (CKA_LiEQ − CKA_LiSeer) / (CKA_ceiling − CKA_LiSeer), per band"
+    }
+   ],
+   "annotations": [],
+   "legend": {
+    "entries": [
+     {
+      "label": "observed by both",
+      "kind": "patch",
+      "color": "#2a78d6"
+     },
+     {
+      "label": "teacher only",
+      "kind": "patch",
+      "color": "#86b6ef"
+     }
+    ],
+    "loc": "upper right"
+   }
+  }
+ ]
+}

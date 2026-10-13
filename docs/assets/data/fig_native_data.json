@@ -1,0 +1,2937 @@
+{
+ "fig_native_qprofiles": {
+  "layout": "1x3 panels (one per global signal), shared y; 6 curves per panel",
+  "axes": {
+   "x": {
+    "name": "diffusion steps t",
+    "unit": "steps",
+    "values": [
+     1,
+     4,
+     16,
+     32
+    ],
+    "scale": "categorical, equally spaced ticks at t = 1, 4, 16, 32"
+   },
+   "y": {
+    "name": "normalized response energy q̄_t",
+    "unit": "fraction; per frame sums to 1 over the 4 t values",
+    "scale": "linear"
+   }
+  },
+  "panels": [
+   {
+    "signal": "density",
+    "title": "density",
+    "series": [
+     {
+      "name": "SemanticKITTI dense",
+      "dataset": "semantickitti",
+      "side": "dense",
+      "color_semantic": "dataset",
+      "orig_color": "#4477AA",
+      "line": "solid",
+      "marker": "circle",
+      "values": [
+       0.31645383141670247,
+       0.27128639674858573,
+       0.217523494594566,
+       0.19473627723980225
+      ]
+     },
+     {
+      "name": "SemanticKITTI sparse",
+      "dataset": "semantickitti",
+      "side": "sparse",
+      "color_semantic": "dataset",
+      "orig_color": "#4477AA",
+      "line": "dashed",
+      "marker": "square",
+      "values": [
+       0.26154472576143517,
+       0.25324395564382546,
+       0.24459345369782481,
+       0.24061786489664722
+      ],
+      "legend_extra": {
+       "drd_js_mean": 0.003116323606689007,
+       "display_format": "DRD-JS={:.4f}"
+      }
+     },
+     {
+      "name": "Waymo dense",
+      "dataset": "waymo",
+      "side": "dense",
+      "color_semantic": "dataset",
+      "orig_color": "#EE6677",
+      "line": "solid",
+      "marker": "circle",
+      "values": [
+       0.31237013280500153,
+       0.269407752251028,
+       0.2194440158281022,
+       0.19877809911552963
+      ]
+     },
+     {
+      "name": "Waymo sparse",
+      "dataset": "waymo",
+      "side": "sparse",
+      "color_semantic": "dataset",
+      "orig_color": "#EE6677",
+      "line": "dashed",
+      "marker": "square",
+      "values": [
+       0.26197401497243444,
+       0.2538443285986721,
+       0.24462209705127244,
+       0.2395595593773539
+      ],
+      "legend_extra": {
+       "drd_js_mean": 0.002545157066236804,
+       "display_format": "DRD-JS={:.4f}"
+      }
+     },
+     {
+      "name": "nuScenes dense",
+      "dataset": "nuscenes",
+      "side": "dense",
+      "color_semantic": "dataset",
+      "orig_color": "#228833",
+      "line": "solid",
+      "marker": "circle",
+      "values": [
+       0.2940834552654735,
+       0.2635582283201718,
+       0.22851492262632842,
+       0.2138433937877135
+      ]
+     },
+     {
+      "name": "nuScenes sparse",
+      "dataset": "nuscenes",
+      "side": "sparse",
+      "color_semantic": "dataset",
+      "orig_color": "#228833",
+      "line": "dashed",
+      "marker": "square",
+      "values": [
+       0.26279132798322397,
+       0.2544154278993333,
+       0.24421616756058984,
+       0.2385770765565825
+      ],
+      "legend_extra": {
+       "drd_js_mean": 0.0012627322548203507,
+       "display_format": "DRD-JS={:.4f}"
+      }
+     }
+    ]
+   },
+   {
+    "signal": "normal_z",
+    "title": "normal_z",
+    "series": [
+     {
+      "name": "SemanticKITTI dense",
+      "dataset": "semantickitti",
+      "side": "dense",
+      "color_semantic": "dataset",
+      "orig_color": "#4477AA",
+      "line": "solid",
+      "marker": "circle",
+      "values": [
+       0.3251632471549242,
+       0.2536059196915666,
+       0.2158653589417989,
+       0.20536547421132476
+      ]
+     },
+     {
+      "name": "SemanticKITTI sparse",
+      "dataset": "semantickitti",
+      "side": "sparse",
+      "color_semantic": "dataset",
+      "orig_color": "#4477AA",
+      "line": "dashed",
+      "marker": "square",
+      "values": [
+       0.2966848511571888,
+       0.2565554043544575,
+       0.22871101410777328,
+       0.21804873038025122
+      ],
+      "legend_extra": {
+       "drd_js_mean": 0.0005919851834058792,
+       "display_format": "DRD-JS={:.4f}"
+      }
+     },
+     {
+      "name": "Waymo dense",
+      "dataset": "waymo",
+      "side": "dense",
+      "color_semantic": "dataset",
+      "orig_color": "#EE6677",
+      "line": "solid",
+      "marker": "circle",
+      "values": [
+       0.29952439073267606,
+       0.2534591496567255,
+       0.22774180437379926,
+       0.2192746552364607
+      ]
+     },
+     {
+      "name": "Waymo sparse",
+      "dataset": "waymo",
+      "side": "sparse",
+      "color_semantic": "dataset",
+      "orig_color": "#EE6677",
+      "line": "dashed",
+      "marker": "square",
+      "values": [
+       0.2772353550377954,
+       0.2546448865637753,
+       0.23770786329119573,
+       0.2304118951069386
+      ],
+      "legend_extra": {
+       "drd_js_mean": 0.0003709277919054056,
+       "display_format": "DRD-JS={:.4f}"
+      }
+     },
+     {
+      "name": "nuScenes dense",
+      "dataset": "nuscenes",
+      "side": "dense",
+      "color_semantic": "dataset",
+      "orig_color": "#228833",
+      "line": "solid",
+      "marker": "circle",
+      "values": [
+       0.3062019358942397,
+       0.25111820363273607,
+       0.2245492707064086,
+       0.21813058976626173
+      ]
+     },
+     {
+      "name": "nuScenes sparse",
+      "dataset": "nuscenes",
+      "side": "sparse",
+      "color_semantic": "dataset",
+      "orig_color": "#228833",
+      "line": "dashed",
+      "marker": "square",
+      "values": [
+       0.2780336847805513,
+       0.2568479256750509,
+       0.23713040893514134,
+       0.2279879806089624
+      ],
+      "legend_extra": {
+       "drd_js_mean": 0.0006858784001949964,
+       "display_format": "DRD-JS={:.4f}"
+      }
+     }
+    ]
+   },
+   {
+    "signal": "surface_variation",
+    "title": "surface_variation",
+    "series": [
+     {
+      "name": "SemanticKITTI dense",
+      "dataset": "semantickitti",
+      "side": "dense",
+      "color_semantic": "dataset",
+      "orig_color": "#4477AA",
+      "line": "solid",
+      "marker": "circle",
+      "values": [
+       0.29198298236248754,
+       0.2557255689343099,
+       0.23065693999286085,
+       0.22163450871002027
+      ]
+     },
+     {
+      "name": "SemanticKITTI sparse",
+      "dataset": "semantickitti",
+      "side": "sparse",
+      "color_semantic": "dataset",
+      "orig_color": "#4477AA",
+      "line": "dashed",
+      "marker": "square",
+      "values": [
+       0.28175532282023985,
+       0.25648245390967284,
+       0.2353556048911218,
+       0.22640661837866488
+      ],
+      "legend_extra": {
+       "drd_js_mean": 0.00010248570256070295,
+       "display_format": "DRD-JS={:.4f}"
+      }
+     },
+     {
+      "name": "Waymo dense",
+      "dataset": "waymo",
+      "side": "dense",
+      "color_semantic": "dataset",
+      "orig_color": "#EE6677",
+      "line": "solid",
+      "marker": "circle",
+      "values": [
+       0.2870358549449932,
+       0.2554858874615807,
+       0.23289214594499405,
+       0.22458611164811984
+      ]
+     },
+     {
+      "name": "Waymo sparse",
+      "dataset": "waymo",
+      "side": "sparse",
+      "color_semantic": "dataset",
+      "orig_color": "#EE6677",
+      "line": "dashed",
+      "marker": "square",
+      "values": [
+       0.28220192086997575,
+       0.2557949821792737,
+       0.23518572442252367,
+       0.22681737252792405
+      ],
+      "legend_extra": {
+       "drd_js_mean": 5.290519058558877e-05,
+       "display_format": "DRD-JS={:.4f}"
+      }
+     },
+     {
+      "name": "nuScenes dense",
+      "dataset": "nuscenes",
+      "side": "dense",
+      "color_semantic": "dataset",
+      "orig_color": "#228833",
+      "line": "solid",
+      "marker": "circle",
+      "values": [
+       0.2870671858996355,
+       0.25508809673158106,
+       0.232764495833602,
+       0.22508022153486876
+      ]
+     },
+     {
+      "name": "nuScenes sparse",
+      "dataset": "nuscenes",
+      "side": "sparse",
+      "color_semantic": "dataset",
+      "orig_color": "#228833",
+      "line": "dashed",
+      "marker": "square",
+      "values": [
+       0.28378223406727265,
+       0.2583377828949464,
+       0.2345307283505524,
+       0.22334925468692543
+      ],
+      "legend_extra": {
+       "drd_js_mean": 8.815635428656921e-05,
+       "display_format": "DRD-JS={:.4f}"
+      }
+     }
+    ]
+   }
+  ],
+  "caption_basis": {
+   "run": "APPX_D_native_finalmap_20261012 (S4, 2026-10-12 21:02 → 10-13 00:17 SGT, exit 0)",
+   "frames_per_dataset": 200,
+   "frame_selection": "seed-0 stratified sampling prefix (same 200 frames as the 9-23 run)",
+   "dense": "LiDiff refine completion, uniformly subsampled without replacement to 500,000 points",
+   "sparse": "real raw LiDAR scan (no ray casting)",
+   "label_mapping": "final coarse-label mapping, finalized 2026-09-22 (source of truth coarse_mapping.py md5 704fabec)",
+   "class_convention": "7 classes (class 0 Other excluded)",
+   "spectrum": "KPM/Chebyshev on the kNN graph Laplacian, lambda axis [0, 2]",
+   "dataset_order_in_original_figures": [
+    "SemanticKITTI",
+    "Waymo",
+    "nuScenes"
+   ],
+   "summary_md5": {
+    "semantickitti": "35b0185db835b83df0156061ba5c1689",
+    "waymo": "c11aff1c69c4f58a8036903518b4ca5f",
+    "nuscenes": "f7ac07d9361900e536a315fe0f2fec56"
+   },
+   "statistic": "per-frame normalized profile, then MEAN over the 200 frames (summary q_d_mean / q_s_mean)",
+   "note": "x axis is diffusion steps t, not b0"
+  }
+ },
+ "fig_native_rolloff_hfshare": {
+  "layout": "1x2 panels; each panel = 3 signal groups x 3 datasets, a dense/sparse bar pair per dataset",
+  "encoding": {
+   "color": "dataset (orig_color)",
+   "dense": "solid fill, alpha 0.92, edge #555555",
+   "sparse": "same dataset color, alpha 0.38, hatch '///'",
+   "bar_label_format": "{:.3g}, rotated 90°"
+  },
+  "panels": [
+   {
+    "key": "left",
+    "title": "Spectral rolloff (θ=0.85): dense vs sparse",
+    "axes": {
+     "x": {
+      "name": "global signal",
+      "values": [
+       "density",
+       "normal_z",
+       "surface_variation"
+      ]
+     },
+     "y": {
+      "name": "spectral rolloff λ_85 (median over frames)",
+      "unit": "graph frequency λ ∈ [0,2]",
+      "scale": "log; upper limit ×2.2 headroom"
+     }
+    },
+    "series": [
+     {
+      "signal": "density",
+      "dataset": "semantickitti",
+      "orig_color": "#4477AA",
+      "dense": 0.4547263711542749,
+      "sparse": 0.009654577677756546
+     },
+     {
+      "signal": "density",
+      "dataset": "waymo",
+      "orig_color": "#EE6677",
+      "dense": 0.4519630852794938,
+      "sparse": 0.009777725781239305
+     },
+     {
+      "signal": "density",
+      "dataset": "nuscenes",
+      "orig_color": "#228833",
+      "dense": 0.3286567109793179,
+      "sparse": 0.009380948644248568
+     },
+     {
+      "signal": "normal_z",
+      "dataset": "semantickitti",
+      "orig_color": "#4477AA",
+      "dense": 0.9940711035805199,
+      "sparse": 0.7671916578666342
+     },
+     {
+      "signal": "normal_z",
+      "dataset": "waymo",
+      "orig_color": "#EE6677",
+      "dense": 0.9027350528793674,
+      "sparse": 0.15174959386970022
+     },
+     {
+      "signal": "normal_z",
+      "dataset": "nuscenes",
+      "orig_color": "#228833",
+      "dense": 0.9661595486806511,
+      "sparse": 0.18938170350130962
+     },
+     {
+      "signal": "surface_variation",
+      "dataset": "semantickitti",
+      "orig_color": "#4477AA",
+      "dense": 0.6880297155677981,
+      "sparse": 0.2893059731852171
+     },
+     {
+      "signal": "surface_variation",
+      "dataset": "waymo",
+      "orig_color": "#EE6677",
+      "dense": 0.5565736787103137,
+      "sparse": 0.3613184188090939
+     },
+     {
+      "signal": "surface_variation",
+      "dataset": "nuscenes",
+      "orig_color": "#228833",
+      "dense": 0.575505468650728,
+      "sparse": 0.26314802533678183
+     }
+    ]
+   },
+   {
+    "key": "right",
+    "title": "True high-frequency share (λ ≥ 0.6): dense vs sparse",
+    "axes": {
+     "x": {
+      "name": "global signal",
+      "values": [
+       "density",
+       "normal_z",
+       "surface_variation"
+      ]
+     },
+     "y": {
+      "name": "true-HF share P(λ ≥ 0.6) (mean over frames)",
+      "unit": "energy fraction",
+      "scale": "log; upper limit ×2.2 headroom"
+     }
+    },
+    "series": [
+     {
+      "signal": "density",
+      "dataset": "semantickitti",
+      "orig_color": "#4477AA",
+      "dense": 0.10638959717728934,
+      "sparse": 0.03354235289481664
+     },
+     {
+      "signal": "density",
+      "dataset": "waymo",
+      "orig_color": "#EE6677",
+      "dense": 0.10429984744554999,
+      "sparse": 0.031966260576369955
+     },
+     {
+      "signal": "density",
+      "dataset": "nuscenes",
+      "orig_color": "#228833",
+      "dense": 0.08392514015456469,
+      "sparse": 0.0360153232010616
+     },
+     {
+      "signal": "normal_z",
+      "dataset": "semantickitti",
+      "orig_color": "#4477AA",
+      "dense": 0.3078646405863287,
+      "sparse": 0.1796368787672763
+     },
+     {
+      "signal": "normal_z",
+      "dataset": "waymo",
+      "orig_color": "#EE6677",
+      "dense": 0.22598893536248546,
+      "sparse": 0.10981263900641272
+     },
+     {
+      "signal": "normal_z",
+      "dataset": "nuscenes",
+      "orig_color": "#228833",
+      "dense": 0.26843683038145066,
+      "sparse": 0.08931186241862424
+     },
+     {
+      "signal": "surface_variation",
+      "dataset": "semantickitti",
+      "orig_color": "#4477AA",
+      "dense": 0.16641515951361385,
+      "sparse": 0.11201620440462629
+     },
+     {
+      "signal": "surface_variation",
+      "dataset": "waymo",
+      "orig_color": "#EE6677",
+      "dense": 0.14623953971557666,
+      "sparse": 0.1207015321329235
+     },
+     {
+      "signal": "surface_variation",
+      "dataset": "nuscenes",
+      "orig_color": "#228833",
+      "dense": 0.1488838259357556,
+      "sparse": 0.10620907801417796
+     }
+    ]
+   }
+  ],
+  "caption_basis": {
+   "run": "APPX_D_native_finalmap_20261012 (S4, 2026-10-12 21:02 → 10-13 00:17 SGT, exit 0)",
+   "frames_per_dataset": 200,
+   "frame_selection": "seed-0 stratified sampling prefix (same 200 frames as the 9-23 run)",
+   "dense": "LiDiff refine completion, uniformly subsampled without replacement to 500,000 points",
+   "sparse": "real raw LiDAR scan (no ray casting)",
+   "label_mapping": "final coarse-label mapping, finalized 2026-09-22 (source of truth coarse_mapping.py md5 704fabec)",
+   "class_convention": "7 classes (class 0 Other excluded)",
+   "spectrum": "KPM/Chebyshev on the kNN graph Laplacian, lambda axis [0, 2]",
+   "dataset_order_in_original_figures": [
+    "SemanticKITTI",
+    "Waymo",
+    "nuScenes"
+   ],
+   "summary_md5": {
+    "semantickitti": "35b0185db835b83df0156061ba5c1689",
+    "waymo": "c11aff1c69c4f58a8036903518b4ca5f",
+    "nuscenes": "f7ac07d9361900e536a315fe0f2fec56"
+   },
+   "statistic": "left: per-frame λ_85 rolloff, MEDIAN over frames; right: per-frame λ≥0.6 energy share, MEAN over frames",
+   "note": "HFR^{sig} (per-frame sparse/dense share ratio, median) is NOT drawn here; it is in RESULTS.md table A"
+  }
+ },
+ "fig_native_class_retention": {
+  "layout": "grouped bars: 7 class groups, 3 dataset bars per group (offsets -0.26, 0, +0.26; bar width 0.26*0.92)",
+  "axes": {
+   "x": {
+    "name": "class",
+    "values": [
+     "Driveable Ground",
+     "Structure",
+     "Vehicle",
+     "Nature",
+     "Living Being",
+     "Objects",
+     "Other Ground"
+    ]
+   },
+   "y": {
+    "name": "HF retention (E_hi/E_tot)_sparse / (E_hi/E_tot)_dense, b0=16",
+    "unit": "ratio (1 = parity)",
+    "scale": "linear, from 0 to 1.22 × max(p75, median, diamond) over all bars"
+   }
+  },
+  "series": [
+   {
+    "dataset": "semantickitti",
+    "display": "SemanticKITTI",
+    "orig_color": "#4477AA",
+    "classes": [
+     {
+      "class_id": 1,
+      "class_name": "Driveable Ground",
+      "median": 0.4111779508593672,
+      "p25": 0.33089164211891914,
+      "p75": 0.5368593408532857,
+      "kpm_diamond": 0.41667119737433955,
+      "n": 200,
+      "printed_label_value": 0.5368593408532857
+     },
+     {
+      "class_id": 2,
+      "class_name": "Structure",
+      "median": 0.9804671405577818,
+      "p25": 0.7774326867095167,
+      "p75": 1.2488477882415214,
+      "kpm_diamond": 0.8916250392399573,
+      "n": 200,
+      "printed_label_value": 1.2488477882415214
+     },
+     {
+      "class_id": 3,
+      "class_name": "Vehicle",
+      "median": 0.690481214028912,
+      "p25": 0.5372415274785991,
+      "p75": 0.8556136855519293,
+      "kpm_diamond": 0.6278029970633736,
+      "n": 198,
+      "printed_label_value": 0.8556136855519293
+     },
+     {
+      "class_id": 4,
+      "class_name": "Nature",
+      "median": 1.2522642390203698,
+      "p25": 1.1296510134905897,
+      "p75": 1.4122360212141876,
+      "kpm_diamond": 1.3314561243336738,
+      "n": 200,
+      "printed_label_value": 1.4122360212141876
+     },
+     {
+      "class_id": 5,
+      "class_name": "Living Being",
+      "median": 0.6774198612685095,
+      "p25": 0.4649433039784949,
+      "p75": 0.8697878041685877,
+      "kpm_diamond": 0.5772647065342955,
+      "n": 39,
+      "printed_label_value": 0.8697878041685877
+     },
+     {
+      "class_id": 6,
+      "class_name": "Objects",
+      "median": 1.0570156755136373,
+      "p25": 0.8608959296430839,
+      "p75": 1.322679515125163,
+      "kpm_diamond": 1.0721995012516974,
+      "n": 131,
+      "printed_label_value": 1.322679515125163
+     },
+     {
+      "class_id": 7,
+      "class_name": "Other Ground",
+      "median": 0.8771023634131914,
+      "p25": 0.6616038241716691,
+      "p75": 1.0832325969812961,
+      "kpm_diamond": 0.9318063036525317,
+      "n": 200,
+      "printed_label_value": 1.0832325969812961
+     }
+    ]
+   },
+   {
+    "dataset": "waymo",
+    "display": "Waymo",
+    "orig_color": "#EE6677",
+    "classes": [
+     {
+      "class_id": 1,
+      "class_name": "Driveable Ground",
+      "median": 0.5503380151879192,
+      "p25": 0.4289333400160326,
+      "p75": 0.6709231122102027,
+      "kpm_diamond": 0.5610233153902164,
+      "n": 200,
+      "printed_label_value": 0.6709231122102027
+     },
+     {
+      "class_id": 2,
+      "class_name": "Structure",
+      "median": 0.9880355622545026,
+      "p25": 0.8839279760013998,
+      "p75": 1.0932505474060243,
+      "kpm_diamond": 1.0222714122849546,
+      "n": 200,
+      "printed_label_value": 1.0932505474060243
+     },
+     {
+      "class_id": 3,
+      "class_name": "Vehicle",
+      "median": 0.7751551005096604,
+      "p25": 0.6486592326109178,
+      "p75": 0.9120889986928399,
+      "kpm_diamond": 0.8045830651878848,
+      "n": 188,
+      "printed_label_value": 0.9120889986928399
+     },
+     {
+      "class_id": 4,
+      "class_name": "Nature",
+      "median": 1.1665997554432004,
+      "p25": 1.0312707685991738,
+      "p75": 1.3362410935563633,
+      "kpm_diamond": 1.2199856825333113,
+      "n": 191,
+      "printed_label_value": 1.3362410935563633
+     },
+     {
+      "class_id": 5,
+      "class_name": "Living Being",
+      "median": 0.7641976320933804,
+      "p25": 0.6198558883357583,
+      "p75": 0.8714663948346801,
+      "kpm_diamond": 0.7643133874678274,
+      "n": 79,
+      "printed_label_value": 0.8714663948346801
+     },
+     {
+      "class_id": 6,
+      "class_name": "Objects",
+      "median": 0.7826366317422657,
+      "p25": 0.6265196969550474,
+      "p75": 0.9431494328890014,
+      "kpm_diamond": 0.7873374988379798,
+      "n": 190,
+      "printed_label_value": 0.9431494328890014
+     },
+     {
+      "class_id": 7,
+      "class_name": "Other Ground",
+      "median": 0.9339922828898415,
+      "p25": 0.7720374650360952,
+      "p75": 1.136919608078378,
+      "kpm_diamond": 0.9455209417220402,
+      "n": 200,
+      "printed_label_value": 1.136919608078378
+     }
+    ]
+   },
+   {
+    "dataset": "nuscenes",
+    "display": "nuScenes",
+    "orig_color": "#228833",
+    "classes": [
+     {
+      "class_id": 1,
+      "class_name": "Driveable Ground",
+      "median": 0.5217859634927181,
+      "p25": 0.3986877229278004,
+      "p75": 0.7147778794468141,
+      "kpm_diamond": 0.5110991394109862,
+      "n": 200,
+      "printed_label_value": 0.7147778794468141
+     },
+     {
+      "class_id": 2,
+      "class_name": "Structure",
+      "median": 1.8716800186487588,
+      "p25": 1.627613420695598,
+      "p75": 2.2075794687799757,
+      "kpm_diamond": 1.9549504156821518,
+      "n": 200,
+      "printed_label_value": 2.2075794687799757
+     },
+     {
+      "class_id": 3,
+      "class_name": "Vehicle",
+      "median": 1.2502143527619678,
+      "p25": 0.8448641861907991,
+      "p75": 1.6841282450446844,
+      "kpm_diamond": 0.9829703463584243,
+      "n": 144,
+      "printed_label_value": 1.6841282450446844
+     },
+     {
+      "class_id": 4,
+      "class_name": "Nature",
+      "median": 2.195202439149051,
+      "p25": 1.977973875114646,
+      "p75": 2.429239436622746,
+      "kpm_diamond": 2.58808846761604,
+      "n": 181,
+      "printed_label_value": 2.58808846761604
+     },
+     {
+      "class_id": 5,
+      "class_name": "Living Being",
+      "median": 2.2494811446466305,
+      "p25": 1.3706640792536557,
+      "p75": 2.8318505646577177,
+      "kpm_diamond": 1.6556434496017338,
+      "n": 7,
+      "printed_label_value": 2.8318505646577177
+     },
+     {
+      "class_id": 6,
+      "class_name": "Objects",
+      "median": 2.871448756666535,
+      "p25": 1.9152163594976745,
+      "p75": 3.6095060603210096,
+      "kpm_diamond": 2.492089475772102,
+      "n": 29,
+      "printed_label_value": 3.6095060603210096
+     },
+     {
+      "class_id": 7,
+      "class_name": "Other Ground",
+      "median": 1.2860106794288546,
+      "p25": 1.0193275940504396,
+      "p75": 1.625594427008601,
+      "kpm_diamond": 1.3030600490679074,
+      "n": 198,
+      "printed_label_value": 1.625594427008601
+     }
+    ]
+   }
+  ],
+  "encoding": {
+   "bar": "R^{(c)}_{16}: diffusion estimator, MEDIAN over frames; fill = dataset color alpha 0.9",
+   "whiskers": "IQR p25–p75 of the per-frame values (numpy percentile, linear interpolation), color #333333, capsize 2.5",
+   "diamond": "HFR^{(c)}: KPM per-class true-HF share ratio sparse/dense, MEDIAN over frames; black 'D' marker",
+   "parity_line": "y = 1, black dashed",
+   "n_label": "text 'n=<n>' at y=0.03, rotated 90°: n = frames where the class is valid (diffusion count)",
+   "printed_label": "value printed above each bar = max(p75, median, diamond), format {:.3f}, rotated 90° — NOT the median"
+  },
+  "caption_basis": {
+   "run": "APPX_D_native_finalmap_20261012 (S4, 2026-10-12 21:02 → 10-13 00:17 SGT, exit 0)",
+   "frames_per_dataset": 200,
+   "frame_selection": "seed-0 stratified sampling prefix (same 200 frames as the 9-23 run)",
+   "dense": "LiDiff refine completion, uniformly subsampled without replacement to 500,000 points",
+   "sparse": "real raw LiDAR scan (no ray casting)",
+   "label_mapping": "final coarse-label mapping, finalized 2026-09-22 (source of truth coarse_mapping.py md5 704fabec)",
+   "class_convention": "7 classes (class 0 Other excluded)",
+   "spectrum": "KPM/Chebyshev on the kNN graph Laplacian, lambda axis [0, 2]",
+   "dataset_order_in_original_figures": [
+    "SemanticKITTI",
+    "Waymo",
+    "nuScenes"
+   ],
+   "summary_md5": {
+    "semantickitti": "35b0185db835b83df0156061ba5c1689",
+    "waymo": "c11aff1c69c4f58a8036903518b4ca5f",
+    "nuscenes": "f7ac07d9361900e536a315fe0f2fec56"
+   },
+   "statistic": "bars = median, whiskers = IQR, diamonds = median",
+   "note": "diamond n can be smaller than the printed n (needs the class on BOTH dense and sparse sides); see RESULTS.md table B"
+  }
+ },
+ "fig_native_gap_heatmap": {
+  "layout": "1x3 heatmaps (one per dataset); rows = 3 global signals + 7 classes; title color = dataset color",
+  "use_on_webpage": "merged_10_columns (this is exactly what the figure draws)",
+  "why_merged": "bands 1 (λ<0.01) and 2 (0.01–0.03) both lie inside the Jackson kernel-width soft edge (<0.03), so the figure merges them into one '<0.03' column",
+  "colormap": {
+   "name": "RdBu_r (matplotlib)",
+   "vmin": -0.3820365948699273,
+   "vmax": 0.3820365948699273,
+   "symmetric": true,
+   "meaning": "red = dense excess (G>0), blue = sparse excess (G<0)",
+   "cell_text": "G × 1000, format {:.1f}; text white if |G| > 0.55·vmax else #222222; NaN cells show 'N/A' in #666666"
+  },
+  "merged_10_columns": {
+   "columns": [
+    "<0.03",
+    "0.03–0.08",
+    "0.08–0.15",
+    "0.15–0.25",
+    "0.25–0.4",
+    "0.4–0.6",
+    "0.6–0.85",
+    "0.85–1.15",
+    "1.15–1.5",
+    "1.5–2.02"
+   ],
+   "matrices": {
+    "semantickitti": [
+     {
+      "row": "density",
+      "kind": "signal",
+      "class_id": null,
+      "n": 200,
+      "values": [
+       -0.3568040277822746,
+       0.06717437675181755,
+       0.060589807061731185,
+       0.05399128721865277,
+       0.053863266321307945,
+       0.048338046146292564,
+       0.03930998721865901,
+       0.029935921636270093,
+       0.003612031914723319,
+       -1.0696487179697033e-05
+      ]
+     },
+     {
+      "row": "normal_z",
+      "kind": "signal",
+      "class_id": null,
+      "n": 200,
+      "values": [
+       -0.123388540111048,
+       -0.012770808174128106,
+       -0.00743943795635565,
+       -0.002728057907232997,
+       0.003607447003109158,
+       0.0144916353266032,
+       0.03127264170435434,
+       0.0757316855096691,
+       0.02190720865199713,
+       -0.000683774046968212
+      ]
+     },
+     {
+      "row": "surface_variation",
+      "kind": "signal",
+      "class_id": null,
+      "n": 200,
+      "values": [
+       -0.059403794084478094,
+       -0.00503702654784879,
+       -0.0024179342095600313,
+       0.0007965862888650107,
+       0.0033693650020568044,
+       0.008293848441977487,
+       0.010721030141753995,
+       0.03619609609182109,
+       0.007725638324637125,
+       -0.00024380944922468685
+      ]
+     },
+     {
+      "row": "Driveable Ground (n=200)",
+      "kind": "class",
+      "class_id": 1,
+      "n": 200,
+      "values": [
+       -0.07378762665510845,
+       0.011310621074934184,
+       0.007590749682079769,
+       0.007231264344548103,
+       0.007040512325789649,
+       0.007579791037625885,
+       0.008022269997693428,
+       0.021244995119344873,
+       0.004143272578239202,
+       -0.00037584950514661934
+      ]
+     },
+     {
+      "row": "Structure (n=200)",
+      "kind": "class",
+      "class_id": 2,
+      "n": 200,
+      "values": [
+       0.039020104823253715,
+       -0.03161946481897544,
+       -0.007390674708017059,
+       -0.00253890349127062,
+       -0.00018281750811914222,
+       0.0009463695018077403,
+       0.0011322847643304224,
+       0.0014578556196622632,
+       -7.582899008167575e-05,
+       -0.0007489251925901476
+      ]
+     },
+     {
+      "row": "Vehicle (n=198)",
+      "kind": "class",
+      "class_id": 3,
+      "n": 198,
+      "values": [
+       -0.014658178128239358,
+       -0.015054031112619224,
+       -0.003081996452045118,
+       0.001501183899092461,
+       0.0035304859573178464,
+       0.006383916546877008,
+       0.006372401780180518,
+       0.010657913768586252,
+       0.0047549992054439225,
+       -0.0004066954645943094
+      ]
+     },
+     {
+      "row": "Nature (n=200)",
+      "kind": "class",
+      "class_id": 4,
+      "n": 200,
+      "values": [
+       0.04105435791824945,
+       -0.019857289918123015,
+       -0.006340240490458426,
+       -0.0028333406207798717,
+       -0.0005503005514249723,
+       0.0005662750059974822,
+       -0.00020355512501621446,
+       -0.009799932948613364,
+       -0.0012826248172298437,
+       -0.0007533484526011609
+      ]
+     },
+     {
+      "row": "Living Being (n=39)",
+      "kind": "class",
+      "class_id": 5,
+      "n": 39,
+      "values": [
+       -0.03459279445314723,
+       -0.028643835317132254,
+       -0.007866034860069456,
+       0.0126415886678626,
+       0.010396798264830469,
+       0.012260449620598093,
+       0.011267603835361276,
+       0.019771534426790905,
+       0.0051771261577667855,
+       -0.00041243634286114493
+      ]
+     },
+     {
+      "row": "Objects (n=131)",
+      "kind": "class",
+      "class_id": 6,
+      "n": 131,
+      "values": [
+       0.06013731853773496,
+       -0.047581746424898444,
+       -0.007096533494291325,
+       -0.004424069485021,
+       0.00029981392503170755,
+       0.003130662491648564,
+       0.002929987721216111,
+       -0.003711988721419664,
+       -0.0018390452093114218,
+       -0.0018443993406894075
+      ]
+     },
+     {
+      "row": "Other Ground (n=200)",
+      "kind": "class",
+      "class_id": 7,
+      "n": 200,
+      "values": [
+       -0.024801558880560667,
+       0.006771006063436962,
+       0.0038386385352525343,
+       0.0024965154765524333,
+       0.0035224222394942186,
+       0.004134116080553607,
+       0.0035201621203639686,
+       0.002124799891348429,
+       0.0004558029171943343,
+       -0.002061904443635831
+      ]
+     }
+    ],
+    "waymo": [
+     {
+      "row": "density",
+      "kind": "signal",
+      "class_id": null,
+      "n": 200,
+      "values": [
+       -0.33101844620932724,
+       0.05301897266657758,
+       0.05235998450098436,
+       0.051078033456380914,
+       0.053447964435932506,
+       0.04877990428027184,
+       0.04022048084985098,
+       0.02828716690287631,
+       0.003798256991752484,
+       2.7682124700245386e-05
+      ]
+     },
+     {
+      "row": "normal_z",
+      "kind": "signal",
+      "class_id": null,
+      "n": 200,
+      "values": [
+       -0.128125436624283,
+       -0.005098451767032431,
+       -0.0018926718259354941,
+       0.000533661532142375,
+       0.0054144145484546205,
+       0.012992187780581126,
+       0.026027807859316382,
+       0.07191365149568649,
+       0.018421142728916196,
+       -0.00018630572784623985
+      ]
+     },
+     {
+      "row": "surface_variation",
+      "kind": "signal",
+      "class_id": null,
+      "n": 200,
+      "values": [
+       -0.030826194820780178,
+       -0.003730571380212385,
+       0.00010467995390351696,
+       0.0010861097131453753,
+       0.0030535062863522714,
+       0.004774462664938247,
+       0.005444964258065245,
+       0.017598507878750825,
+       0.0026392194255270385,
+       -0.00014468397968996432
+      ]
+     },
+     {
+      "row": "Driveable Ground (n=200)",
+      "kind": "class",
+      "class_id": 1,
+      "n": 200,
+      "values": [
+       -0.05983339630221922,
+       0.006934681396168124,
+       0.00487598622102576,
+       0.004994528747508603,
+       0.006924723103717865,
+       0.007730554725440249,
+       0.007601326590018114,
+       0.016742377169582698,
+       0.003825148626961108,
+       0.00020406972179672837
+      ]
+     },
+     {
+      "row": "Structure (n=200)",
+      "kind": "class",
+      "class_id": 2,
+      "n": 200,
+      "values": [
+       0.0282094207533765,
+       -0.025299751191268656,
+       -0.004514980106203444,
+       -0.0009400207033053833,
+       0.0010532878066502464,
+       0.0021390792728522233,
+       0.00236932174732318,
+       -0.002835089140869817,
+       -0.00012307095165127444,
+       -5.819748690362343e-05
+      ]
+     },
+     {
+      "row": "Vehicle (n=188)",
+      "kind": "class",
+      "class_id": 3,
+      "n": 188,
+      "values": [
+       -0.006812491865217974,
+       -0.014844088027284482,
+       -0.007889753716729425,
+       0.0007328626751709162,
+       0.005428438910299493,
+       0.007198678458347038,
+       0.007330868319981709,
+       0.004640502290088636,
+       0.003959651627669959,
+       0.00025533132767415655
+      ]
+     },
+     {
+      "row": "Nature (n=191)",
+      "kind": "class",
+      "class_id": 4,
+      "n": 191,
+      "values": [
+       0.030422437443343393,
+       -0.014337015703044163,
+       -0.005071894015952568,
+       -0.003392256325275373,
+       -0.00038509926389028893,
+       0.0015383071950348878,
+       0.0010621003416732997,
+       -0.00818161184700353,
+       -0.0015163053656635636,
+       -0.00013866245922208498
+      ]
+     },
+     {
+      "row": "Living Being (n=79)",
+      "kind": "class",
+      "class_id": 5,
+      "n": 79,
+      "values": [
+       0.012016691558260142,
+       -0.07100825858634446,
+       -0.0028207332475859905,
+       0.008529913879771436,
+       0.010007605920198882,
+       0.012707511834183097,
+       0.011526518965455965,
+       0.011885226217986588,
+       0.006561772071065898,
+       0.0005937513870084914
+      ]
+     },
+     {
+      "row": "Objects (n=190)",
+      "kind": "class",
+      "class_id": 6,
+      "n": 190,
+      "values": [
+       -0.014657744012020288,
+       -0.017559065318167238,
+       -0.00024280087818326124,
+       0.002411922933271082,
+       0.006856426400574821,
+       0.008255499653536573,
+       0.007975592768095306,
+       0.0036795641267173985,
+       0.0031397061803244584,
+       0.00014089814585109843
+      ]
+     },
+     {
+      "row": "Other Ground (n=200)",
+      "kind": "class",
+      "class_id": 7,
+      "n": 200,
+      "values": [
+       -0.0011836521426220575,
+       -0.004008239515549093,
+       -0.0017343637668116186,
+       -0.0003663651371282998,
+       0.0010956249357527586,
+       0.0024838012388268206,
+       0.002008128394470642,
+       0.0010100120781448352,
+       0.0012267391148325698,
+       -0.0005316851999165646
+      ]
+     }
+    ],
+    "nuscenes": [
+     {
+      "row": "density",
+      "kind": "signal",
+      "class_id": null,
+      "n": 200,
+      "values": [
+       -0.20736689537955882,
+       0.019837216358675646,
+       0.03512976389486943,
+       0.028794709311301105,
+       0.03791370299599153,
+       0.03778168586521804,
+       0.03541845517417339,
+       0.028346817466792643,
+       -0.000806870781877568,
+       -0.015048584905585362
+      ]
+     },
+     {
+      "row": "normal_z",
+      "kind": "signal",
+      "class_id": null,
+      "n": 200,
+      "values": [
+       -0.15381907457664945,
+       -0.022556048129012515,
+       -0.011388897519676094,
+       -0.0071262047277344046,
+       0.0015109546495915309,
+       0.014254302340654515,
+       0.03427898689616605,
+       0.11711005338052452,
+       0.03304957876165626,
+       -0.005313651075520438
+      ]
+     },
+     {
+      "row": "surface_variation",
+      "kind": "signal",
+      "class_id": null,
+      "n": 200,
+      "values": [
+       -0.019513986741823742,
+       -0.01895872225397397,
+       -0.009005997295868474,
+       -0.002848384636362416,
+       0.0023142462497409534,
+       0.0053380967567100215,
+       0.004604076883857019,
+       0.033793318315186185,
+       0.007311606412074865,
+       -0.003034253689540439
+      ]
+     },
+     {
+      "row": "Driveable Ground (n=200)",
+      "kind": "class",
+      "class_id": 1,
+      "n": 200,
+      "values": [
+       -0.039785608506250784,
+       0.002946850090268679,
+       0.003102246342125563,
+       0.0037264434481016984,
+       0.004312199302653228,
+       0.004659353469854181,
+       0.005111160112999884,
+       0.016052386938026485,
+       0.0009266931339918616,
+       -0.0010517243317708013
+      ]
+     },
+     {
+      "row": "Structure (n=200)",
+      "kind": "class",
+      "class_id": 2,
+      "n": 200,
+      "values": [
+       0.0895884456247106,
+       -0.034255614670559265,
+       -0.0138794547086584,
+       -0.007890876244338067,
+       -0.004357538091380132,
+       -0.0026483720604737783,
+       -0.0016190680161888254,
+       -0.019706402299625926,
+       -0.00249721203696132,
+       -0.0027339074965248896
+      ]
+     },
+     {
+      "row": "Vehicle (n=144)",
+      "kind": "class",
+      "class_id": 3,
+      "n": 144,
+      "values": [
+       0.11892766637390446,
+       -0.06353428363396614,
+       -0.027608217716279998,
+       -0.013871985057864276,
+       -0.00908359929482947,
+       -0.004732103549615273,
+       -0.002384658373096147,
+       0.002425637970665587,
+       0.0011579625174671817,
+       -0.0012964192363859005
+      ]
+     },
+     {
+      "row": "Nature (n=181)",
+      "kind": "class",
+      "class_id": 4,
+      "n": 181,
+      "values": [
+       0.11143696605327896,
+       -0.0252927621278704,
+       -0.011646573333753477,
+       -0.007484833800627388,
+       -0.0034510398420297835,
+       -0.002369138726757154,
+       -0.004396350315766408,
+       -0.05007674743652307,
+       -0.0037626422306570604,
+       -0.002956878239294212
+      ]
+     },
+     {
+      "row": "Living Being (n=7)",
+      "kind": "class",
+      "class_id": 5,
+      "n": 7,
+      "values": [
+       0.30672650631810994,
+       -0.13831406275038927,
+       -0.052604161421513716,
+       -0.023018552306465545,
+       -0.024113799013905556,
+       -0.018091672402591717,
+       -0.011714229718769644,
+       -0.032219398786657145,
+       -0.0014172185255231908,
+       -0.005233411392294092
+      ]
+     },
+     {
+      "row": "Objects (n=29)",
+      "kind": "class",
+      "class_id": 6,
+      "n": 29,
+      "values": [
+       0.3820365948699273,
+       -0.08925111296292443,
+       -0.08701300773185563,
+       -0.06219371519325537,
+       -0.04440259294976926,
+       -0.030871941702608215,
+       -0.021424413371539476,
+       -0.03305064066252293,
+       -0.00473199908739426,
+       -0.009097171208057874
+      ]
+     },
+     {
+      "row": "Other Ground (n=198)",
+      "kind": "class",
+      "class_id": 7,
+      "n": 198,
+      "values": [
+       0.05003539685733581,
+       -0.011204240519635617,
+       -0.005849695602026485,
+       -0.005469069647920085,
+       -0.0027209154084829835,
+       -0.0010359638836682497,
+       -0.0020498899090596366,
+       -0.013431664378167157,
+       -0.003743159179011179,
+       -0.004530798329364386
+      ]
+     }
+    ]
+   },
+   "vmax_abs": 0.3820365948699273
+  },
+  "full_11_bands": {
+   "columns": [
+    "0–0.01",
+    "0.01–0.03",
+    "0.03–0.08",
+    "0.08–0.15",
+    "0.15–0.25",
+    "0.25–0.4",
+    "0.4–0.6",
+    "0.6–0.85",
+    "0.85–1.15",
+    "1.15–1.5",
+    "1.5–2.02"
+   ],
+   "band_edges": [
+    -0.05,
+    0.01,
+    0.03,
+    0.08,
+    0.15,
+    0.25,
+    0.4,
+    0.6,
+    0.85,
+    1.15,
+    1.5,
+    2.02
+   ],
+   "matrices": {
+    "semantickitti": [
+     {
+      "row": "density",
+      "kind": "signal",
+      "class_id": null,
+      "n": 200,
+      "values": [
+       -0.4079624450228183,
+       0.051158417240543715,
+       0.06717437675181755,
+       0.060589807061731185,
+       0.05399128721865277,
+       0.053863266321307945,
+       0.048338046146292564,
+       0.03930998721865901,
+       0.029935921636270093,
+       0.003612031914723319,
+       -1.0696487179697033e-05
+      ]
+     },
+     {
+      "row": "normal_z",
+      "kind": "signal",
+      "class_id": null,
+      "n": 200,
+      "values": [
+       -0.11495910291243945,
+       -0.00842943719860855,
+       -0.012770808174128106,
+       -0.00743943795635565,
+       -0.002728057907232997,
+       0.003607447003109158,
+       0.0144916353266032,
+       0.03127264170435434,
+       0.0757316855096691,
+       0.02190720865199713,
+       -0.000683774046968212
+      ]
+     },
+     {
+      "row": "surface_variation",
+      "kind": "signal",
+      "class_id": null,
+      "n": 200,
+      "values": [
+       -0.05475984208112392,
+       -0.0046439520033541735,
+       -0.00503702654784879,
+       -0.0024179342095600313,
+       0.0007965862888650107,
+       0.0033693650020568044,
+       0.008293848441977487,
+       0.010721030141753995,
+       0.03619609609182109,
+       0.007725638324637125,
+       -0.00024380944922468685
+      ]
+     },
+     {
+      "row": "Driveable Ground (n=200)",
+      "kind": "class",
+      "class_id": 1,
+      "n": 200,
+      "values": [
+       -0.0881727184953079,
+       0.014385091840199449,
+       0.011310621074934184,
+       0.007590749682079769,
+       0.007231264344548103,
+       0.007040512325789649,
+       0.007579791037625885,
+       0.008022269997693428,
+       0.021244995119344873,
+       0.004143272578239202,
+       -0.00037584950514661934
+      ]
+     },
+     {
+      "row": "Structure (n=200)",
+      "kind": "class",
+      "class_id": 2,
+      "n": 200,
+      "values": [
+       0.13050286506971595,
+       -0.09148276024646224,
+       -0.03161946481897544,
+       -0.007390674708017059,
+       -0.00253890349127062,
+       -0.00018281750811914222,
+       0.0009463695018077403,
+       0.0011322847643304224,
+       0.0014578556196622632,
+       -7.582899008167575e-05,
+       -0.0007489251925901476
+      ]
+     },
+     {
+      "row": "Vehicle (n=198)",
+      "kind": "class",
+      "class_id": 3,
+      "n": 198,
+      "values": [
+       0.006673943827946473,
+       -0.02133212195618583,
+       -0.015054031112619224,
+       -0.003081996452045118,
+       0.001501183899092461,
+       0.0035304859573178464,
+       0.006383916546877008,
+       0.006372401780180518,
+       0.010657913768586252,
+       0.0047549992054439225,
+       -0.0004066954645943094
+      ]
+     },
+     {
+      "row": "Nature (n=200)",
+      "kind": "class",
+      "class_id": 4,
+      "n": 200,
+      "values": [
+       0.08711494169059124,
+       -0.04606058377234179,
+       -0.019857289918123015,
+       -0.006340240490458426,
+       -0.0028333406207798717,
+       -0.0005503005514249723,
+       0.0005662750059974822,
+       -0.00020355512501621446,
+       -0.009799932948613364,
+       -0.0012826248172298437,
+       -0.0007533484526011609
+      ]
+     },
+     {
+      "row": "Living Being (n=39)",
+      "kind": "class",
+      "class_id": 5,
+      "n": 39,
+      "values": [
+       0.010376870452251647,
+       -0.04496966490539888,
+       -0.028643835317132254,
+       -0.007866034860069456,
+       0.0126415886678626,
+       0.010396798264830469,
+       0.012260449620598093,
+       0.011267603835361276,
+       0.019771534426790905,
+       0.0051771261577667855,
+       -0.00041243634286114493
+      ]
+     },
+     {
+      "row": "Objects (n=131)",
+      "kind": "class",
+      "class_id": 6,
+      "n": 131,
+      "values": [
+       0.12262834438797031,
+       -0.062491025850235346,
+       -0.047581746424898444,
+       -0.007096533494291325,
+       -0.004424069485021,
+       0.00029981392503170755,
+       0.003130662491648564,
+       0.002929987721216111,
+       -0.003711988721419664,
+       -0.0018390452093114218,
+       -0.0018443993406894075
+      ]
+     },
+     {
+      "row": "Other Ground (n=200)",
+      "kind": "class",
+      "class_id": 7,
+      "n": 200,
+      "values": [
+       -0.03428743880454179,
+       0.009485879923981122,
+       0.006771006063436962,
+       0.0038386385352525343,
+       0.0024965154765524333,
+       0.0035224222394942186,
+       0.004134116080553607,
+       0.0035201621203639686,
+       0.002124799891348429,
+       0.0004558029171943343,
+       -0.002061904443635831
+      ]
+     }
+    ],
+    "waymo": [
+     {
+      "row": "density",
+      "kind": "signal",
+      "class_id": null,
+      "n": 200,
+      "values": [
+       -0.37120564056087774,
+       0.040187194351550506,
+       0.05301897266657758,
+       0.05235998450098436,
+       0.051078033456380914,
+       0.053447964435932506,
+       0.04877990428027184,
+       0.04022048084985098,
+       0.02828716690287631,
+       0.003798256991752484,
+       2.7682124700245386e-05
+      ]
+     },
+     {
+      "row": "normal_z",
+      "kind": "signal",
+      "class_id": null,
+      "n": 200,
+      "values": [
+       -0.12967777238375036,
+       0.0015523357594673633,
+       -0.005098451767032431,
+       -0.0018926718259354941,
+       0.000533661532142375,
+       0.0054144145484546205,
+       0.012992187780581126,
+       0.026027807859316382,
+       0.07191365149568649,
+       0.018421142728916196,
+       -0.00018630572784623985
+      ]
+     },
+     {
+      "row": "surface_variation",
+      "kind": "signal",
+      "class_id": null,
+      "n": 200,
+      "values": [
+       -0.02604792556557543,
+       -0.004778269255204749,
+       -0.003730571380212385,
+       0.00010467995390351696,
+       0.0010861097131453753,
+       0.0030535062863522714,
+       0.004774462664938247,
+       0.005444964258065245,
+       0.017598507878750825,
+       0.0026392194255270385,
+       -0.00014468397968996432
+      ]
+     },
+     {
+      "row": "Driveable Ground (n=200)",
+      "kind": "class",
+      "class_id": 1,
+      "n": 200,
+      "values": [
+       -0.06999341797214716,
+       0.01016002166992794,
+       0.006934681396168124,
+       0.00487598622102576,
+       0.004994528747508603,
+       0.006924723103717865,
+       0.007730554725440249,
+       0.007601326590018114,
+       0.016742377169582698,
+       0.003825148626961108,
+       0.00020406972179672837
+      ]
+     },
+     {
+      "row": "Structure (n=200)",
+      "kind": "class",
+      "class_id": 2,
+      "n": 200,
+      "values": [
+       0.08393833980352493,
+       -0.05572891905014843,
+       -0.025299751191268656,
+       -0.004514980106203444,
+       -0.0009400207033053833,
+       0.0010532878066502464,
+       0.0021390792728522233,
+       0.00236932174732318,
+       -0.002835089140869817,
+       -0.00012307095165127444,
+       -5.819748690362343e-05
+      ]
+     },
+     {
+      "row": "Vehicle (n=188)",
+      "kind": "class",
+      "class_id": 3,
+      "n": 188,
+      "values": [
+       0.019639445832865553,
+       -0.026451937698083527,
+       -0.014844088027284482,
+       -0.007889753716729425,
+       0.0007328626751709162,
+       0.005428438910299493,
+       0.007198678458347038,
+       0.007330868319981709,
+       0.004640502290088636,
+       0.003959651627669959,
+       0.00025533132767415655
+      ]
+     },
+     {
+      "row": "Nature (n=191)",
+      "kind": "class",
+      "class_id": 4,
+      "n": 191,
+      "values": [
+       0.07141458057791718,
+       -0.040992143134573784,
+       -0.014337015703044163,
+       -0.005071894015952568,
+       -0.003392256325275373,
+       -0.00038509926389028893,
+       0.0015383071950348878,
+       0.0010621003416732997,
+       -0.00818161184700353,
+       -0.0015163053656635636,
+       -0.00013866245922208498
+      ]
+     },
+     {
+      "row": "Living Being (n=79)",
+      "kind": "class",
+      "class_id": 5,
+      "n": 79,
+      "values": [
+       0.06752159415105242,
+       -0.05550490259279228,
+       -0.07100825858634446,
+       -0.0028207332475859905,
+       0.008529913879771436,
+       0.010007605920198882,
+       0.012707511834183097,
+       0.011526518965455965,
+       0.011885226217986588,
+       0.006561772071065898,
+       0.0005937513870084914
+      ]
+     },
+     {
+      "row": "Objects (n=190)",
+      "kind": "class",
+      "class_id": 6,
+      "n": 190,
+      "values": [
+       0.06259858015165012,
+       -0.07725632416367041,
+       -0.017559065318167238,
+       -0.00024280087818326124,
+       0.002411922933271082,
+       0.006856426400574821,
+       0.008255499653536573,
+       0.007975592768095306,
+       0.0036795641267173985,
+       0.0031397061803244584,
+       0.00014089814585109843
+      ]
+     },
+     {
+      "row": "Other Ground (n=200)",
+      "kind": "class",
+      "class_id": 7,
+      "n": 200,
+      "values": [
+       0.0010718694198399153,
+       -0.0022555215624619727,
+       -0.004008239515549093,
+       -0.0017343637668116186,
+       -0.0003663651371282998,
+       0.0010956249357527586,
+       0.0024838012388268206,
+       0.002008128394470642,
+       0.0010100120781448352,
+       0.0012267391148325698,
+       -0.0005316851999165646
+      ]
+     }
+    ],
+    "nuscenes": [
+     {
+      "row": "density",
+      "kind": "signal",
+      "class_id": null,
+      "n": 200,
+      "values": [
+       -0.2428080242286984,
+       0.035441128849139594,
+       0.019837216358675646,
+       0.03512976389486943,
+       0.028794709311301105,
+       0.03791370299599153,
+       0.03778168586521804,
+       0.03541845517417339,
+       0.028346817466792643,
+       -0.000806870781877568,
+       -0.015048584905585362
+      ]
+     },
+     {
+      "row": "normal_z",
+      "kind": "signal",
+      "class_id": null,
+      "n": 200,
+      "values": [
+       -0.12881209922631287,
+       -0.02500697535033657,
+       -0.022556048129012515,
+       -0.011388897519676094,
+       -0.0071262047277344046,
+       0.0015109546495915309,
+       0.014254302340654515,
+       0.03427898689616605,
+       0.11711005338052452,
+       0.03304957876165626,
+       -0.005313651075520438
+      ]
+     },
+     {
+      "row": "surface_variation",
+      "kind": "signal",
+      "class_id": null,
+      "n": 200,
+      "values": [
+       0.009888590086528141,
+       -0.029402576828351883,
+       -0.01895872225397397,
+       -0.009005997295868474,
+       -0.002848384636362416,
+       0.0023142462497409534,
+       0.0053380967567100215,
+       0.004604076883857019,
+       0.033793318315186185,
+       0.007311606412074865,
+       -0.003034253689540439
+      ]
+     },
+     {
+      "row": "Driveable Ground (n=200)",
+      "kind": "class",
+      "class_id": 1,
+      "n": 200,
+      "values": [
+       -0.04280647326669377,
+       0.003020864760442987,
+       0.002946850090268679,
+       0.003102246342125563,
+       0.0037264434481016984,
+       0.004312199302653228,
+       0.004659353469854181,
+       0.005111160112999884,
+       0.016052386938026485,
+       0.0009266931339918616,
+       -0.0010517243317708013
+      ]
+     },
+     {
+      "row": "Structure (n=200)",
+      "kind": "class",
+      "class_id": 2,
+      "n": 200,
+      "values": [
+       0.15473554942252063,
+       -0.06514710379781002,
+       -0.034255614670559265,
+       -0.0138794547086584,
+       -0.007890876244338067,
+       -0.004357538091380132,
+       -0.0026483720604737783,
+       -0.0016190680161888254,
+       -0.019706402299625926,
+       -0.00249721203696132,
+       -0.0027339074965248896
+      ]
+     },
+     {
+      "row": "Vehicle (n=144)",
+      "kind": "class",
+      "class_id": 3,
+      "n": 144,
+      "values": [
+       0.19039612788668225,
+       -0.07146846151277779,
+       -0.06353428363396614,
+       -0.027608217716279998,
+       -0.013871985057864276,
+       -0.00908359929482947,
+       -0.004732103549615273,
+       -0.002384658373096147,
+       0.002425637970665587,
+       0.0011579625174671817,
+       -0.0012964192363859005
+      ]
+     },
+     {
+      "row": "Nature (n=181)",
+      "kind": "class",
+      "class_id": 4,
+      "n": 181,
+      "values": [
+       0.15502695458354318,
+       -0.043589988530264225,
+       -0.0252927621278704,
+       -0.011646573333753477,
+       -0.007484833800627388,
+       -0.0034510398420297835,
+       -0.002369138726757154,
+       -0.004396350315766408,
+       -0.05007674743652307,
+       -0.0037626422306570604,
+       -0.002956878239294212
+      ]
+     },
+     {
+      "row": "Living Being (n=7)",
+      "kind": "class",
+      "class_id": 5,
+      "n": 7,
+      "values": [
+       0.4303054728549028,
+       -0.12357896653679282,
+       -0.13831406275038927,
+       -0.052604161421513716,
+       -0.023018552306465545,
+       -0.024113799013905556,
+       -0.018091672402591717,
+       -0.011714229718769644,
+       -0.032219398786657145,
+       -0.0014172185255231908,
+       -0.005233411392294092
+      ]
+     },
+     {
+      "row": "Objects (n=29)",
+      "kind": "class",
+      "class_id": 6,
+      "n": 29,
+      "values": [
+       0.3824057213959766,
+       -0.0003691265260493236,
+       -0.08925111296292443,
+       -0.08701300773185563,
+       -0.06219371519325537,
+       -0.04440259294976926,
+       -0.030871941702608215,
+       -0.021424413371539476,
+       -0.03305064066252293,
+       -0.00473199908739426,
+       -0.009097171208057874
+      ]
+     },
+     {
+      "row": "Other Ground (n=198)",
+      "kind": "class",
+      "class_id": 7,
+      "n": 198,
+      "values": [
+       0.07120904117644639,
+       -0.021173644319110573,
+       -0.011204240519635617,
+       -0.005849695602026485,
+       -0.005469069647920085,
+       -0.0027209154084829835,
+       -0.0010359638836682497,
+       -0.0020498899090596366,
+       -0.013431664378167157,
+       -0.003743159179011179,
+       -0.004530798329364386
+      ]
+     }
+    ]
+   },
+   "vmax_abs": 0.4303054728549028,
+   "note": "reference only; not drawn. merged column 0 = band 0 + band 1"
+  },
+  "axes": {
+   "x": {
+    "name": "graph-frequency band λ (bands 1+2 merged)",
+    "unit": "λ"
+   },
+   "y": {
+    "name": "global signal / class (n = frames where the class exists on both sides)"
+   }
+  },
+  "caption_basis": {
+   "run": "APPX_D_native_finalmap_20261012 (S4, 2026-10-12 21:02 → 10-13 00:17 SGT, exit 0)",
+   "frames_per_dataset": 200,
+   "frame_selection": "seed-0 stratified sampling prefix (same 200 frames as the 9-23 run)",
+   "dense": "LiDiff refine completion, uniformly subsampled without replacement to 500,000 points",
+   "sparse": "real raw LiDAR scan (no ray casting)",
+   "label_mapping": "final coarse-label mapping, finalized 2026-09-22 (source of truth coarse_mapping.py md5 704fabec)",
+   "class_convention": "7 classes (class 0 Other excluded)",
+   "spectrum": "KPM/Chebyshev on the kNN graph Laplacian, lambda axis [0, 2]",
+   "dataset_order_in_original_figures": [
+    "SemanticKITTI",
+    "Waymo",
+    "nuScenes"
+   ],
+   "summary_md5": {
+    "semantickitti": "35b0185db835b83df0156061ba5c1689",
+    "waymo": "c11aff1c69c4f58a8036903518b4ca5f",
+    "nuscenes": "f7ac07d9361900e536a315fe0f2fec56"
+   },
+   "statistic": "per-frame band-energy profile P (normalized to sum 1), gap G = P_dense − P_sparse, MEAN over frames",
+   "note": "class rows use only frames where the class exists on both sides (n per row)"
+  }
+ },
+ "fig_native_b0_trend": {
+  "layout": "1x3 panels (one per dataset), shared y; 7 class lines per panel",
+  "axes": {
+   "x": {
+    "name": "diffusion cutoff b0",
+    "unit": "steps",
+    "values": [
+     2,
+     8,
+     16,
+     32
+    ],
+    "scale": "log base 2"
+   },
+   "y": {
+    "name": "median HF retention (sparse/dense)",
+    "unit": "ratio (1 = parity, black dashed line)",
+    "scale": "linear"
+   }
+  },
+  "panels": [
+   {
+    "dataset": "semantickitti",
+    "title": "SemanticKITTI",
+    "title_color": "#4477AA",
+    "series": [
+     {
+      "name": "Driveable Ground",
+      "class_id": 1,
+      "color_semantic": "class",
+      "orig_color": "#1f77b4",
+      "line": "solid, width 1.8",
+      "marker": "circle",
+      "values": [
+       0.4517697323245277,
+       0.4160969978710506,
+       0.4111779508593672,
+       0.4231111704228284
+      ],
+      "n": 200
+     },
+     {
+      "name": "Structure",
+      "class_id": 2,
+      "color_semantic": "class",
+      "orig_color": "#ff7f0e",
+      "line": "solid, width 1.8",
+      "marker": "circle",
+      "values": [
+       0.9422288740397906,
+       0.9327460041108797,
+       0.9804671405577818,
+       1.0513002550945743
+      ],
+      "n": 200
+     },
+     {
+      "name": "Vehicle",
+      "class_id": 3,
+      "color_semantic": "class",
+      "orig_color": "#2ca02c",
+      "line": "solid, width 1.8",
+      "marker": "circle",
+      "values": [
+       0.6397741112424274,
+       0.6542527498234052,
+       0.690481214028912,
+       0.7451770850418279
+      ],
+      "n": 198
+     },
+     {
+      "name": "Nature",
+      "class_id": 4,
+      "color_semantic": "class",
+      "orig_color": "#d62728",
+      "line": "solid, width 1.8",
+      "marker": "circle",
+      "values": [
+       1.3597354245280395,
+       1.2839175238686278,
+       1.2522642390203698,
+       1.275087824867394
+      ],
+      "n": 200
+     },
+     {
+      "name": "Living Being",
+      "class_id": 5,
+      "color_semantic": "class",
+      "orig_color": "#9467bd",
+      "line": "solid, width 1.8",
+      "marker": "circle",
+      "values": [
+       0.6129985120273469,
+       0.6411881771212091,
+       0.6774198612685095,
+       0.7175255188994363
+      ],
+      "n": 39
+     },
+     {
+      "name": "Objects",
+      "class_id": 6,
+      "color_semantic": "class",
+      "orig_color": "#8c564b",
+      "line": "solid, width 1.8",
+      "marker": "circle",
+      "values": [
+       1.075481437752962,
+       1.0467452244112512,
+       1.0570156755136373,
+       1.1054572239927396
+      ],
+      "n": 131
+     },
+     {
+      "name": "Other Ground",
+      "class_id": 7,
+      "color_semantic": "class",
+      "orig_color": "#e377c2",
+      "line": "solid, width 1.8",
+      "marker": "circle",
+      "values": [
+       0.9783204050532919,
+       0.8980544001647062,
+       0.8771023634131914,
+       0.8644439947946605
+      ],
+      "n": 200
+     }
+    ]
+   },
+   {
+    "dataset": "waymo",
+    "title": "Waymo",
+    "title_color": "#EE6677",
+    "series": [
+     {
+      "name": "Driveable Ground",
+      "class_id": 1,
+      "color_semantic": "class",
+      "orig_color": "#1f77b4",
+      "line": "solid, width 1.8",
+      "marker": "circle",
+      "values": [
+       0.5832407892802018,
+       0.5602256455448412,
+       0.5503380151879192,
+       0.5489647086499299
+      ],
+      "n": 200
+     },
+     {
+      "name": "Structure",
+      "class_id": 2,
+      "color_semantic": "class",
+      "orig_color": "#ff7f0e",
+      "line": "solid, width 1.8",
+      "marker": "circle",
+      "values": [
+       1.0444022608898096,
+       0.9912379522402208,
+       0.9880355622545026,
+       1.001514331740991
+      ],
+      "n": 200
+     },
+     {
+      "name": "Vehicle",
+      "class_id": 3,
+      "color_semantic": "class",
+      "orig_color": "#2ca02c",
+      "line": "solid, width 1.8",
+      "marker": "circle",
+      "values": [
+       0.81920938214438,
+       0.781103541591604,
+       0.7751551005096604,
+       0.7908155953189211
+      ],
+      "n": 188
+     },
+     {
+      "name": "Nature",
+      "class_id": 4,
+      "color_semantic": "class",
+      "orig_color": "#d62728",
+      "line": "solid, width 1.8",
+      "marker": "circle",
+      "values": [
+       1.248954166238829,
+       1.186390181464779,
+       1.1665997554432004,
+       1.1779411312046397
+      ],
+      "n": 191
+     },
+     {
+      "name": "Living Being",
+      "class_id": 5,
+      "color_semantic": "class",
+      "orig_color": "#9467bd",
+      "line": "solid, width 1.8",
+      "marker": "circle",
+      "values": [
+       0.7618424515944703,
+       0.7688427206395978,
+       0.7641976320933804,
+       0.813903962677397
+      ],
+      "n": 79
+     },
+     {
+      "name": "Objects",
+      "class_id": 6,
+      "color_semantic": "class",
+      "orig_color": "#8c564b",
+      "line": "solid, width 1.8",
+      "marker": "circle",
+      "values": [
+       0.8093248157034596,
+       0.7963675393429137,
+       0.7826366317422657,
+       0.7901877028398155
+      ],
+      "n": 190
+     },
+     {
+      "name": "Other Ground",
+      "class_id": 7,
+      "color_semantic": "class",
+      "orig_color": "#e377c2",
+      "line": "solid, width 1.8",
+      "marker": "circle",
+      "values": [
+       0.9609163335149864,
+       0.9361943148733974,
+       0.9339922828898415,
+       0.9314251549317212
+      ],
+      "n": 200
+     }
+    ]
+   },
+   {
+    "dataset": "nuscenes",
+    "title": "nuScenes",
+    "title_color": "#228833",
+    "series": [
+     {
+      "name": "Driveable Ground",
+      "class_id": 1,
+      "color_semantic": "class",
+      "orig_color": "#1f77b4",
+      "line": "solid, width 1.8",
+      "marker": "circle",
+      "values": [
+       0.5598205044816272,
+       0.5221802057700845,
+       0.5217859634927181,
+       0.5502024985646983
+      ],
+      "n": 200
+     },
+     {
+      "name": "Structure",
+      "class_id": 2,
+      "color_semantic": "class",
+      "orig_color": "#ff7f0e",
+      "line": "solid, width 1.8",
+      "marker": "circle",
+      "values": [
+       2.1691779782516756,
+       1.9283163391789668,
+       1.8716800186487588,
+       1.9266872176591345
+      ],
+      "n": 200
+     },
+     {
+      "name": "Vehicle",
+      "class_id": 3,
+      "color_semantic": "class",
+      "orig_color": "#2ca02c",
+      "line": "solid, width 1.8",
+      "marker": "circle",
+      "values": [
+       1.0614173388906782,
+       1.1554536935853932,
+       1.2502143527619678,
+       1.3880297614140902
+      ],
+      "n": 144
+     },
+     {
+      "name": "Nature",
+      "class_id": 4,
+      "color_semantic": "class",
+      "orig_color": "#d62728",
+      "line": "solid, width 1.8",
+      "marker": "circle",
+      "values": [
+       2.66437083771004,
+       2.3493613769308035,
+       2.195202439149051,
+       2.1216590333657552
+      ],
+      "n": 181
+     },
+     {
+      "name": "Living Being",
+      "class_id": 5,
+      "color_semantic": "class",
+      "orig_color": "#9467bd",
+      "line": "solid, width 1.8",
+      "marker": "circle",
+      "values": [
+       1.9533977932975504,
+       2.063514084241876,
+       2.2494811446466305,
+       2.31770113802363
+      ],
+      "n": 7
+     },
+     {
+      "name": "Objects",
+      "class_id": 6,
+      "color_semantic": "class",
+      "orig_color": "#8c564b",
+      "line": "solid, width 1.8",
+      "marker": "circle",
+      "values": [
+       2.637416874783925,
+       2.528848943701262,
+       2.871448756666535,
+       3.4205140461945853
+      ],
+      "n": 29
+     },
+     {
+      "name": "Other Ground",
+      "class_id": 7,
+      "color_semantic": "class",
+      "orig_color": "#e377c2",
+      "line": "solid, width 1.8",
+      "marker": "circle",
+      "values": [
+       1.3954291997264185,
+       1.3161778352637776,
+       1.2860106794288546,
+       1.2963621493191502
+      ],
+      "n": 198
+     }
+    ]
+   }
+  ],
+  "caption_basis": {
+   "run": "APPX_D_native_finalmap_20261012 (S4, 2026-10-12 21:02 → 10-13 00:17 SGT, exit 0)",
+   "frames_per_dataset": 200,
+   "frame_selection": "seed-0 stratified sampling prefix (same 200 frames as the 9-23 run)",
+   "dense": "LiDiff refine completion, uniformly subsampled without replacement to 500,000 points",
+   "sparse": "real raw LiDAR scan (no ray casting)",
+   "label_mapping": "final coarse-label mapping, finalized 2026-09-22 (source of truth coarse_mapping.py md5 704fabec)",
+   "class_convention": "7 classes (class 0 Other excluded)",
+   "spectrum": "KPM/Chebyshev on the kNN graph Laplacian, lambda axis [0, 2]",
+   "dataset_order_in_original_figures": [
+    "SemanticKITTI",
+    "Waymo",
+    "nuScenes"
+   ],
+   "summary_md5": {
+    "semantickitti": "35b0185db835b83df0156061ba5c1689",
+    "waymo": "c11aff1c69c4f58a8036903518b4ca5f",
+    "nuscenes": "f7ac07d9361900e536a315fe0f2fec56"
+   },
+   "statistic": "R^{(c)}_{b0}: per-frame diffusion HF retention, MEDIAN over frames, b0 ∈ {2,8,16,32}"
+  }
+ },
+ "fig_native_band_profiles": {
+  "layout": "3x3 grid: rows = datasets, columns = global signals; shared x, y shared per row",
+  "axes": {
+   "x": {
+    "name": "graph-frequency band λ",
+    "unit": "λ",
+    "values": [
+     "0–0.01",
+     "0.01–0.03",
+     "0.03–0.08",
+     "0.08–0.15",
+     "0.15–0.25",
+     "0.25–0.4",
+     "0.4–0.6",
+     "0.6–0.85",
+     "0.85–1.15",
+     "1.15–1.5",
+     "1.5–2.02"
+    ],
+    "band_edges": [
+     -0.05,
+     0.01,
+     0.03,
+     0.08,
+     0.15,
+     0.25,
+     0.4,
+     0.6,
+     0.85,
+     1.15,
+     1.5,
+     2.02
+    ]
+   },
+   "y": {
+    "name": "mean band energy fraction",
+    "unit": "fraction of signal energy",
+    "scale": "log; values are floored at 1e-8 before plotting"
+   }
+  },
+  "marks": {
+   "dotted_vertical_line": "at x = 1.5 (between band 2 and band 3), color #999999: first two bands lie inside the Jackson kernel-width soft edge < 0.03"
+  },
+  "panels": [
+   {
+    "row_dataset": "semantickitti",
+    "col_signal": "density",
+    "orig_color": "#4477AA",
+    "series": [
+     {
+      "name": "Dense",
+      "side": "dense",
+      "values": [
+       0.4682468686983756,
+       0.07322869164692393,
+       0.0874188919765015,
+       0.07457974317102799,
+       0.0656169201567681,
+       0.06531327504572951,
+       0.059206012126383885,
+       0.05059024683083711,
+       0.04922239794623921,
+       0.006357743442446803,
+       0.00021920895776623227
+      ],
+      "style": "dataset color, alpha 0.92, edge #555555"
+     },
+     {
+      "name": "Sparse",
+      "side": "sparse",
+      "values": [
+       0.8762093137211938,
+       0.022070274406380205,
+       0.020244515224683943,
+       0.013989936109296806,
+       0.011625632938115374,
+       0.011450008724421533,
+       0.010867965980091312,
+       0.011280259612178111,
+       0.019286476309969124,
+       0.0027457115277234835,
+       0.00022990544494592958
+      ],
+      "style": "dataset color, alpha 0.38, hatch '///'"
+     }
+    ]
+   },
+   {
+    "row_dataset": "semantickitti",
+    "col_signal": "normal_z",
+    "orig_color": "#4477AA",
+    "series": [
+     {
+      "name": "Dense",
+      "side": "dense",
+      "values": [
+       0.5019875844064751,
+       0.03821874805566976,
+       0.02924425558420071,
+       0.022694338611499578,
+       0.024105744232181227,
+       0.03210664343326859,
+       0.043778045089376494,
+       0.06554477365595267,
+       0.1863960778235546,
+       0.05561934329277604,
+       0.00030444581404527935
+      ],
+      "style": "dataset color, alpha 0.92, edge #555555"
+     },
+     {
+      "name": "Sparse",
+      "side": "sparse",
+      "values": [
+       0.6169466873189142,
+       0.04664818525427827,
+       0.042015063758328815,
+       0.03013377656785521,
+       0.026833802139414217,
+       0.02849919643015943,
+       0.029286409762773285,
+       0.03427213195159829,
+       0.11066439231388564,
+       0.03371213464077893,
+       0.0009882198610134923
+      ],
+      "style": "dataset color, alpha 0.38, hatch '///'"
+     }
+    ]
+   },
+   {
+    "row_dataset": "semantickitti",
+    "col_signal": "surface_variation",
+    "orig_color": "#4477AA",
+    "series": [
+     {
+      "name": "Dense",
+      "side": "dense",
+      "values": [
+       0.6527637372327836,
+       0.03576885895589986,
+       0.03297575694638167,
+       0.02655565988837635,
+       0.02598443673042739,
+       0.02892877527000941,
+       0.03060761546150806,
+       0.033768167089120754,
+       0.10405718459370832,
+       0.02832071496622669,
+       0.0002690928645580621
+      ],
+      "style": "dataset color, alpha 0.92, edge #555555"
+     },
+     {
+      "name": "Sparse",
+      "side": "sparse",
+      "values": [
+       0.7075235793139077,
+       0.04041281095925408,
+       0.03801278349423045,
+       0.02897359409793638,
+       0.025187850441562375,
+       0.025559410267952606,
+       0.02231376701953058,
+       0.02304713694736677,
+       0.06786108850188721,
+       0.020595076641589577,
+       0.0005129023137827489
+      ],
+      "style": "dataset color, alpha 0.38, hatch '///'"
+     }
+    ]
+   },
+   {
+    "row_dataset": "waymo",
+    "col_signal": "density",
+    "orig_color": "#EE6677",
+    "series": [
+     {
+      "name": "Dense",
+      "side": "dense",
+      "values": [
+       0.49616373795303303,
+       0.0736262610965629,
+       0.07545910817162498,
+       0.06544211000010447,
+       0.061996542037366875,
+       0.06396007883073945,
+       0.05905231446401862,
+       0.05110682626743301,
+       0.04684411709581941,
+       0.00619651172690731,
+       0.0001523923553902504
+      ],
+      "style": "dataset color, alpha 0.92, edge #555555"
+     },
+     {
+      "name": "Sparse",
+      "side": "sparse",
+      "values": [
+       0.8673693785139102,
+       0.033439066745012375,
+       0.02244013550504734,
+       0.013082125499120176,
+       0.010918508580985909,
+       0.010512114394806983,
+       0.010272410183746783,
+       0.010886345417582027,
+       0.01855695019294309,
+       0.002398254735154828,
+       0.00012471023069000504
+      ],
+      "style": "dataset color, alpha 0.38, hatch '///'"
+     }
+    ]
+   },
+   {
+    "row_dataset": "waymo",
+    "col_signal": "normal_z",
+    "orig_color": "#EE6677",
+    "series": [
+     {
+      "name": "Dense",
+      "side": "dense",
+      "values": [
+       0.6122452573431323,
+       0.041840332794703804,
+       0.027838903962472617,
+       0.01921317699352901,
+       0.018625776834298603,
+       0.023305967360321044,
+       0.030941649348057237,
+       0.04692324375251587,
+       0.1402120509645037,
+       0.038654567900589375,
+       0.00019907274487652573
+      ],
+      "style": "dataset color, alpha 0.92, edge #555555"
+     },
+     {
+      "name": "Sparse",
+      "side": "sparse",
+      "values": [
+       0.7419230297268825,
+       0.04028799703523645,
+       0.03293735572950505,
+       0.021105848819464507,
+       0.01809211530215623,
+       0.017891552811866412,
+       0.01794946156747612,
+       0.020895435893199518,
+       0.06829839946881722,
+       0.020233425171673192,
+       0.00038537847272276574
+      ],
+      "style": "dataset color, alpha 0.38, hatch '///'"
+     }
+    ]
+   },
+   {
+    "row_dataset": "waymo",
+    "col_signal": "surface_variation",
+    "orig_color": "#EE6677",
+    "series": [
+     {
+      "name": "Dense",
+      "side": "dense",
+      "values": [
+       0.6816035954238874,
+       0.03553942078724906,
+       0.03170495609255999,
+       0.025056181139952734,
+       0.024451385974694446,
+       0.0270118979626789,
+       0.02839302290240079,
+       0.03110201259812275,
+       0.09228772126184792,
+       0.022695716662126452,
+       0.0001540891934795253
+      ],
+      "style": "dataset color, alpha 0.92, edge #555555"
+     },
+     {
+      "name": "Sparse",
+      "side": "sparse",
+      "values": [
+       0.7076515209894629,
+       0.04031769004245375,
+       0.03543552747277237,
+       0.02495150118604921,
+       0.02336527626154908,
+       0.023958391676326626,
+       0.023618560237462533,
+       0.02565704834005751,
+       0.07468921338309706,
+       0.020056497236599434,
+       0.0002987731731694896
+      ],
+      "style": "dataset color, alpha 0.38, hatch '///'"
+     }
+    ]
+   },
+   {
+    "row_dataset": "nuscenes",
+    "col_signal": "density",
+    "orig_color": "#228833",
+    "series": [
+     {
+      "name": "Dense",
+      "side": "dense",
+      "values": [
+       0.614165458555025,
+       0.05364249531759477,
+       0.06143986435704434,
+       0.04984906735351489,
+       0.046982778250440525,
+       0.04723524206471574,
+       0.04275995394609953,
+       0.0376497730354462,
+       0.04080956272181658,
+       0.00524579949179248,
+       0.0002200049055094175
+      ],
+      "style": "dataset color, alpha 0.92, edge #555555"
+     },
+     {
+      "name": "Sparse",
+      "side": "sparse",
+      "values": [
+       0.856973482783724,
+       0.018201366468455143,
+       0.04160264799836872,
+       0.014719303458645423,
+       0.01818806893913943,
+       0.009321539068724228,
+       0.0049782680808814666,
+       0.0022313178612728226,
+       0.012462745255023944,
+       0.00605267027367005,
+       0.01526858981109478
+      ],
+      "style": "dataset color, alpha 0.38, hatch '///'"
+     }
+    ]
+   },
+   {
+    "row_dataset": "nuscenes",
+    "col_signal": "normal_z",
+    "orig_color": "#228833",
+    "series": [
+     {
+      "name": "Dense",
+      "side": "dense",
+      "values": [
+       0.5968892175209989,
+       0.022735986601497366,
+       0.019362979654463926,
+       0.015225039448623674,
+       0.017424255093048523,
+       0.024760992667363993,
+       0.03516469863155296,
+       0.05414271805561025,
+       0.1613305677624049,
+       0.05245365703845197,
+       0.0005098875249835935
+      ],
+      "style": "dataset color, alpha 0.92, edge #555555"
+     },
+     {
+      "name": "Sparse",
+      "side": "sparse",
+      "values": [
+       0.7257013167473112,
+       0.04774296195183392,
+       0.04191902778347645,
+       0.026613936968299765,
+       0.024550459820782945,
+       0.02325003801777246,
+       0.02091039629089845,
+       0.019863731159444144,
+       0.04422051438188043,
+       0.01940407827679569,
+       0.0058235386005040315
+      ],
+      "style": "dataset color, alpha 0.38, hatch '///'"
+     }
+    ]
+   },
+   {
+    "row_dataset": "nuscenes",
+    "col_signal": "surface_variation",
+    "orig_color": "#228833",
+    "series": [
+     {
+      "name": "Dense",
+      "side": "dense",
+      "values": [
+       0.6876419240716801,
+       0.027621060474428572,
+       0.02907040202778374,
+       0.025103184717564966,
+       0.02544211657081312,
+       0.027971610728959494,
+       0.02826587547201437,
+       0.02938041109153002,
+       0.09379290758597898,
+       0.025387544888795986,
+       0.00032296236945058616
+      ],
+      "style": "dataset color, alpha 0.92, edge #555555"
+     },
+     {
+      "name": "Sparse",
+      "side": "sparse",
+      "values": [
+       0.6777533339851519,
+       0.057023637302780456,
+       0.04802912428175768,
+       0.03410918201343344,
+       0.028290501207175557,
+       0.025657364479218563,
+       0.022927778715304346,
+       0.024776334207672973,
+       0.0599995892707928,
+       0.01807593847672111,
+       0.0033572160589910205
+      ],
+      "style": "dataset color, alpha 0.38, hatch '///'"
+     }
+    ]
+   }
+  ],
+  "caption_basis": {
+   "run": "APPX_D_native_finalmap_20261012 (S4, 2026-10-12 21:02 → 10-13 00:17 SGT, exit 0)",
+   "frames_per_dataset": 200,
+   "frame_selection": "seed-0 stratified sampling prefix (same 200 frames as the 9-23 run)",
+   "dense": "LiDiff refine completion, uniformly subsampled without replacement to 500,000 points",
+   "sparse": "real raw LiDAR scan (no ray casting)",
+   "label_mapping": "final coarse-label mapping, finalized 2026-09-22 (source of truth coarse_mapping.py md5 704fabec)",
+   "class_convention": "7 classes (class 0 Other excluded)",
+   "spectrum": "KPM/Chebyshev on the kNN graph Laplacian, lambda axis [0, 2]",
+   "dataset_order_in_original_figures": [
+    "SemanticKITTI",
+    "Waymo",
+    "nuScenes"
+   ],
+   "summary_md5": {
+    "semantickitti": "35b0185db835b83df0156061ba5c1689",
+    "waymo": "c11aff1c69c4f58a8036903518b4ca5f",
+    "nuscenes": "f7ac07d9361900e536a315fe0f2fec56"
+   },
+   "statistic": "per-frame normalized band-energy profile, MEAN over frames (summary band_d_mean / band_s_mean)"
+  }
+ },
+ "_meta": {
+  "generated_by": "export_web_data.py (S4)",
+  "source_dir": "/home/eason/liequalizer_outbox/APPX_D_native_finalmap_20261012",
+  "precision": "all values are raw float64 from the same arrays the figures were drawn from; display formats are given per figure",
+  "symbols": {
+   "HFR_sig": "global true-HF share ratio, always with the signal name",
+   "HFR_c": "per-class KPM share ratio (class_retention diamonds)",
+   "R_c_b0": "per-class diffusion retention (class_retention bars at b0=16; b0_trend lines)"
+  },
+  "original_color_semantics": {
+   "datasets": {
+    "SemanticKITTI": "#4477AA",
+    "Waymo": "#EE6677",
+    "nuScenes": "#228833"
+   },
+   "dense_vs_sparse": "NOT a color: dense = solid fill / solid line + circle; sparse = hatched lighter fill / dashed line + square",
+   "classes_in_b0_trend": {
+    "Driveable Ground": "#1f77b4",
+    "Structure": "#ff7f0e",
+    "Vehicle": "#2ca02c",
+    "Nature": "#d62728",
+    "Living Being": "#9467bd",
+    "Objects": "#8c564b",
+    "Other Ground": "#e377c2"
+   },
+   "heatmap": "RdBu_r diverging, symmetric around 0",
+   "kpm_diamonds": "black",
+   "parity_lines": "black dashed"
+  }
+ }
+}
