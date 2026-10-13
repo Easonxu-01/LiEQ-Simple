@@ -117,7 +117,7 @@
     '.lqp-pub{font-family:var(--lqp-mono);font-size:9.6px;line-height:1.55;',
     '  color:var(--lqp-muted);margin:10px 0 0}',
     '.lqp-note{font-family:var(--lqp-sans);font-size:12.5px;line-height:1.55;',
-    '  color:var(--lqp-muted);margin:12px 0 0;max-width:80ch}',
+    '  color:var(--lqp-muted);margin:12px 0 0}',
     '.lqp-note b{font-family:var(--lqp-mono);font-size:10px;font-weight:600;',
     '  letter-spacing:.09em;text-transform:uppercase;color:var(--lqp-eyebrow);',
     '  margin-right:.45em}',

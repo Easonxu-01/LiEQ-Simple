@@ -109,10 +109,19 @@ var S = { lo: C.studentEnvelope, hi: C.studentRipple };
 
 var RESIDUAL = EQ.constants.FULL_SCALE_RESIDUAL;
 var REACH = EQ.math.reach(student, teacher, RESIDUAL);
+/* The DETAIL channel travels less far than the SHAPE channel, on purpose: the
+ * paper's measurements leave the distilled student's high-frequency retention
+ * short of the dense teacher's even where the coarse shape has been brought
+ * into line. Every "drawn" helper below uses it, because the widget does —
+ * `morph(lf, hf)` used to send hf over REACH as well, which made the whole
+ * section below describe a curve nothing on the page draws. */
+var DREACH = EQ.constants.DETAIL_REACH;
+/* the share of the teacher's ripple the student is left carrying at full HF */
+var DKEEP = (1 - DREACH) * EQ.constants.STUDENT_RIPPLE_KEEP + DREACH;
 
 /* the raw family (no residual) and the family the widget actually draws */
 function raw(lf, hf) { return EQ.math.morph(S.lo, S.hi, T.lo, T.hi, lf, hf); }
-function morph(lf, hf) { return raw(lf * REACH, hf * REACH); }
+function morph(lf, hf) { return raw(lf * REACH, hf * DREACH); }
 /* the drawn student's ENVELOPE alone, which is what LF moves */
 function drawnEnv(lf) {
   var o = [], i, t = lf * REACH;
@@ -121,9 +130,26 @@ function drawnEnv(lf) {
 }
 /* the drawn student's RIPPLE alone, which is what HF grows */
 function drawnRipple(hf) {
-  var o = [], i, t = hf * REACH;
+  var o = [], i, t = hf * DREACH;
   for (i = 0; i < N; i++) { o.push(S.hi[i] + (T.hi[i] - S.hi[i]) * t); }
   return o;
+}
+/* RMS of a slice, for the per-sixth texture measurements below */
+function rmsOf(a, lo, hi) {
+  var s = 0, i;
+  for (i = lo; i < hi; i++) { s += a[i] * a[i]; }
+  return Math.sqrt(s / (hi - lo));
+}
+/* The samples where buildRipple's baseline clamp fired: the spike the mask
+ * floor allowed was deeper than the envelope could carry, so it was trimmed to
+ * exactly -envelope and the drawn curve sits ON its own baseline there. Those
+ * samples are a baseline touch, not a spike. */
+function pinned() {
+  var out = [], i;
+  for (i = 0; i < N; i++) {
+    if (teacher[i] <= 1e-12 && Math.abs(T.hi[i]) > 1e-12) { out.push(i); }
+  }
+  return out;
 }
 
 head('CURVES — four arrays, in the SPATIAL domain');
@@ -206,20 +232,64 @@ head('CURVES — the teacher\'s detail is SPIKY, not a soft sine');
   })();
   ok('spike heights VARY, so it reads as structure and not as a comb', hiLo > 2,
      'tallest / shortest spike = ' + hiLo.toFixed(1) + 'x');
-  ok('a spike is sharp: the drop from a spike to the next sample is most of its height',
-     (function () {
-       var j, k, worst = 1;
-       for (j = 0; j < peaks.length; j++) {
-         k = peaks[j];
-         if (k < 1 || k > N - 2) { continue; }
-         worst = Math.min(worst, Math.abs(r[k] - r[k + 1]) / Math.abs(r[k]));
-       }
-       return worst > 0.5;
-     })());
-  ok('the detail rides ON the signal: no detail where there is no signal',
-     Math.abs(r[0]) < 1e-9 && Math.abs(r[N - 1]) < 1e-9 &&
-     maxAbs(r.slice(0, 6)) < 0.2 * maxAbs(r),
-     'amplitude follows the envelope to the power ' + EQ.constants.RIPPLE.maskPow);
+  /* The sharpness claim is about SPIKES, and three samples are not spikes: the
+   * baseline clamp in buildRipple trims a spike the envelope cannot carry to
+   * exactly -envelope, which puts the drawn curve on its own baseline. Measured,
+   * that is samples 6, 11 and 174, every one of them where the envelope is under
+   * 0.04, and the one at 11 is the single blunt "spike" in the whole array
+   * (0.38 of its height). Excluded by name, with the clamp's reach bounded here
+   * so it can never quietly spread, and the trimmed samples themselves guarded
+   * by the non-negativity assertion above. */
+  (function () {
+    var pin = pinned(), j, k, worst = 1, counted = 0, flankish = true;
+    for (j = 0; j < pin.length; j++) { if (!(T.lo[pin[j]] < 0.04)) { flankish = false; } }
+    for (j = 0; j < peaks.length; j++) {
+      k = peaks[j];
+      if (k < 1 || k > N - 2) { continue; }
+      if (pin.indexOf(k) >= 0 || pin.indexOf(k + 1) >= 0) { continue; }
+      counted++;
+      worst = Math.min(worst, Math.abs(r[k] - r[k + 1]) / Math.abs(r[k]));
+    }
+    ok('a spike is sharp: the drop from a spike to the next sample is most of its height',
+       worst > 0.5 && counted > 0.9 * peaks.length,
+       'worst of ' + counted + ' spikes drops ' + (100 * worst).toFixed(0) + '% of its height');
+    ok('and the only blunt samples are the few the clamp pinned to the baseline',
+       pin.length <= 5 && flankish,
+       pin.length + ' pinned samples (' + pin.join(', ') + '), all where the envelope is under 0.04');
+  })();
+  /* v2's wording was "no detail where there is no signal", and RIPPLE.maskFloor
+   * retired it: multiplying by (envelope/max)^maskPow alone drove the outer
+   * sixths to an RMS of 0.0093 and 0.0079 against 0.0345 mid-curve, i.e. flanks
+   * a reader sees as smooth, which is the "too little high-frequency detail"
+   * the floor was added for. The invariant that survives is weaker but still
+   * has teeth, and it is the one the paper's insight figure draws: the detail is
+   * STRONGEST where the signal is strongest, falls off from there, and never
+   * vanishes. The old no-floor numbers fail every clause of it. */
+  (function () {
+    var sixths = [], esix = [], k, lo, hi, top = 0, etop = 0, decays = true;
+    for (k = 0; k < 6; k++) {
+      lo = Math.floor(k * N / 6); hi = Math.floor((k + 1) * N / 6);
+      sixths.push(rmsOf(r, lo, hi));
+      esix.push(rmsOf(T.lo, lo, hi));
+      if (sixths[k] > sixths[top]) { top = k; }
+      if (esix[k] > esix[etop]) { etop = k; }
+    }
+    for (k = top; k > 0; k--) { if (sixths[k - 1] > sixths[k]) { decays = false; } }
+    for (k = top; k < 5; k++) { if (sixths[k + 1] > sixths[k]) { decays = false; } }
+    ok('the detail rides ON the signal: strongest where the signal is strongest',
+       top === etop && decays,
+       'ripple RMS by sixths ' + sixths.map(function (v) { return v.toFixed(4); }).join(' ') +
+       ', peak sixth ' + top + ' is where the envelope peaks too');
+    ok('and it never vanishes: the flanks keep most of that texture',
+       Math.min.apply(null, sixths) > 0.015 &&
+       Math.min.apply(null, sixths) > 0.5 * Math.max.apply(null, sixths),
+       'quietest sixth ' + Math.min.apply(null, sixths).toFixed(4) + ' is ' +
+       (100 * Math.min.apply(null, sixths) / Math.max.apply(null, sixths)).toFixed(0) +
+       '% of the loudest, floor ' + EQ.constants.RIPPLE.maskFloor +
+       ' over envelope^' + EQ.constants.RIPPLE.maskPow);
+    ok('and the two ends are still exactly zero, so the filled areas close',
+       r[0] === 0 && r[N - 1] === 0);
+  })();
   ok('the detail has no net offset: it is a detail term, not a shape term',
      Math.abs((function () { var s = 0, j; for (j = 0; j < N; j++) { s += r[j]; } return s / N; })()) < 0.01,
      'mean ' + ((function () { var s = 0, j; for (j = 0; j < N; j++) { s += r[j]; } return s / N; })()).toFixed(5));
@@ -289,31 +359,86 @@ var gap11 = maxAbsDiff(c11, teacher);
 ok('lf=0, hf=0 reproduces the student exactly', maxAbsDiff(c00, student) < 1e-12,
    'max ' + sci(maxAbsDiff(c00, student)));
 ok('lf=1, hf=1 is NOT the teacher', gap11 > 1e-6, 'peak gap ' + gap11.toFixed(6));
-ok('lf=1, hf=1 sits exactly FULL_SCALE_RESIDUAL from the teacher',
-   Math.abs(gap11 - RESIDUAL) < 1e-12,
-   'residual ' + gap11.toFixed(6) + ' vs constant ' + RESIDUAL + ', |diff| ' +
-   sci(Math.abs(gap11 - RESIDUAL)));
+/* The two channels are left short by DIFFERENT amounts, so one number can no
+ * longer describe the full-travel pose. What is still exact, at every one of
+ * the 181 samples, is the closed form: the teacher plus (1 - REACH) of the
+ * original SHAPE error plus (1 - DETAIL_REACH) of the original DETAIL error.
+ * This pins all 181 samples where the retired assertion pinned one. */
+ok('lf=1, hf=1 is the teacher plus exactly the two residuals the design leaves',
+   (function () {
+     var i, want, worst = 0;
+     for (i = 0; i < N; i++) {
+       want = teacher[i] + (1 - REACH) * (S.lo[i] - T.lo[i]) + (1 - DREACH) * (S.hi[i] - T.hi[i]);
+       if (Math.abs(c11[i] - want) > worst) { worst = Math.abs(c11[i] - want); }
+     }
+     return worst < 1e-12;
+   })(), 'teacher + ' + (100 * (1 - REACH)).toFixed(1) + '% of the shape error + ' +
+   (100 * (1 - DREACH)).toFixed(1) + '% of the detail error');
+ok('the SHAPE channel\'s own travel is still set by FULL_SCALE_RESIDUAL exactly',
+   Math.abs(maxAbsDiff(raw(REACH, REACH), teacher) - RESIDUAL) < 1e-12,
+   'both channels at REACH would sit ' + maxAbsDiff(raw(REACH, REACH), teacher).toFixed(6) +
+   ' from the teacher, the constant is ' + RESIDUAL);
+/* The peak gap is therefore BIGGER than FULL_SCALE_RESIDUAL, and bounded above
+ * by the two channels' residuals added: the triangle inequality, in the inputs,
+ * with no hand-typed number to drift. */
+ok('so the drawn peak gap is more than the shape residual, and no more than both added',
+   gap11 > RESIDUAL &&
+   gap11 <= (1 - REACH) * maxAbsDiff(S.lo, T.lo) + (1 - DREACH) * maxAbsDiff(S.hi, T.hi) + 1e-12,
+   'peak gap ' + gap11.toFixed(5) + ' in (' + RESIDUAL + ', ' +
+   ((1 - REACH) * maxAbsDiff(S.lo, T.lo) + (1 - DREACH) * maxAbsDiff(S.hi, T.hi)).toFixed(5) + ']');
 ok('that residual is a few per cent of the signal range',
-   gap11 > 0.01 && gap11 < 0.08, (gap11 * 100).toFixed(1) + '% of the 0..1 range');
+   gap11 > 0.01 && gap11 < 0.12, (gap11 * 100).toFixed(1) + '% of the 0..1 range');
 ok('full travel still closes most of the gap', gap11 < 0.12 * gap0,
    (100 * (1 - gap11 / gap0)).toFixed(1) + '% of a ' + gap0.toFixed(4) + ' peak gap closed');
 ok('reach is the stated fraction of the student-to-teacher path',
    Math.abs(REACH - (1 - RESIDUAL / gap0)) < 1e-12, 'reach ' + REACH.toFixed(5));
-ok('the limit curve is the teacher with a trace of the student still in it',
-   (function () {
-     var k = 1 - REACH, i, want, worst = 0;
-     for (i = 0; i < N; i++) {
-       want = teacher[i] + k * (student[i] - teacher[i]);
-       if (Math.abs(c11[i] - want) > worst) { worst = Math.abs(c11[i] - want); }
-     }
-     return worst < 1e-12;
-   })(), 'teacher + ' + (100 * (1 - REACH)).toFixed(1) + '% of the original error');
+/* and it has to be VISIBLE, which is the whole reason FULL_SCALE_RESIDUAL went
+ * from 0.04 to 0.075: at 0.04 the mean separation over the plot was 1.25 user
+ * units, under a pixel and a half, and 135 of 181 samples came closer than 0.01. */
+ok('and the two curves stay legibly apart on screen at full travel', (function () {
+  var span = (EQ.geometry.PLOT.b - EQ.geometry.PLOT.t - EQ.geometry.PLOT_HEAD) / C.vmax,
+      i, s = 0, worst = 0, d;
+  for (i = 0; i < N; i++) {
+    d = Math.abs(c11[i] - teacher[i]) * span;
+    s += d;
+    if (d > worst) { worst = d; }
+  }
+  return s / N > 2 && worst > 8;
+})(), (function () {
+  var span = (EQ.geometry.PLOT.b - EQ.geometry.PLOT.t - EQ.geometry.PLOT_HEAD) / C.vmax,
+      i, s = 0, worst = 0, d;
+  for (i = 0; i < N; i++) {
+    d = Math.abs(c11[i] - teacher[i]) * span;
+    s += d;
+    if (d > worst) { worst = d; }
+  }
+  return 'mean ' + (s / N).toFixed(2) + ', max ' + worst.toFixed(2) + ' user units apart';
+})());
 ok('a residual remains in the SHAPE too, not only in one spike',
    maxAbsDiff(drawnEnv(1), T.lo) > 1e-6,
    'envelope still ' + maxAbsDiff(drawnEnv(1), T.lo).toFixed(4) + ' from the dense shape');
-ok('and in the DETAIL: the texture is close to the teacher\'s but not equal',
-   Math.abs(texture(c11) / texture(teacher) - 1) < 0.15 && texture(c11) !== texture(teacher),
-   'texture ratio ' + (texture(c11) / texture(teacher)).toFixed(3));
+/* The DETAIL residual is the larger of the two, deliberately: it is the one
+ * difference visible along the WHOLE curve instead of only at the humps. The
+ * retired assertion asked for the texture to land within 15% of the teacher's,
+ * which DETAIL_REACH makes false by design, so it is replaced by the exact
+ * retention the two constants imply — a scaled copy of the dense scan's own
+ * ripple, to machine precision — plus the bound that makes it legible. */
+ok('and in the DETAIL: the student keeps exactly DETAIL_REACH\'s share of the texture',
+   (function () {
+     var d1 = drawnRipple(1), i, worst = 0;
+     for (i = 0; i < N; i++) { worst = Math.max(worst, Math.abs(d1[i] - DKEEP * T.hi[i])); }
+     return worst < 1e-12;
+   })(), 'ripple is exactly ' + DKEEP.toFixed(3) + ' x the dense scan\'s, max |diff| ' +
+   sci((function () {
+     var d1 = drawnRipple(1), i, worst = 0;
+     for (i = 0; i < N; i++) { worst = Math.max(worst, Math.abs(d1[i] - DKEEP * T.hi[i])); }
+     return worst;
+   })()));
+ok('and that share is most of the way there but legibly short of it',
+   DKEEP > 0.6 && DKEEP < 0.85 &&
+   Math.abs(texture(c11) / texture(teacher) - DKEEP) < 0.02,
+   'ripple energy ratio ' + (texture(c11) / texture(teacher)).toFixed(4) +
+   ' against DETAIL_REACH ' + DREACH);
 note('the PEAK GAP readout therefore reads ' + gap11.toFixed(2) + ' at full travel, never 0.00.');
 
 /* ------------------------------------------------------------------ */
@@ -335,8 +460,20 @@ note('of the paper figure shows, and LF alone leaves the student smooth.');
   }
   ok('raising LF strictly decreases the envelope distance to the dense shape', monoShape,
      dists.map(function (d) { return d.toFixed(3); }).join(' > '));
-  ok('LF closes essentially all of that shape error', dists[dists.length - 1] < 0.06 * dists[0],
-     (100 * (1 - dists[dists.length - 1] / dists[0])).toFixed(1) + '% of ' + dists[0].toFixed(3) + ' closed');
+  /* What is left is not "essentially nothing" any more and must not be: raising
+   * FULL_SCALE_RESIDUAL from 0.04 to 0.075 is what makes the two curves
+   * distinguishable at full travel, and it buys that by leaving MORE shape error
+   * behind. So the threshold is derived from the constant instead of being a
+   * hand-typed 0.06 that silently decides the residual: what LF leaves is
+   * exactly (1 - REACH) of where it started, which can never exceed the
+   * residual itself, and the residual is what sets REACH. A hard-coded number
+   * here would have to be edited every time section 1 moves; this cannot drift. */
+  ok('LF closes all of that shape error except the deliberate residual',
+     Math.abs(dists[dists.length - 1] - (1 - REACH) * dists[0]) < 1e-12 &&
+     dists[dists.length - 1] <= RESIDUAL + 1e-12 &&
+     dists[dists.length - 1] < 0.12 * dists[0],
+     (100 * (1 - dists[dists.length - 1] / dists[0])).toFixed(1) + '% of ' + dists[0].toFixed(3) +
+     ' closed, ' + dists[dists.length - 1].toFixed(4) + ' left of a ' + RESIDUAL + ' residual');
 
   /* --- HF grows the DETAIL energy, strictly, at every step --- */
   for (k = 0; k < steps.length; k++) {
@@ -380,10 +517,17 @@ note('of the paper figure shows, and LF alone leaves the student smooth.');
   ok('HF alone leaves the peak where the sparse scan put it',
      Math.abs(argmax(env(c01)) - argmax(env(student))) <= 3);
 
-  /* --- lf=1, hf=1: the texture matches (panel 3) --- */
-  ok('LF+HF makes the student\'s texture match the teacher\'s',
-     Math.abs(texture(c11) - texture(teacher)) < 0.12 * texture(teacher),
-     texture(c11).toFixed(5) + ' vs ' + texture(teacher).toFixed(5));
+  /* --- lf=1, hf=1: the texture comes back, short of parity (panel 3) ---
+   * "Matches the teacher's" was the claim while both channels travelled REACH.
+   * DETAIL_REACH retired it on purpose: the paper's measurements put the
+   * distilled student's high-frequency retention well short of the dense scan's
+   * even where the coarse shape is in line. So the claim is now two-sided —
+   * most of the way back, and still clearly short — which is a narrower band
+   * than the one-sided 12% it replaces. */
+  ok('LF+HF brings the texture most of the way back, and no further',
+     texture(c11) > 0.6 * texture(teacher) && texture(c11) < 0.85 * texture(teacher),
+     texture(c11).toFixed(5) + ' vs ' + texture(teacher).toFixed(5) + ', ratio ' +
+     (texture(c11) / texture(teacher)).toFixed(3));
 })();
 
 /* ------------------------------------------------------------------ */
@@ -395,8 +539,13 @@ ok('raw lf=1, hf=0 is exactly teacherEnvelope + studentRipple',
    maxAbsDiff(raw(1, 0), add(T.lo, S.hi)) < 1e-12, 'max ' + sci(maxAbsDiff(raw(1, 0), add(T.lo, S.hi))));
 ok('raw lf=0, hf=1 is exactly studentEnvelope + teacherRipple',
    maxAbsDiff(raw(0, 1), add(S.lo, T.hi)) < 1e-12, 'max ' + sci(maxAbsDiff(raw(0, 1), add(S.lo, T.hi))));
-ok('the drawn family is the raw family with the travel shortened',
-   maxAbsDiff(c10, raw(REACH, 0)) < 1e-12 && maxAbsDiff(c01, raw(0, REACH)) < 1e-12);
+/* two travels, not one: the SHAPE channel stops at REACH, the DETAIL channel at
+ * the shorter DETAIL_REACH. Asserting c01 against raw(0, REACH) was asserting a
+ * curve the widget stopped drawing. */
+ok('the drawn family is the raw family with each channel\'s travel shortened',
+   maxAbsDiff(c10, raw(REACH, 0)) < 1e-12 && maxAbsDiff(c01, raw(0, DREACH)) < 1e-12 &&
+   maxAbsDiff(c11, raw(REACH, DREACH)) < 1e-12,
+   'lf over ' + REACH.toFixed(4) + ', hf over ' + DREACH);
 
 /* ------------------------------------------------------------------ */
 head('MORPH — continuity and monotonicity');
@@ -474,8 +623,29 @@ head('MORPH — the drawn range is bounded by the four corners');
   }
   ok('no pose on a 21x21 grid leaves the corner envelope', bad === 0,
      'range [' + lo.toFixed(4) + ', ' + hi.toFixed(4) + ']');
-  ok('the exported vmax is exactly that upper bound', Math.abs(C.vmax - hi) < 1e-12,
-     'vmax ' + C.vmax.toFixed(4));
+  /* The student family is not the only thing drawn: the TEACHER is on the same
+   * axes, and because the full-travel student sits the residual below it at the
+   * dense peak, max(teacher) is the taller of the two by exactly that residual.
+   * Scaling to the corners alone put the blue curve's peak at y = 21.97 against
+   * PLOT.t = 30 — through the top frame line, with only Instance.y()'s clamp
+   * (PLOT.t - 4) stopping it from leaving the box altogether, which is why the
+   * old assertion could pass while the picture was wrong. So: vmax covers the
+   * teacher too, and the teacher's peak is checked UNCLAMPED against the
+   * headroom the geometry reserves for it. */
+  var tHi = Math.max.apply(null, teacher),
+      bound = Math.max(hi, tHi),
+      sp = (EQ.geometry.PLOT.b - EQ.geometry.PLOT.t - EQ.geometry.PLOT_HEAD) / C.vmax,
+      tTop = EQ.geometry.PLOT.b - tHi * sp;
+  ok('the exported vmax is exactly that upper bound, the teacher included',
+     Math.abs(C.vmax - bound) < 1e-12 && C.vmax >= tHi,
+     'vmax ' + C.vmax.toFixed(4) + ' = max(corners ' + hi.toFixed(4) +
+     ', teacher ' + tHi.toFixed(4) + ')');
+  ok('so the dense curve\'s peak lands inside the reserved headroom, not on the frame',
+     tTop >= EQ.geometry.PLOT.t + EQ.geometry.PLOT_HEAD - 1e-9,
+     'peak renders at y ' + tTop.toFixed(2) + ', top frame at ' + EQ.geometry.PLOT.t +
+     ', headroom floor at ' + (EQ.geometry.PLOT.t + EQ.geometry.PLOT_HEAD) +
+     ' (corners-only scaling put it at ' +
+     (EQ.geometry.PLOT.b - tHi * ((EQ.geometry.PLOT.b - EQ.geometry.PLOT.t - EQ.geometry.PLOT_HEAD) / hi)).toFixed(2) + ')');
   ok('no pose ever dips below the axis, so the filled areas stay sane', lo >= -1e-9,
      'minimum ' + lo.toFixed(6));
   note('the vertical scale is derived from exactly this: span = ' +
@@ -1130,8 +1300,13 @@ head('MARKUP — shape, hooks and accessibility');
      'they swap at ' + EQ.constants.ANN_DONE_AT + ' travel');
 
   /* ---- the description ---- */
+  /* the number is read off the constant, because the description went on saying
+   * "four per cent" after FULL_SCALE_RESIDUAL became 0.075 — a screen reader
+   * being given a figure the page had stopped drawing */
   ok('the description states that full travel does NOT reach the teacher',
-     /does not reach it/.test(src) && /residual of four per cent/.test(src));
+     /does not reach it/.test(src) &&
+     src.indexOf('residual of ' + Math.round(100 * RESIDUAL) + ' per cent') > 0 &&
+     /detail comes back shallower/.test(src));
   ok('the description states that a pluck cannot move a fader',
      /never changes the faders/.test(src));
   ok('the description says the nearer curve is the one that moves',
@@ -1273,6 +1448,14 @@ function fakeInstance() {
   inst.teacher = teacher; inst.student = student;
   inst.tEnv = T.lo; inst.tRip = T.hi; inst.sEnv = S.lo; inst.sRip = S.hi;
   inst.reach = REACH;
+  /* The stub has to carry EVERY field render() reads off an instance, and this
+   * one was missing: Instance.prototype.morph multiplies hf by this.detailReach,
+   * so an absent field made `hf * undefined` = NaN at every pose including
+   * hf = 0, and all 181 student samples, the dimension bar, the bracket, the
+   * scrub dots and the readout followed it down. The widget now also declares
+   * both travel limits on the prototype, so this line states the shipped pose
+   * rather than papering over a missing one. */
+  inst.detailReach = EQ.constants.DETAIL_REACH;
   inst.state = { lf: 0, hf: 0 };
   inst.pluck = new EQ.PluckState({ span: SPAN });
   inst.arm = null; inst.armAt = -1; inst.scrubAt = -1;
@@ -1445,9 +1628,26 @@ function fakeInstance() {
 
   /* ---- readout and scrub ---- */
   I.state.lf = 1; I.state.hf = 1; I.scrubAt = -1; I.render();
+  /* Compared against the gap between the two curves the instance actually drew,
+   * not against FULL_SCALE_RESIDUAL: the shape residual is only part of the
+   * full-travel gap now that the detail channel keeps its own, and 0.075 and
+   * the drawn 0.085 happen to print the same two decimals, so matching the
+   * constant would pass for the wrong reason. The "never 0.00" in the name is
+   * the one the NaN regression broke: with hf * undefined the loop compared
+   * NaN > gap, which is false at every sample, and the readout sat at 0.00. */
+  var drawnPeak = (function () {
+    var j, g = 0, dd;
+    for (j = 0; j < N; j++) {
+      dd = Math.abs(I.svals[j] - I.tvals[j]);
+      if (dd > g) { g = dd; }
+    }
+    return g;
+  })();
   ok('the PEAK GAP readout shows the residual at full travel, never 0.00',
-     el.gapValue.textContent === RESIDUAL.toFixed(2) && el.roLabel.textContent === 'PEAK GAP ',
-     'reads "' + el.roLabel.textContent + el.gapValue.textContent + '"');
+     el.gapValue.textContent === drawnPeak.toFixed(2) && el.gapValue.textContent !== '0.00' &&
+     drawnPeak >= RESIDUAL - 1e-12 && el.roLabel.textContent === 'PEAK GAP ',
+     'reads "' + el.roLabel.textContent + el.gapValue.textContent + '" for a drawn gap of ' +
+     drawnPeak.toFixed(5) + ', shape residual ' + RESIDUAL);
   I.scrubAt = 100; I.render();
   ok('the scrub cursor switches the readout to the LOCAL gap',
      el.roLabel.textContent === 'GAP HERE ' &&

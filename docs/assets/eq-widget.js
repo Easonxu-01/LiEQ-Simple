@@ -31,11 +31,13 @@
  *   y[i]      = env[i] + ripple[i]
  *
  * LF moves the SHAPE onto the dense scan's and leaves the student smooth;
- * HF grows the fine detail until the student's texture matches. At full travel
- * the student lands CLOSE TO but not ON the teacher: a residual of
- * FULL_SCALE_RESIDUAL (4% of the signal range) is left behind, because the
- * paper's own measurements show a distilled student near the teacher, not
- * equal to it.
+ * HF grows the fine detail until the student's texture approaches the
+ * teacher's. At full travel the student lands CLOSE TO but not ON the teacher:
+ * FULL_SCALE_RESIDUAL is left behind on the shape channel and a deliberately
+ * larger residual on the detail channel (DETAIL_REACH), because the paper's own
+ * measurements show a distilled student near the teacher, not equal to it. Both
+ * numbers live in section 1; no prose in this file restates them, because the
+ * last copy of "4% of the signal range" outlived the constant it described.
  *
  * Four more things move, so the instrument is not just two sliders:
  *   · either curve can be PLUCKED — grab it anywhere, pull, and on release it
@@ -153,8 +155,14 @@ var EDGE_TAPER = 0.035;
  *   strideMin/Max  spacing in samples, varied so it does not read as a comb
  *   flip         chance of alternating sign at each spike (mostly, not always)
  *   maskPow      the detail rides ON the signal: amplitude follows the
- *                envelope to this power, so there is no detail where there is
- *                no signal
+ *                envelope to this power, so the texture is strongest where the
+ *                signal is
+ *   maskFloor    but never vanishes. A dense scan resolves fine structure
+ *                along the whole sweep, not only under the main lobe, and the
+ *                paper's insight figure draws it that way. Without a floor the
+ *                mask drove the outer sixths to a measured RMS of 0.009 and
+ *                0.008 against 0.035 mid-curve, i.e. visibly smooth flanks --
+ *                exactly the "too little high-frequency detail" this is for.
  *   edge         samples at each end left completely alone
  */
 var RIPPLE = {
@@ -167,6 +175,7 @@ var RIPPLE = {
   strideMax: 4,
   flip: 0.82,
   maskPow: 0.8,
+  maskFloor: 0.5,
   edge: 4,
   seed: 20260413
 };
@@ -181,13 +190,27 @@ var RIPPLE = {
  * hf (it is |(1-h)k + h| * ||r|| with k < 1), which the harness asserts. */
 var STUDENT_RIPPLE_KEEP = 0.05;
 
-/* What the equaliser CANNOT recover. At lf = hf = 1 the student lands this far
- * from the teacher, measured as the largest absolute difference in normalised
- * signal units — 4% of the plotted range, which reads as "nearly recovered,
- * not identical". Honest, too: the paper reports a distilled student close to
- * the dense teacher, never equal to it. The faders therefore travel over
- * `reach = 1 - residual / peakGap` of the student-to-teacher path. */
-var FULL_SCALE_RESIDUAL = 0.04;
+/* What the equaliser CANNOT recover. At lf = hf = 1 the student lands near the
+ * teacher but not on it. Honest, too: the paper reports a distilled student
+ * close to the dense teacher, never equal to it.
+ *
+ * Measured at 0.04 the two curves read as merged: 135 of 181 samples came
+ * closer than 0.01 and the mean separation was 1.25 user units, under a pixel
+ * and a half. Raised so the shape residual is actually legible; the difference
+ * that persists along the WHOLE curve is DETAIL_REACH's job, below.
+ *
+ * The faders travel over `reach = 1 - residual / peakGap` of the path. */
+var FULL_SCALE_RESIDUAL = 0.075;
+
+/* The detail channel keeps a BIGGER residual than the shape channel, and that
+ * is the physics, not a cosmetic choice: the paper's own measurements put the
+ * distilled student's high-frequency retention well short of the dense
+ * teacher's even where the coarse shape has been brought into line. Drawn, it
+ * is the one residual that is visible along the WHOLE curve rather than only
+ * at the humps -- the student's spikes come back shallower than the teacher's
+ * everywhere, so at full travel the two profiles stay legibly distinct instead
+ * of merging over two thirds of the span. */
+var DETAIL_REACH = 0.78;
 
 /* Grabbing. ONE transparent surface covers the plot; a press picks the nearer
  * curve in y within this radius, in viewBox units (14 units is ~17 CSS px on
@@ -418,9 +441,25 @@ function lcg(seed) {
 
 /* Dense, sharp, varied spikes, masked by `mask` so the detail rides on the
  * signal. See the RIPPLE constants for what each knob does. */
+/* Per-key fallback for a config object. `rip = o.ripple || RIPPLE` was a
+ * wholesale swap while every sibling option fell back per key, so passing
+ * {ripple:{amp:0.11}} -- the one knob most likely to be turned -- left
+ * cfg.edge undefined, the spike loop never ran, and the mask multiplied by
+ * Math.pow(m, undefined) = NaN. Nothing threw; the curve just disappeared. */
+function mergeCfg(base, over) {
+  var out = {}, k;
+  for (k in base) { if (Object.prototype.hasOwnProperty.call(base, k)) { out[k] = base[k]; } }
+  if (over) {
+    for (k in over) {
+      if (Object.prototype.hasOwnProperty.call(over, k) && over[k] !== undefined) { out[k] = over[k]; }
+    }
+  }
+  return out;
+}
+
 function buildRipple(n, mask, cfg) {
   var out = new Array(n), rnd = lcg(cfg.seed), i, k, h, w, sign = 1, hits = 0,
-      mmax = 0, m, stride, strideSpan;
+      mmax = 0, m, stride, strideSpan, floor;
 
   for (i = 0; i < n; i++) { out[i] = 0; }
   strideSpan = Math.max(0, (cfg.strideMax | 0) - (cfg.strideMin | 0));
@@ -443,9 +482,26 @@ function buildRipple(n, mask, cfg) {
 
   for (i = 0; i < n; i++) { if (mask[i] > mmax) { mmax = mask[i]; } }
   if (!(mmax > 0)) { mmax = 1; }
+  floor = cfg.maskFloor > 0 ? cfg.maskFloor : 0;
+  if (floor > 1) { floor = 1; }
   for (i = 0; i < n; i++) {
     m = mask[i] / mmax;
-    out[i] *= Math.pow(m < 0 ? 0 : m, cfg.maskPow);
+    if (m < 0) { m = 0; }
+    out[i] *= floor + (1 - floor) * Math.pow(m, cfg.maskPow);
+    /* the floor keeps texture on the flanks, but a filled area may never
+     * cross its own baseline: where the envelope is smaller than the spike
+     * the floor would allow, the spike is trimmed to what the signal can
+     * carry. Tails therefore stay textured AND non-negative — without this the
+     * tails reached -0.0197.
+     *
+     * The trim is deliberately a hard pin to -mask[i] rather than a rescale:
+     * measured, it fires at 3 of 181 samples (6, 11, 174), all of them out
+     * where the envelope is under 0.04, and it costs the sharpness of 1 of the
+     * 60 detected spikes (the one at sample 11, whose drop to its neighbour
+     * falls to 0.38 of its height against 0.73 for the worst untrimmed spike).
+     * Three samples sitting exactly on the baseline is cheaper than a rescale
+     * that would flatten the flank texture the floor exists to keep. */
+    if (mask[i] + out[i] < 0) { out[i] = -mask[i]; }
   }
   return out;
 }
@@ -471,7 +527,7 @@ function buildModel(cfg) {
       n = o.n > 3 ? (o.n | 0) : N_SAMPLES,
       tl = o.teacherLobes || TEACHER_LOBES,
       sl = o.studentLobes || STUDENT_LOBES,
-      rip = o.ripple || RIPPLE,
+      rip = mergeCfg(RIPPLE, o.ripple),
       keep = o.studentKeep === undefined ? STUDENT_RIPPLE_KEEP : o.studentKeep,
       win = edgeWindow(n, o.taper === undefined ? EDGE_TAPER : o.taper),
       tEnv = new Array(n), sEnv = new Array(n), sRip = new Array(n),
@@ -505,13 +561,18 @@ function buildModel(cfg) {
 
 /* The vertical scale. The family is separately linear in lf and in hf, so its
  * extremes over the unit square are attained at the four corners. */
-function modelVmax(m, rch) {
-  var hi = 0, c, i, v, poses = [[0, 0], [1, 0], [0, 1], [1, 1]];
+function modelVmax(m, rch, drch) {
+  var hi = 0, c, i, v, poses = [[0, 0], [1, 0], [0, 1], [1, 1]],
+      dr = drch === undefined ? rch : drch;
   for (c = 0; c < poses.length; c++) {
     v = morph(m.studentEnvelope, m.studentRipple, m.teacherEnvelope, m.teacherRipple,
-              poses[c][0] * rch, poses[c][1] * rch);
+              poses[c][0] * rch, poses[c][1] * dr);
     for (i = 0; i < v.length; i++) { if (v[i] > hi) { hi = v[i]; } }
   }
+  /* the teacher is drawn too. Taking the max over the student family alone put
+   * the teacher's peak at y = 29.68 against PLOT.t = 30, so the blue curve
+   * crossed the top frame line and ate the headroom. */
+  for (i = 0; i < m.teacher.length; i++) { if (m.teacher[i] > hi) { hi = m.teacher[i]; } }
   return hi > 0 ? hi : 1;
 }
 
@@ -1190,10 +1251,15 @@ var DEFAULTS = {
         'student: at rest its overall shape is wrong — two humps where the dense scan has one — ' +
         'and it is almost perfectly smooth, because sparse sampling never recorded the fine ' +
         'detail. The LF fader pulls the student’s shape onto the teacher’s and leaves it smooth; ' +
-        'the HF fader grows the fine detail until the student’s texture matches the teacher’s. ' +
+        'the HF fader grows the fine detail until the student’s texture approaches the teacher’s. ' +
         'Height on this plot is a signal value, not a frequency. With both faders at full the ' +
-        'student comes close to the teacher but does not reach it — a residual of four per cent ' +
-        'of the signal range is left, as in the paper’s own measurements. Either curve can also ' +
+        /* interpolated, not spelled out: this sentence said "four per cent" for as long as
+         * FULL_SCALE_RESIDUAL was 0.04 and then went on saying it after the constant moved to
+         * 0.075, which is a screen reader being told the wrong number. */
+        'student comes close to the teacher but does not reach it — a residual of ' +
+        Math.round(100 * FULL_SCALE_RESIDUAL) + ' per cent ' +
+        'of the signal range is left in its shape, and its fine detail comes back shallower than ' +
+        'the dense scan’s everywhere, as in the paper’s own measurements. Either curve can also ' +
         'be dragged to deform it; the nearer curve to the pointer is the one that moves, it ' +
         'springs back when released, and dragging a curve never changes the faders.',
   caption: CAPTION,
@@ -1274,6 +1340,8 @@ function Instance(el, opts) {
   this.sEnv = model.studentEnvelope; this.sRip = model.studentRipple;
   /* how much of the gap a full fader closes — the rest is FULL_SCALE_RESIDUAL */
   this.reach = reach(this.student, this.teacher, o.residual);
+  /* the detail channel stops further short — see DETAIL_REACH */
+  this.detailReach = clamp(o.detailReach === undefined ? DETAIL_REACH : +o.detailReach, 0, 1);
   this.state = { lf: clamp(+o.lf || 0, 0, 1), hf: clamp(+o.hf || 0, 0, 1) };
   this.drag = null;
   this.cdrag = null;
@@ -1290,7 +1358,7 @@ function Instance(el, opts) {
   this.lastDetailDone = null;
 
   /* --- vertical scale, from the four corners of the fader square --- */
-  this.vmax = modelVmax(model, this.reach);
+  this.vmax = modelVmax(model, this.reach, this.detailReach);
   this.vmin = 0;
   this.span = (PLOT.b - PLOT.t - PLOT_HEAD) / this.vmax;
 
@@ -1317,10 +1385,26 @@ function Instance(el, opts) {
   this.render();
 }
 
-/* The pose the faders imply. lf and hf travel over `reach` of the path, which
- * leaves exactly `residual` between the full-travel student and the teacher. */
+/* The two travel limits are declared HERE as well as assigned in the
+ * constructor, because morph() reads them off `this` and the constructor is not
+ * the only thing that builds an object on this prototype. detailReach arrived
+ * with DETAIL_REACH while the other builder — the harness's stub instance —
+ * still set `reach` alone, and `hf * undefined` is NaN even at hf = 0: all 181
+ * student samples, every screen y derived from them, the SHAPE dimension bar,
+ * the DETAIL bracket, both scrub dots and the PEAK GAP readout went NaN (the
+ * readout printed 0.00, because `NaN > gap` is false) while the model itself
+ * was clean. 14 assertions failed on one missing field. A declared default
+ * means reading either limit can never yield undefined, whoever built the
+ * object; the constructor still overwrites both. */
+Instance.prototype.reach = 1;
+Instance.prototype.detailReach = DETAIL_REACH;
+
+/* The pose the faders imply. lf travels over `reach` of the path and hf over
+ * the shorter `detailReach`, which leaves `residual` between the full-travel
+ * student's SHAPE and the teacher's and more than that in its DETAIL. */
 Instance.prototype.morph = function (lf, hf) {
-  return morph(this.sEnv, this.sRip, this.tEnv, this.tRip, lf * this.reach, hf * this.reach);
+  return morph(this.sEnv, this.sRip, this.tEnv, this.tRip,
+               lf * this.reach, hf * this.detailReach);
 };
 
 /* The student's ENVELOPE alone at a given lf — what the dashed reference is
@@ -2046,6 +2130,7 @@ return {
     RIPPLE: RIPPLE,
     STUDENT_RIPPLE_KEEP: STUDENT_RIPPLE_KEEP,
     FULL_SCALE_RESIDUAL: FULL_SCALE_RESIDUAL,
+    DETAIL_REACH: DETAIL_REACH,
     GRAB_RADIUS: GRAB_RADIUS,
     GRAB_RADIUS_TOUCH: GRAB_RADIUS_TOUCH,
     GRAB_WINDOW: GRAB_WINDOW,

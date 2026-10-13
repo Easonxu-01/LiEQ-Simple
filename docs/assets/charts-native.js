@@ -1351,7 +1351,7 @@
     '.lqc-axes{font-family:var(--lqc-mono);font-size:10.5px;line-height:1.5;',
     '  color:var(--lqc-muted);margin:0 0 9px}',
     '.lqc-note{font-family:var(--lqc-sans);font-size:12.5px;line-height:1.55;',
-    '  color:var(--lqc-muted);margin:12px 0 0;max-width:80ch}',
+    '  color:var(--lqc-muted);margin:12px 0 0}',
     '.lqc-note b{font-family:var(--lqc-mono);font-size:10px;font-weight:600;',
     '  letter-spacing:.09em;text-transform:uppercase;color:var(--lqc-eyebrow);',
     '  margin-right:.45em}',

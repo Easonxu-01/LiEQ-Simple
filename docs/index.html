@@ -293,6 +293,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
       <a href="#method">Method</a>
       <a href="#results">Results</a>
       <a href="#deploy">On-vehicle</a>
+      <a href="#analysis">Analysis</a>
       <a href="#downloads">Downloads</a>
       <a href="#spectrum">Protocol</a>
     </div>
@@ -467,20 +468,6 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
       baseline, blue LiEqualizer. Arrows mark the gain over the orange bars.</figcaption>
     </figure>
 
-    <figure class="fig reveal">
-      <div class="fig-media"><div id="lq-paper-fig3" data-lieq-paper-chart="paper-fig3"></div></div>
-      <figcaption><b>Fig 6.</b> Alignment, band by band. Agreement between the student's field and the teacher's
-      within each band, scaled so that one is the agreement the teacher reaches with itself when its input is
-      re-drawn under the same budget. Higher is better in all three columns. This is the manuscript's Fig. 3,
-      re-drawn here from the released measurements.</figcaption>
-    </figure>
-
-    <figure class="fig reveal">
-      <div class="fig-media"><div id="lq-paper-fig4" data-lieq-paper-chart="paper-fig4"></div></div>
-      <figcaption><b>Fig 7.</b> How much energy a band carries, and how much of it the teacher accounts for.
-      The manuscript's Fig. 4, re-drawn from the released measurements.</figcaption>
-    </figure>
-
     <div class="section-head reveal" style="margin-top:46px">
       <div class="eyebrow">Ablation</div>
       <h2>What each piece buys</h2>
@@ -528,7 +515,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
     </div>
     <figure class="fig reveal">
       <div class="fig-media"><img src="assets/realdata.jpg" alt="Real-vehicle qualitative results" loading="lazy" /></div>
-      <figcaption><b>Fig 8.</b> On-vehicle platforms and qualitative results. The three vehicles and their LiDARs are the
+      <figcaption><b>Fig 6.</b> On-vehicle platforms and qualitative results. The three vehicles and their LiDARs are the
       same testbed the sibling release used, so the platform panels stand as shown. <em>The prediction panels are carried
       over from that release and will be replaced with LiEqualizer's own run.</em> Real-vehicle data carries no labelled
       ground truth, so these results are qualitative and no numbers are attached to them.</figcaption>
@@ -572,7 +559,32 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
   </div>
 </section>
 
-<section class="section" id="downloads">
+<section class="section" id="analysis">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="eyebrow">Analysis</div>
+      <h2>What the distillation actually moved</h2>
+      <p class="lead">The two diagnostic figures from the manuscript, re-drawn here from the released measurements
+      rather than pasted in as pictures. Both read band by band, from the lowest-frequency band on the left.</p>
+    </div>
+
+    <figure class="fig reveal">
+      <div class="fig-media"><div id="lq-paper-fig3" data-lieq-paper-chart="paper-fig3"></div></div>
+      <figcaption><b>Fig 7.</b> Alignment, band by band. Agreement between the student's field and the teacher's
+      within each band, scaled so that one is the agreement the teacher reaches with itself when its input is
+      re-drawn under the same budget. Higher is better in all three columns. This is the manuscript's Fig. 3,
+      re-drawn here from the released measurements.</figcaption>
+    </figure>
+
+    <figure class="fig reveal">
+      <div class="fig-media"><div id="lq-paper-fig4" data-lieq-paper-chart="paper-fig4"></div></div>
+      <figcaption><b>Fig 8.</b> How much energy a band carries, and how much of it the teacher accounts for.
+      The manuscript's Fig. 4, re-drawn from the released measurements.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="section tint" id="downloads">
   <div class="container">
     <div class="section-head reveal">
       <div class="eyebrow">Downloads</div>
@@ -597,7 +609,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
   </div>
 </section>
 
-<section class="section tint" id="cite">
+<section class="section" id="cite">
   <div class="container">
     <div class="section-head reveal">
       <div class="eyebrow">Citation</div>
@@ -616,7 +628,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
   </div>
 </section>
 
-<section class="section" id="spectrum">
+<section class="section tint" id="spectrum">
   <div class="container">
     <div class="section-head reveal">
       <div class="eyebrow">Spectrum</div>
