@@ -45,14 +45,26 @@ configuration corresponds to.
 
 ### Pointing the student at its teacher
 
-The student config loads a frozen teacher checkpoint. Set its path before training:
+The student config loads a frozen teacher checkpoint through `d2skd_load_from`, which ships as a placeholder:
 
 ```python
-# projects/configs/pointocc/pointtpv_<dataset>_seg_random.py
-d2skd_load_from = 'path/to/teacher_<dataset>.pth'   # frozen dense-trained teacher
+# projects/configs/pointocc/pointtpv_semantickitti_seg_random.py
+d2skd_load_from = 'ckpts/teacher_dense_sk.pth'      # and _nu.pth / _waymo.pth for the other two
 ```
 
-Teacher checkpoints are released together with the paper; until then, train your own with Stage 1 above.
+Point it at a checkpoint from Stage 1, or drop the released teachers in `ckpts/` under those names. Training refuses
+to start if the file is missing or if its label protocol does not match the student's — see
+`occupancy/apis/teacher_protocol.py`.
+
+**Which epoch the paper's teachers are.** The reported student results were distilled from these:
+
+| Dataset | Teacher checkpoint | Teacher training layout |
+|---|---|---|
+| SemanticKITTI | best validation epoch (7 of 24) | 4 GPUs x 2 samples, accumulation 2 (effective 16), 500-iteration warmup |
+| nuScenes | best validation epoch (24 of 24) | 8 GPUs x 1 sample, no accumulation (effective 8), 2500-iteration warmup |
+| Waymo | last epoch (24); no validation ran during teacher training | 4 GPUs x 1 sample, no accumulation (effective 4), 500-iteration warmup |
+
+The students themselves all train under 4 GPUs x 4 samples with accumulation 2 (effective 32).
 
 ---
 
