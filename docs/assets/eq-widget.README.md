@@ -2,8 +2,15 @@
 
 A self-contained interactive instrument for the LiEqualizer project page. Two vertical
 faders, **LF EQUALIZER** and **HF EQUALIZER**, continuously morph the sparse student's
-spectrum toward the dense teacher's — LF moves the low-frequency *envelope*, HF moves the
-high-frequency *detail*. Both rest at 0, which is the undistilled student.
+profile toward the dense teacher's — LF moves the low-frequency *envelope*, HF moves the
+high-frequency *detail*. Both rest at 0, which is the undistilled student. Either curve can
+also be **plucked** with the pointer: pull it anywhere and it springs back like a cord.
+Three preset pills jump the faders to the three states of the paper's insight figure.
+
+The plot is in the **spatial domain** — x is a spatial coordinate and y a signal/feature
+value, exactly as the source figure's own axis is labelled. At full travel the student lands
+*close to but not on* the teacher: a 4% residual is left, as the paper's own measurements
+show.
 
 One file. Native inline SVG plus one injected `<style>`. No framework, no bundler, no build
 step, no CDN, no chart library. ES5-compatible; safe to serve straight from GitHub Pages.
@@ -43,7 +50,7 @@ To mount it somewhere else, or to pass options:
 ```js
 var eq = LiEQEqualizer.init('#eq-mount', {
   lf: 0, hf: 0,
-  xLabel: 'Graph frequency',
+  xLabel: 'Spatial position',
   onChange: function (lf, hf) { /* ... */ }
 });
 ```
@@ -56,7 +63,7 @@ Into the mount element:
 <div class="lieq-shell">            <!-- or .lieq-card when chrome:true -->
   <div class="lieq-stage">
     <i class="lieq-scan"></i>       <!-- the 'powered on' scan sweep -->
-    <svg class="lieq-svg" viewBox="0 0 470 280" role="group" aria-label="...">…</svg>
+    <svg class="lieq-svg" viewBox="0 0 480 248" role="group" aria-label="...">…</svg>
   </div>
 </div>
 ```
@@ -88,9 +95,14 @@ Every option is optional. Strings are HTML-escaped before they reach the markup.
 | `chrome` | `false` | `true` also paints the dark card shell (see above) |
 | `smoothRadius` | `3` | box-blur radius for the envelope/detail split |
 | `smoothPasses` | `3` | how many blur passes |
-| `xLabel` | `'Graph frequency'` | x-axis title |
-| `yLabel` | `'Normalized spectral energy'` | rotated y-axis title |
-| `lowTick`, `highTick` | `'LOW'`, `'HIGH'` | the two x-axis end ticks |
+| `xLabel` | `'Spatial position'` | x-axis title — the source figure's own label |
+| `yLabel` | `'Signal / feature response'` | rotated y-axis title |
+| `lowTick`, `highTick` | `'0'`, `'X MAX'` | the two x-axis end ticks |
+| `residual` | `0.04` | what full travel CANNOT recover, in signal units (see §4) |
+| `scrubLabel` | `'GAP HERE'` | readout label while the scrub cursor is up |
+| `hint` | `['PLUCK','A CURVE']` | two lines, top right; retires on the first pluck |
+| `presets` | 3 pills | `[{label, lf, hf, aria}]` |
+| `caption` | the disclosure line | see §4 |
 | `teacherLabel` | `'DENSE TEACHER'` | blue legend entry |
 | `studentLabel` | `'SPARSE STUDENT'` | orange legend entry |
 | `rackLabel` | `'SPECTRAL EQ'` | eyebrow above the faders |
@@ -122,11 +134,16 @@ eq.element  eq.svg  eq.state  eq.teacher  eq.student
 Module level:
 
 ```js
-LiEQEqualizer.version                 // '1.0.0'
+LiEQEqualizer.version                 // '2.0.0'
 LiEQEqualizer.init(target, opts)      // -> instance | null   (never throws)
 LiEQEqualizer.initAll(selector, opts) // -> [instance]
+LiEQEqualizer.caption                 // the illustrative-not-measured line (print it)
 LiEQEqualizer.curves                  // { teacher: [...], student: [...] }
-LiEQEqualizer.math                    // { clamp lerp smooth split morph catmullPath parseCurve }
+LiEQEqualizer.constants               // residual + pluck spring constants
+LiEQEqualizer.math                    // { clamp lerp smooth split morph reach bump spring
+                                      //   catmullPath parseCurve }
+LiEQEqualizer.PluckState              // the DOM-free pluck/spring state machine
+LiEQEqualizer.Instance                // the constructor (its prototype is testable)
 LiEQEqualizer.geometry                // the viewBox layout constants
 LiEQEqualizer.css                     // the stylesheet, as a string
 LiEQEqualizer.renderMarkup(opts, uid) // the SVG source, no DOM needed
@@ -153,7 +170,8 @@ hi = y - lo                    // so lo + hi === y, exactly
 Every frame the drawn curve is two independent linear interpolations:
 
 ```
-y[i] = lerp(studentLo[i], teacherLo[i], lf) + lerp(studentHi[i], teacherHi[i], hf)
+y[i] = lerp(studentLo[i], teacherLo[i], lf · reach)
+     + lerp(studentHi[i], teacherHi[i], hf · reach)
 ```
 
 There is no cross term and no easing, so:
@@ -162,8 +180,9 @@ There is no cross term and no easing, so:
   proportional intermediate curve, and a step of `d` in `lf` moves sample `i` by exactly
   `d · (teacherLo[i] − studentLo[i])`;
 * it is **monotone** in each fader at every sample;
-* the four corners are exact — `(0,0)` is the student, `(1,1)` is the teacher, `(1,0)` is
-  the teacher's envelope carrying the student's own wiggle, `(0,1)` the reverse;
+* the four corners are exact — `(0,0)` is the student; `(1,0)` is the teacher's envelope
+  carrying the student's own wiggle, `(0,1)` the reverse; `(1,1)` is the **limit curve**,
+  not the teacher (next section);
 * because the family is separately linear in each fader, its extremes over the whole unit
   square are attained at those four corners. The vertical scale is derived from exactly
   that, so no pose can ever overflow the frame.
@@ -172,9 +191,53 @@ The result is drawn as a uniform Catmull-Rom spline converted to cubic Béziers 
 per interval, end tangents clamped), with coordinates quantised to 0.1 user units. Render is
 coalesced into one `requestAnimationFrame` per burst of pointer events.
 
-**Releasing a fader does nothing.** There is no spring-back, no reset, no settle animation —
-the value *is* the state. This is the one behaviour deliberately not copied from the sibling
-page's optics bench, which always sprang home.
+### The residual: full travel does not reach the teacher
+
+`FULL_SCALE_RESIDUAL = 0.04`. The faders travel over
+
+```
+reach = 1 − residual / max|student − teacher|          // 0.91389 on the shipped curves
+```
+
+of the student-to-teacher path, so the limit curve is
+
+```
+L = teacher + (1 − reach) · (student − teacher)        // teacher + 8.6% of the original error
+```
+
+and `max|L − teacher|` is *exactly* `0.04` — 4% of the plotted 0..1 range, 91.4% of the
+original 0.4645 peak gap closed. The `PEAK GAP` readout therefore reads `0.04` at full
+travel, never `0.00`. Because `reach` only shortens the path, the family stays exactly
+linear, monotone and continuous in each fader.
+
+This is both a design choice and an honesty one: the paper reports a distilled student
+*close to* the dense teacher, never equal to it, and a widget whose two curves snapped into
+one line would claim more than the paper does.
+
+### Releasing a fader does nothing. Releasing a *curve* springs back.
+
+Two different gestures, deliberately opposite:
+
+| gesture | on release |
+|---|---|
+| **fader** (drag, press-the-track, keyboard, preset) | nothing. No spring-back, no reset, no settle. The value *is* the state. |
+| **curve pluck** (drag either curve directly) | springs back to the shape the faders imply, with a short underdamped settle. |
+
+A pluck cannot move a fader: the whole pluck path runs through `PluckState`, which has no
+reference to `lf` or `hf`, and the three `Instance` methods that drive it
+(`pluckBegin` / `pluckTo` / `pluckRelease`) never read or write `this.state`. Once the cord
+settles, `PluckState` clears itself and the drawn array is bit-for-bit `morph(lf, hf)` again.
+
+```
+deform[i] += amp · ½(1 + cos(π · (i − i₀)/w))          // raised cosine, w = 0.14·(n−1) ≈ 13.4
+amp(t)     = a₀ e^(−ζω₀t) [cos(ω_d t) + (ζω₀/ω_d) sin(ω_d t)]   // ζ = 0.34, 7.2 Hz
+```
+
+The bump is smooth, not a spike (the apex rises 1.4% of the pull per sample) and strictly
+local (nothing outside ±13.4 samples moves). The spring is time-based, so a dropped frame
+changes nothing; it overshoots 32% of the pull, crosses zero twice, and is below the
+`0.0015` settle threshold — a quarter of a user unit on screen — after **192 ms**. Under
+`prefers-reduced-motion` the pluck is simply dropped on release instead of animated.
 
 ### Where the curves come from
 
@@ -190,6 +253,17 @@ high-frequency residual energy over the right half.
 **These curves are illustrative.** They are a trace of a schematic figure, not measured
 data, and the `PEAK GAP` readout is simply the largest vertical distance between the two
 drawn curves. Nothing here should be quoted as a result.
+
+The module says so out loud, in one line the page should print under the instrument:
+
+```js
+LiEQEqualizer.caption   // also eq.caption, and overridable as opts.caption
+```
+
+> Illustrative, not measured: both curves are traced from the paper's insight figure, and
+> the student's high-frequency ripple is synthesised so the HF fader has something to remove.
+
+The same sentence is appended to the `<svg>`'s `<desc>`, so a screen reader gets it too.
 
 ---
 
@@ -226,9 +300,23 @@ faders at the bottom of their travel.
 
 ### Layout
 
-viewBox `0 0 470 280` (aspect 1.679). Plot `48..334 × 46..214`, rack `352..462 × 26..252`,
-faders at x 379 and 435 with 134 units of travel. Everything sits inside an 8-unit viewBox
-inset. A `@media (max-width:760px)` block enlarges the type in user units so the labels stay
+viewBox `0 0 480 248` (aspect **1.935**, was 1.679). Plot `46..346 × 30..200`, rack
+`362..472 × 20..236`, faders at x 389 and 445 with 134 units of travel. Below the axis sit
+the three preset pills (left) and the readout (right). Everything sits inside an 8-unit
+viewBox inset.
+
+**Footprint.** Measured in headless Chrome at a 1440px viewport, in the page's own hero
+grid (`minmax(0,.78fr) minmax(560px,1.22fr)`), the card paints 639 px wide:
+
+| | SVG | card |
+|---|---|---|
+| this widget at 470 × 280 | 587 × 350 | 639 × **480** |
+| this widget at 480 × 248 | 587 × 303 | 639 × **433** |
+| sibling LiSeer `.splitter` | 587 × 350 | 639 × **444** |
+
+So the card lost 46 px of height (−10%) and now sits 11 px *under* the sibling's, which is
+what "match the sibling's footprint" was asked for. The grid was not touched; only the
+widget's own aspect was. A `@media (max-width:760px)` block enlarges the type in user units so the labels stay
 legible when the card shrinks to phone width; every size in it is collision-checked by the
 test harness at both sizes.
 
@@ -243,7 +331,21 @@ test harness at both sizes.
   browser that refuses capture on SVG elements.
 * **Press the track** to jump the cap there; **press the cap** to drag it from where you
   grabbed it, with the offset preserved so it never jumps under your finger.
-* **Touch targets** are 50 × 156 user units — about 34 × 106 CSS px on a 390px phone.
+* **Touch targets**: faders 50 × 156 user units — about 33 × 104 CSS px on a 390px phone.
+  The pluck band is a 22-unit invisible stroke along each curve (15 CSS px on a phone, 27 in
+  the desktop hero); the preset pills carry a 24-unit hit rect (16 / 29 CSS px). The pills
+  are the smallest target on the card and are a convenience: everything they do is also on
+  the faders, which are keyboard-reachable.
+* **Plucking**: `pointerdown` on either curve's band grabs the nearest sample, `pointermove`
+  pulls it, `pointerup` releases it to the spring. The gesture takes pointer capture, is
+  filtered by `pointerId`, is cancelled by `pointercancel`, and sets `touch-action:none` on
+  the band only — so the page still scrolls everywhere else on the card.
+* **Scrub**: moving the pointer across the plot raises a dotted cursor with a dot on each
+  curve and switches the readout from `PEAK GAP` to `GAP HERE` — the local distance between
+  the two drawn curves at that sample.
+* **Presets** are `role="button"` with `tabindex="0"`, `aria-pressed` reflecting whether the
+  faders currently sit on that pose, Enter/Space keyboard activation and their own focus
+  ring. They jump; they never rebound.
 * **Each fader is a real `role="slider"`** with `tabindex="0"`, `aria-orientation="vertical"`,
   `aria-valuemin="0"`, `aria-valuemax="100"`, and live `aria-valuenow` / `aria-valuetext`.
 * **Keyboard**: `↑ ↓ ← →` step ±0.05, with <kbd>Shift</kbd> ±0.2; `PageUp`/`PageDown` ±0.2;
@@ -253,8 +355,9 @@ test harness at both sizes.
 * The `<svg>` is `role="group"` with an `aria-label` and a long `<desc>` — *not* `role="img"`,
   which would have made the whole subtree presentational and the sliders unreachable. All
   static decoration is inside one `aria-hidden` group; the faders are deliberately outside it.
-* `prefers-reduced-motion: reduce` stops the flow dashes, the scan sweep and the cap
-  transition. There is no other motion: once you stop moving, the JS is completely quiet.
+* `prefers-reduced-motion: reduce` stops the flow dashes, the scan sweep, the hint pulse and
+  every transition, and makes a released pluck drop instead of spring. Once you stop moving,
+  the JS is completely quiet.
 
 ---
 
@@ -264,11 +367,22 @@ test harness at both sizes.
 node docs/assets/eq-widget.test.js
 ```
 
-84 assertions, no DOM, no framework, no dependencies. Covers the morph algebra (the four
+138 assertions, no DOM, no framework, no dependencies. Covers the morph algebra (the four
 corner identities, linearity, monotonicity, the corner bound on the drawn range), the
-Catmull-Rom path, the fader travel and its pixel↔value round trip, label collisions at both
-type sizes — read out of the exported stylesheet so they cannot drift from what the browser
-paints — markup balance, the accessibility attributes, and the no-throw paths.
+residual (`max|c₁₁ − teacher| − 0.04 = 3.5e-17`), the pluck kernel and spring (deform,
+locality, smoothness, overshoot, settle time, and that a settled pluck returns the array
+*bit-for-bit*), the proof that `pluckBegin`/`pluckTo`/`pluckRelease` leave `lf` and `hf`
+untouched, the Catmull-Rom path, the footprint, the fader travel and its pixel↔value round
+trip, label collisions at both type sizes — read out of the exported stylesheet so they
+cannot drift from what the browser paints — markup balance, the accessibility attributes,
+the caption, and the no-throw paths.
+
+A second, browser-side pass (headless Chrome, synthetic `PointerEvent`s against the real
+handlers) checks the parts a node harness cannot see: that a curve drag rewrites the path
+and leaves both `aria-valuenow`s alone, that the curve is byte-identical again after the
+spring, that the faders stay where keyboard and pointer leave them, that the presets drive
+both faders and mark themselves `aria-pressed`, that the scrub cursor and its readout come
+up, and that `destroy()` empties the mount — 29 assertions, no uncaught errors.
 
 The envelope/detail claim is checked two ways. The exact one is the corner identity: at
 `lf=1, hf=0` the output *is* `teacherLo + studentHi`, to 1.1e-16. The cross-check then takes

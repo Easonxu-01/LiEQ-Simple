@@ -115,6 +115,8 @@ h1,h2,h3,h4{font-family:var(--disp);font-weight:700;letter-spacing:-.01em;line-h
   font-family:var(--mono);font-size:10px;letter-spacing:.07em;color:#8ea6c4;line-height:1.7}
 .instrument figcaption b{color:#cfe3fb;font-weight:700}
 .instrument .k-blue{color:var(--blue-on-dark)} .instrument .k-orange{color:var(--orange-bright)}
+.instrument figcaption .eq-disclose{display:block;margin-top:9px;padding-top:8px;
+  border-top:1px dashed rgba(134,182,239,.16);color:#6f85a2;font-style:normal}
 
 /* sections ------------------------------------------------------ */
 .section{padding:76px 0;border-bottom:1px solid rgba(52,72,96,.1);position:relative;isolation:isolate;overflow:hidden}
@@ -271,7 +273,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
         * Corresponding authors
       </p>
       <div class="btns">
-        <a class="btn soon" href="#" aria-disabled="true">Paper · soon</a>
+        <a class="btn" href="assets/LiEqualizer_paper.pdf" target="_blank" rel="noopener">Paper (PDF)</a>
         <a class="btn soon" href="#" aria-disabled="true">arXiv · soon</a>
         <a class="btn primary" href="https://github.com/Easonxu-01/LiEQ-Simple" target="_blank" rel="noopener">Code</a>
         <a class="btn" href="#results">Results</a>
@@ -283,9 +285,15 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
     <figure class="instrument" id="eq-instrument">
       <div id="eq-mount"></div>
       <figcaption>
-        <b>Drag the two faders.</b> The <span class="k-orange">sparse student's spectrum</span> is pulled toward the
-        <span class="k-blue">dense teacher's</span>. <b>LF</b> restores the shape sampling weakened;
-        <b>HF</b> removes the detail sampling faked. Both rest at zero — that is the undistilled student.
+        <b>Drag the two faders</b> and the <span class="k-orange">sparse student's profile</span> is pulled toward the
+        <span class="k-blue">dense teacher's</span>: <b>LF</b> restores the shape sampling weakened, <b>HF</b> removes
+        the detail sampling faked. They move continuously and stay where you leave them; both rest at zero, which is
+        the undistilled student. At full travel a small gap is left on purpose — a distilled student lands near the
+        teacher, not on it. <b>You can also pluck either curve</b> — grab it anywhere, pull, and it springs back to the
+        shape the faders imply. Hover to read the local gap.
+        <span class="eq-disclose" data-eq-caption>Illustrative, not measured: both curves are traced from the paper's
+        insight figure, and the student's high-frequency ripple is synthesised so the HF fader has something to
+        remove.</span>
       </figcaption>
     </figure>
   </div>
@@ -319,7 +327,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
       low-frequency shape left intact. A filter can only do the first. A sampler does both, which is why the method has two branches.</p>
     </div>
     <figure class="fig reveal">
-      <div class="fig-media"><img src="assets/insight.jpg" alt="Conceptual illustration: the sparse spectrum against the dense spectrum, showing low-frequency excess and spurious high-frequency response." loading="lazy" /></div>
+      <div class="fig-media"><a href="assets/insight.pdf" target="_blank" rel="noopener" title="Open the vector PDF"><img src="assets/insight.jpg" alt="Conceptual illustration: the sparse spectrum against the dense spectrum, showing low-frequency excess and spurious high-frequency response." loading="lazy" /></a></div>
       <figcaption><b>Fig 1.</b> Different LiDARs observe different spectra of the same world. Sparse sampling attenuates real
       high frequencies in the point domain and, unlike a filter, creates near-white fake high frequencies on the voxel grid.
       LiEqualizer distills the spectrum from a teacher trained on densified scenes and equalizes the student's spectral
@@ -338,7 +346,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
       which is what fixes their band.</p>
     </div>
     <figure class="fig reveal">
-      <div class="fig-media"><img src="assets/framework.jpg" alt="The LiEqualizer framework: frozen dense teacher, active sparse student, LF distiller on the TPV planes and HF distiller on the voxel logits." loading="lazy" /></div>
+      <div class="fig-media"><a href="assets/framework.pdf" target="_blank" rel="noopener" title="Open the vector PDF"><img src="assets/framework.jpg" alt="The LiEqualizer framework: frozen dense teacher, active sparse student, LF distiller on the TPV planes and HF distiller on the voxel logits." loading="lazy" /></a></div>
       <figcaption><b>Fig 2.</b> The frozen teacher reads densified scenes; the student reads the sensor's own sparse scan.
       The LF distiller acts on the three tri-perspective-view planes, the HF distiller on the common-support voxel logits.
       Neither adds a trainable parameter to the deployed model.</figcaption>
@@ -357,12 +365,12 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
     </div>
     <div class="two reveal" style="margin-top:20px">
       <figure class="fig" style="margin-top:0">
-        <div class="fig-media"><img src="assets/LF.jpg" alt="The low-frequency branch." loading="lazy" /></div>
+        <div class="fig-media"><a href="assets/LF.pdf" target="_blank" rel="noopener" title="Open the vector PDF"><img src="assets/LF.jpg" alt="The low-frequency branch." loading="lazy" /></a></div>
         <figcaption><b>The low-frequency branch.</b> Teacher and student planes are smoothed by the same diffusion pyramid;
         the gate comes from the teacher's projected class map, not from the planes themselves.</figcaption>
       </figure>
       <figure class="fig" style="margin-top:0">
-        <div class="fig-media"><img src="assets/HF.jpg" alt="The high-frequency branch." loading="lazy" /></div>
+        <div class="fig-media"><a href="assets/HF.pdf" target="_blank" rel="noopener" title="Open the vector PDF"><img src="assets/HF.jpg" alt="The high-frequency branch." loading="lazy" /></a></div>
         <figcaption><b>The high-frequency branch.</b> Acts on the voxel logits over the cells teacher and student share,
         matching detail the teacher holds and shrinking the rest toward it.</figcaption>
       </figure>
@@ -406,6 +414,20 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
       </div>
       <figcaption><b>Fig 5.</b> The same table, built up. Grey is the single-sensor baseline, orange the randomized-sampling
       baseline, blue LiEqualizer. Arrows mark the gain over the orange bars.</figcaption>
+    </figure>
+
+    <figure class="fig reveal">
+      <div class="fig-media"><div id="lq-paper-fig3" data-lieq-paper-chart="paper-fig3"></div></div>
+      <figcaption><b>Fig 6.</b> Alignment, band by band. Agreement between the student's field and the teacher's
+      within each band, scaled so that one is the agreement the teacher reaches with itself when its input is
+      re-drawn under the same budget. Higher is better in all three columns. This is the manuscript's Fig. 3,
+      re-drawn here from the released measurements.</figcaption>
+    </figure>
+
+    <figure class="fig reveal">
+      <div class="fig-media"><div id="lq-paper-fig4" data-lieq-paper-chart="paper-fig4"></div></div>
+      <figcaption><b>Fig 7.</b> How much energy a band carries, and how much of it the teacher accounts for.
+      The manuscript's Fig. 4, re-drawn from the released measurements.</figcaption>
     </figure>
 
     <div class="section-head reveal" style="margin-top:46px">
@@ -503,10 +525,12 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
       <p class="lead">The spectral measurement protocol is released with the code so the diagnosis can be reproduced on any sensor pair.</p>
     </div>
     <div class="dlist reveal">
+      <a class="dl" href="assets/LiEqualizer_paper.pdf" target="_blank" rel="noopener">
+        <span class="ic">¶</span><span><span class="t">Paper</span><br /><span class="m">PDF · 95 pages</span></span><span class="ar">→</span></a>
       <a class="dl" href="https://github.com/Easonxu-01/LiEQ-Simple" target="_blank" rel="noopener">
         <span class="ic">&lt;/&gt;</span><span><span class="t">Source code</span><br /><span class="m">GitHub · LiEQ-Simple</span></span><span class="ar">→</span></a>
       <a class="dl soon" href="#"><span class="ic">◆</span><span><span class="t">Checkpoints</span><br /><span class="m">coming with the paper</span></span><span class="ar">→</span></a>
-      <a class="dl soon" href="#"><span class="ic">▤</span><span><span class="t">Densified data</span><br /><span class="m">coming with the paper</span></span><span class="ar">→</span></a>
+      <a class="dl" href="https://github.com/PRBonn/LiDiff" target="_blank" rel="noopener"><span class="ic">▤</span><span><span class="t">Densified data &amp; labels</span><br /><span class="m">generated with LiDiff · SemanticKITTI / nuScenes / Waymo</span></span><span class="ar">→</span></a>
       <a class="dl soon" href="#"><span class="ic">▶</span><span><span class="t">Real-vehicle clips</span><br /><span class="m">coming with the paper</span></span><span class="ar">→</span></a>
     </div>
     <div class="eyebrow" style="margin-top:28px">Documentation</div>
@@ -556,8 +580,19 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
 </footer>
 
 <script src="assets/eq-widget.js" defer></script>
+<script>
+/* Keep the visible disclosure identical to eq-widget.js's exported constant, so the
+ * module stays the single source of that wording. The HTML above carries the same
+ * sentence as a no-JS fallback. */
+window.addEventListener('load', function () {
+  var el = document.querySelector('[data-eq-caption]');
+  var w = window.LiEQEqualizer;
+  if (el && w && typeof w.caption === 'string' && w.caption) { el.textContent = w.caption; }
+}, false);
+</script>
 <script src="assets/charts-main.js" defer></script>
 <script src="assets/charts-native.js" defer></script>
+<script src="assets/charts-paper.js" defer></script>
 <script>
 (function(){
   "use strict";

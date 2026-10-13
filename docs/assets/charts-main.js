@@ -134,12 +134,13 @@
     note: 'The table is read downwards, from the undistilled student to the full objective, and each bracketed figure is the difference from the first row. That row is the randomized-sampling student of Table 1 trained on SemanticKITTI, quoted from the original publication. The two single-branch rows are alternatives rather than steps: one keeps the low-frequency branch alone, the other the high-frequency branch that shares its switch. The three rows after them hold both branches and differ in how much of the gate they carry.'
   };
 
-  /* Table 2 — distillation objectives compared under one pipeline.
+  /* Table 2 - distillation objectives compared under one pipeline.
    *
-   * One departure from the printed tex, flagged on the page and in the README:
-   * the tex prints (+0.5) on the last row's SK->nuScenes cell, but 58.3 - 56.8
-   * = 1.5 and Table 3 prints (+1.5) for the identical pair. The page shows
-   * (+1.5) and says so in the footnote.
+   * Transcribed from the printed tex with no departures. (An earlier revision
+   * of the tex printed (+0.5) on the last row's SK->nuScenes cell; 58.3 - 56.8
+   * = 1.5, and Table 3 printed (+1.5) for the identical pair, so the page
+   * carried (+1.5) with a footnote. The tex now prints (+1.5) too and the
+   * footnote is gone.)
    */
   var KD = {
     number: 'Table 2',
@@ -161,10 +162,9 @@
       { label: '+ CWD', attached: 'TPV planes',
         cells: [{ v: 74.2, d: 6.1, mark: 'second' }, { v: 64.2, d: 9.6 }, { v: 53.7, d: -3.1 }] },
       { label: '+ LiEqualizer (ours)', attached: 'Both', ours: true,
-        cells: [{ v: 75.5, d: 7.4, mark: 'best' }, { v: 64.4, d: 9.8 }, { v: 58.3, d: 1.5, mark: 'best', footnote: 1 }] }
+        cells: [{ v: 75.5, d: 7.4, mark: 'best' }, { v: 64.4, d: 9.8 }, { v: 58.3, d: 1.5, mark: 'best' }] }
     ],
-    note: 'All competing objectives are implemented by us within this pipeline. Where the released code runs on this architecture we follow it and its default hyper-parameters; the substitutions we made are listed in Appendix E. The first row is the same student without any distillation, and the bracketed figures are differences against that row.',
-    footnotes: ['Table 2 of the manuscript prints (+0.5) in this cell. 58.3 − 56.8 = 1.5, and Table 3 prints (+1.5) for the same pair, so the page shows (+1.5).']
+    note: 'All competing objectives are implemented by us within this pipeline. Where the released code runs on this architecture we follow it and its default hyper-parameters; the substitutions we made are listed in Appendix E. The first row is the same student without any distillation, and the bracketed figures are differences against that row.'
   };
 
   /* ====================================================================== *
