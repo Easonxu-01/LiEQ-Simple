@@ -1,1 +1,607 @@
-<!doctype html><meta charset="utf-8"><title>LiEqualizer</title><p>Project page coming up.</p>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>LiEqualizer · Seeing the Lost Spectrum of Sparse LiDARs</title>
+<meta name="description" content="LiEqualizer equalizes a sparse-LiDAR student's spectrum against a dense teacher during training, raising zero-shot cross-sensor mIoU by up to 11.5 points without changing the network, its parameter count or its inference cost." />
+<link rel="canonical" href="https://easonxu-01.github.io/LiEQ-Simple/" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="LiEqualizer: Seeing the Lost Spectrum of Sparse LiDARs" />
+<meta property="og:description" content="Different LiDARs do not see different worlds; they see different spectra of the same world." />
+<meta property="og:url" content="https://easonxu-01.github.io/LiEQ-Simple/" />
+<meta property="og:image" content="https://easonxu-01.github.io/LiEQ-Simple/assets/insight.jpg" />
+<meta name="twitter:card" content="summary_large_image" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230c1322'/%3E%3Cpath d='M7 21c4-10 6 4 9-6s5 6 9-2' stroke='%2356adf0' stroke-width='2.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   LiEqualizer project page — single flattened stylesheet.
+   Tokens follow the sibling LiSeer page; brand blue/orange are
+   the paper's own figure colours.
+   ============================================================ */
+:root{
+  --ink:#0c1322; --ink-2:#101a2e; --ink-3:#16223a;
+  --paper:#f8fafc; --mist:#eef3f8;
+  --blue:#2a78d6; --blue-lt:#86b6ef; --blue-on-dark:#56adf0; --blue-bright:#bfe0ff;
+  --orange:#eb6834; --orange-lt:#f5b896; --orange-on-dark:#e58236; --orange-bright:#f6bd8c;
+  --teacher:#52514e; --ceiling:#8f8d88;
+  --text:#17202c; --muted:#647184; --line:rgba(52,72,96,.12);
+  --maxw:1180px; --r:18px;
+  --shadow:0 18px 48px -30px rgba(38,61,91,.35);
+  --sans:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  --disp:'Space Grotesk',var(--sans);
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:72px}
+body{margin:0;font-family:var(--sans);font-size:15.5px;line-height:1.65;letter-spacing:-.003em;
+     color:var(--text);background:var(--paper);-webkit-font-smoothing:antialiased}
+img{max-width:100%;display:block}
+a{color:var(--blue);text-decoration:none}
+a:hover{color:#58b9eb}
+h1,h2,h3,h4{font-family:var(--disp);font-weight:700;letter-spacing:-.01em;line-height:1.12;margin:0}
+.container{max-width:var(--maxw);margin:0 auto;padding-inline:clamp(20px,3.4vw,40px)}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* progress + nav ------------------------------------------------ */
+#page-progress{position:fixed;inset:0 0 auto 0;height:3px;z-index:60;
+  background:linear-gradient(90deg,var(--blue),var(--blue-lt));transform:scaleX(0);transform-origin:0 50%}
+.nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);
+  background:rgba(12,19,34,.82);border-bottom:1px solid rgba(255,255,255,.07);transition:background .3s,border-color .3s}
+.nav.scrolled{background:rgba(248,250,252,.88);border-bottom-color:var(--line)}
+.nav-inner{height:64px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+.brand{font-family:var(--disp);font-weight:700;font-size:17px;letter-spacing:-.02em;color:#eaf1fb}
+.brand b{color:var(--blue-on-dark)}
+.nav.scrolled .brand{color:var(--text)} .nav.scrolled .brand b{color:var(--blue)}
+.nav-links{display:flex;gap:20px;flex:1;justify-content:center;flex-wrap:wrap}
+.nav-links a{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;color:#9fb2cb}
+.nav-links a:hover{color:var(--blue-bright)}
+.nav.scrolled .nav-links a{color:var(--muted)} .nav.scrolled .nav-links a:hover{color:var(--blue)}
+.nav-cta{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.06em;
+  padding:8px 15px;border-radius:999px;border:1px solid rgba(134,182,239,.45);color:#cfe3fb;white-space:nowrap}
+.nav-cta:hover{background:rgba(42,120,214,.22);color:#fff}
+.nav.scrolled .nav-cta{border-color:var(--blue);color:var(--blue)}
+@media(max-width:860px){.nav-links{display:none}}
+
+/* hero ---------------------------------------------------------- */
+.hero{position:relative;isolation:isolate;overflow:hidden;
+  background:radial-gradient(120% 120% at 18% 0%,#16223a 0%,#0c1322 58%,#080e1a 100%)}
+.hero::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(60% 50% at 78% 18%,rgba(42,120,214,.20),transparent 70%),
+             radial-gradient(45% 40% at 10% 86%,rgba(235,104,52,.13),transparent 72%)}
+.hero-inner{position:relative;z-index:2;display:grid;
+  grid-template-columns:minmax(0,.78fr) minmax(560px,1.22fr);
+  gap:clamp(28px,4vw,52px);align-items:center;padding-top:58px;padding-bottom:70px}
+.eyebrow{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.2em;
+  text-transform:uppercase;color:#377fba}
+.hero .eyebrow{color:#67bce9}
+.hero h1{font-size:clamp(2.1rem,3.6vw,2.9rem);line-height:1.03;letter-spacing:-.045em;
+  color:#f7f9fc;max-width:16ch;margin:.4em 0 .3em}
+.hero .lede{font-size:clamp(.98rem,1.4vw,1.1rem);color:#aab7c7;max-width:44ch;margin:0 0 20px}
+.hero .insight{font-family:var(--disp);font-style:italic;font-size:clamp(1rem,1.5vw,1.16rem);
+  color:#cfe3fb;border-left:2px solid var(--blue-on-dark);padding-left:14px;margin:0 0 22px;max-width:46ch}
+.authors{font-size:13px;color:#c1cad7;margin:0 0 6px;line-height:1.75}
+.authors .me{color:#eaf1fb;font-weight:600}
+.authors sup{color:var(--blue-on-dark);font-size:10px}
+.affil{font-family:var(--mono);font-size:10.5px;color:#7f8da0;line-height:1.7;margin:0 0 22px}
+.btns{display:flex;flex-wrap:wrap;gap:9px}
+.btn{font-family:var(--mono);font-size:11.5px;font-weight:700;letter-spacing:.03em;
+  padding:10px 17px;border-radius:999px;border:1px solid rgba(159,178,203,.32);
+  color:#dbe7f5;display:inline-flex;align-items:center;gap:7px;transition:.18s}
+.btn:hover{border-color:var(--blue-on-dark);background:rgba(42,120,214,.18);color:#fff;transform:translateY(-1px)}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.primary:hover{background:#3d8ae8}
+.btn.soon{opacity:.45;cursor:not-allowed}
+.btn.soon:hover{transform:none;background:none;border-color:rgba(159,178,203,.32);color:#dbe7f5}
+
+/* instrument card (hero widget) --------------------------------- */
+.instrument{position:relative;margin:0;border-radius:25px;padding:clamp(18px,2vw,25px);
+  background:linear-gradient(165deg,#16223a 0%,#0c1322 62%,#090f1c 100%);
+  border:1px solid rgba(134,182,239,.16);overflow:hidden;
+  box-shadow:0 40px 90px -52px rgba(4,10,22,.95),0 2px 0 rgba(255,255,255,.05) inset,
+             0 0 0 1px rgba(255,255,255,.03) inset,0 60px 120px -70px rgba(42,120,214,.5)}
+.instrument::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
+  background-image:linear-gradient(rgba(134,182,239,.075) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(134,182,239,.075) 1px,transparent 1px);
+  background-size:34px 34px;
+  -webkit-mask-image:radial-gradient(120% 95% at 50% 10%,#000 35%,transparent 78%);
+          mask-image:radial-gradient(120% 95% at 50% 10%,#000 35%,transparent 78%)}
+.instrument figcaption{position:relative;margin-top:14px;padding-top:12px;
+  border-top:1px solid rgba(134,182,239,.14);
+  font-family:var(--mono);font-size:10px;letter-spacing:.07em;color:#8ea6c4;line-height:1.7}
+.instrument figcaption b{color:#cfe3fb;font-weight:700}
+.instrument .k-blue{color:var(--blue-on-dark)} .instrument .k-orange{color:var(--orange-bright)}
+
+/* sections ------------------------------------------------------ */
+.section{padding:76px 0;border-bottom:1px solid rgba(52,72,96,.1);position:relative;isolation:isolate;overflow:hidden}
+.section.tint{background:var(--mist)}
+.section > .container{position:relative;z-index:1}
+.section-head{max-width:70ch;margin-bottom:32px}
+.section h2{font-size:clamp(1.6rem,2.9vw,2.2rem);line-height:1.08;letter-spacing:-.035em;margin:.28em 0 .35em}
+.section p.lead{font-size:1.02rem;color:#465568;margin:0}
+
+/* cards / figures ----------------------------------------------- */
+.fig{margin:30px 0 0}
+.fig .fig-media{background:#fff;border:1px solid var(--line);border-radius:23px;padding:16px;box-shadow:var(--shadow)}
+.fig .fig-media img, .fig .fig-media video{border-radius:11px;width:100%}
+.fig figcaption{font-size:12.5px;line-height:1.58;color:#59677a;margin-top:13px}
+.fig figcaption b{color:var(--text)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.chip{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10px;
+  font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#b4591f;
+  background:rgba(235,104,52,.1);border:1px solid rgba(235,104,52,.25);padding:6px 12px;border-radius:999px}
+.tldr{padding:26px 28px;border-radius:17px;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow)}
+.tldr .lead{font-size:14px;line-height:1.72;margin:12px 0 0;color:#435166}
+.prose{display:grid;gap:14px;margin-top:18px}
+.prose > p{padding:22px 24px;border-radius:17px;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);margin:0;
+  font-size:14px;line-height:1.72;color:#435166}
+.prose .tag{display:block;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--blue);margin-bottom:7px}
+.mod{padding:22px 24px;border-radius:17px;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);margin-top:20px}
+.mod .tag{display:inline-block;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;padding:5px 11px;border-radius:999px;margin-bottom:11px}
+.mod.blue .tag{background:rgba(42,120,214,.12);color:#2063b4}
+.mod.orange .tag{background:rgba(235,104,52,.12);color:#b4591f}
+.mod h3{font-size:1.12rem;margin-bottom:7px}
+.mod p{font-size:14px;color:#536175;margin:0}
+
+/* stats --------------------------------------------------------- */
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.stat{padding:24px;border-radius:17px;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow)}
+.stat .num{font-size:clamp(2rem,3.6vw,2.9rem);font-family:var(--mono);font-weight:700;
+  letter-spacing:-.045em;line-height:1;color:#2063b4;display:flex;align-items:baseline}
+.stat.accent .num{color:#c4641f}
+.stat .num small{font-size:.38em;margin-left:5px;color:#687588;letter-spacing:0}
+.stat .lbl{font-size:12.5px;max-width:30ch;margin-top:22px;color:#5d6a7c}
+@media(max-width:860px){.stats{grid-template-columns:1fr}}
+
+/* tables -------------------------------------------------------- */
+.tbl-wrap{overflow-x:auto;border-radius:17px;border:1px solid var(--line);background:#fff;box-shadow:var(--shadow);margin-top:24px}
+table.data{border-collapse:collapse;width:100%;font-size:13px;min-width:560px}
+table.data th,table.data td{padding:10px 13px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+table.data th:first-child,table.data td:first-child{text-align:left}
+table.data thead th{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--muted);background:#fbfcfe}
+table.data tbody tr:last-child td{border-bottom:0}
+table.data tbody tr.hero-row td{background:rgba(42,120,214,.06);font-weight:600}
+table.data .up{color:#1f9d55} table.data .dn{color:#c0392b}
+table.data .best{font-weight:700} table.data .second{text-decoration:underline}
+
+/* cards grid ---------------------------------------------------- */
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:26px}
+.card{border-radius:18px;overflow:hidden;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow)}
+.card .media{display:block;width:100%;border:0;padding:0;background:var(--mist);cursor:zoom-in}
+.card .media img{border-radius:0}
+.card .body{padding:18px 19px 20px}
+.card .beam{display:inline-block;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;
+  background:#1b293a;color:#cfe3fb;padding:4px 10px;border-radius:999px;margin-bottom:9px}
+.card h3{font-size:1.03rem;margin-bottom:5px} .card p{font-size:13.5px;color:var(--muted);margin:0}
+@media(max-width:860px){.cards,.two{grid-template-columns:1fr}}
+
+/* downloads ----------------------------------------------------- */
+.dlist{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:22px}
+.dl{display:flex;align-items:center;gap:14px;padding:20px;border-radius:17px;background:#fff;
+  border:1px solid var(--line);box-shadow:var(--shadow);color:var(--text)}
+.dl:hover{border-color:var(--blue);transform:translateY(-1px)}
+.dl .ic{width:38px;height:38px;border-radius:50%;background:rgba(42,120,214,.1);color:var(--blue);
+  display:grid;place-items:center;font-family:var(--mono);font-weight:700;font-size:13px;flex:0 0 auto}
+.dl .t{font-weight:600;font-size:14px} .dl .m{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.dl .ar{margin-left:auto;color:var(--muted)}
+.dl.soon{opacity:.55;pointer-events:none}
+@media(max-width:860px){.dlist{grid-template-columns:1fr}}
+.docs{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.doc{font-family:var(--mono);font-size:11px;font-weight:700;padding:9px 15px;border-radius:999px;
+  border:1px solid var(--line);background:#fff;color:var(--muted)}
+.doc:hover{border-color:var(--blue);color:var(--blue)}
+
+/* bibtex / footer ----------------------------------------------- */
+.bib{position:relative;border-radius:18px;background:#172231;padding:22px;overflow:auto}
+.bib pre{margin:0;font-family:var(--mono);font-size:13px;line-height:1.7;color:#c9d8ea;white-space:pre}
+.bib .copy{position:absolute;top:14px;right:14px;font-family:var(--mono);font-size:10.5px;font-weight:700;
+  letter-spacing:.06em;padding:7px 13px;border-radius:999px;border:1px solid rgba(159,178,203,.3);
+  background:transparent;color:#cfe3fb;cursor:pointer}
+.bib .copy:hover{background:rgba(42,120,214,.25)}
+.footer{background:#15202e;color:#9fb2cb;padding:34px 0}
+.footer-inner{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;align-items:center}
+.footer .brand{color:#eaf1fb}
+.footer .small{font-family:var(--mono);font-size:12px}
+
+/* lightbox ------------------------------------------------------ */
+.lightbox{position:fixed;inset:0;z-index:80;display:none;place-items:center}
+.lightbox.open{display:grid}
+.lightbox-backdrop{position:absolute;inset:0;background:rgba(8,14,26,.9);backdrop-filter:blur(6px)}
+.lightbox-inner{position:relative;max-width:min(1200px,92vw);max-height:88vh}
+.lightbox-inner img{max-height:80vh;width:auto;border-radius:12px;box-shadow:0 30px 80px -30px #000}
+.lightbox p{font-family:var(--mono);font-size:11.5px;color:#cfe3fb;text-align:center;margin:12px 0 0}
+.lightbox button{position:absolute;top:-44px;right:0;background:transparent;border:1px solid rgba(159,178,203,.4);
+  color:#cfe3fb;border-radius:999px;padding:7px 14px;font-family:var(--mono);font-size:11px;cursor:pointer}
+
+/* reveal -------------------------------------------------------- */
+.reveal{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.reveal.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){
+  .reveal{opacity:1;transform:none;transition:none}
+  html{scroll-behavior:auto}
+}
+@media(max-width:1050px){.hero-inner{grid-template-columns:minmax(0,.82fr) minmax(480px,1.18fr)}}
+@media(max-width:860px){.hero-inner{grid-template-columns:1fr;gap:30px;padding-top:42px}
+  .section{padding:62px 0}}
+@media(max-width:680px){.hero h1{font-size:clamp(1.9rem,8.6vw,2.4rem)}
+  .instrument{padding:14px;border-radius:20px}}
+</style>
+</head>
+<body>
+<div id="page-progress" aria-hidden="true"></div>
+
+<nav class="nav" id="nav">
+  <div class="container nav-inner">
+    <a href="#top" class="brand">Li<b>Equalizer</b></a>
+    <div class="nav-links">
+      <a href="#abstract">Abstract</a>
+      <a href="#idea">Idea</a>
+      <a href="#method">Method</a>
+      <a href="#results">Results</a>
+      <a href="#spectrum">Spectrum</a>
+      <a href="#deploy">On-vehicle</a>
+      <a href="#downloads">Downloads</a>
+    </div>
+    <a class="nav-cta" href="https://github.com/Easonxu-01/LiEQ-Simple" target="_blank" rel="noopener">Code ↗</a>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="container hero-inner">
+    <div>
+      <div class="eyebrow">Cross-LiDAR perception · 2026</div>
+      <h1>Seeing the Lost Spectrum of Sparse LiDARs</h1>
+      <p class="insight">Different LiDARs do not see different worlds; they see different spectra of the same world.</p>
+      <p class="lede">LiEqualizer equalizes a sparse-LiDAR student's spectrum against a dense teacher — during training only. The deployed network is unchanged.</p>
+      <p class="authors">
+        <span class="me">Zikun Xu</span><sup>1,2</sup>, Shuocheng Yang<sup>1</sup>,
+        Jianqiang Wang<sup>1,*</sup>, Keqiang Li<sup>1,*</sup>,
+        Gim Hee Lee<sup>2,*</sup>, Shaobing Xu<sup>1,*</sup>
+      </p>
+      <p class="affil">
+        1 · School of Vehicle and Mobility, Tsinghua University, Beijing, China<br />
+        2 · Department of Computer Science, National University of Singapore<br />
+        * Corresponding authors
+      </p>
+      <div class="btns">
+        <a class="btn soon" href="#" aria-disabled="true">Paper · soon</a>
+        <a class="btn soon" href="#" aria-disabled="true">arXiv · soon</a>
+        <a class="btn primary" href="https://github.com/Easonxu-01/LiEQ-Simple" target="_blank" rel="noopener">Code</a>
+        <a class="btn" href="#results">Results</a>
+        <a class="btn" href="#video">Video</a>
+        <a class="btn" href="#cite">BibTeX</a>
+      </div>
+    </div>
+
+    <figure class="instrument" id="eq-instrument">
+      <div id="eq-mount"></div>
+      <figcaption>
+        <b>Drag the two faders.</b> The <span class="k-orange">sparse student's spectrum</span> is pulled toward the
+        <span class="k-blue">dense teacher's</span>. <b>LF</b> restores the shape sampling weakened;
+        <b>HF</b> removes the detail sampling faked. Both rest at zero — that is the undistilled student.
+      </figcaption>
+    </figure>
+  </div>
+</header>
+
+<section class="section" id="abstract">
+  <div class="container">
+    <div class="tldr reveal">
+      <span class="chip">TL;DR</span>
+      <p class="lead"><b>Main takeaway:</b> read a LiDAR scan as a spectrum and the sensor gap becomes a band problem.
+      A dense teacher still holds the bands a sparse scan lost, so a student can be taught to match them — restoring
+      real detail in the encoder's code and suppressing invented detail in the decoder's logits. This buys up to
+      <b>+11.5 zero-shot cross-sensor mIoU</b> with <b>zero</b> change to the architecture, the parameter count or the inference cost.</p>
+    </div>
+    <div class="prose reveal">
+      <p><span class="tag">Motivation</span>Engineers and researchers pay twice for LiDAR perception: a cheap sensor with few beams sees less of the scene, and every new sensor means new data, labels and training, team after team. Recent work cuts that cost by randomizing the sampling pattern during training, but ignoring a pattern does not return the measurements it never took, and putting them back has meant reconstructing the scan before the network reads it.</p>
+      <p><span class="tag">Perspective</span>Read as frequencies, sparse sampling keeps a scan's coarse shape but weakens real detail and invents false detail — which a filter cannot do, but a sampler can. We prove sparse scans alone cannot bring the weakened detail back, but a teacher trained on densified scenes can.</p>
+      <p><span class="tag">Method</span>LiEqualizer distills the spectrum. A low-frequency branch restores what sampling weakened, in the encoder's compressed code, returning structure its beams missed; a high-frequency branch removes what sampling faked, in the decoder's voxel logits, so false detail cannot pass as real. Each acts only where the teacher's own response marks something to restore or remove.</p>
+      <p><span class="tag">Results</span>Across SemanticKITTI, Waymo and nuScenes, LiEqualizer delivers consistent zero-shot gains, raising cross-sensor mIoU by up to 11.5 points without altering the network, its parameter count, or the cost of training it. Its losses act only in training, so the deployed model keeps the baseline's architecture and inference cost, and the unchanged model transfers to three vehicles carrying unseen LiDARs.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section tint" id="idea">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="eyebrow">The idea</div>
+      <h2>One undersampling, two opposite symptoms</h2>
+      <p class="lead">On raw point clouds, sparse sampling <em>attenuates</em> real high frequencies. On the voxel grid the
+      network actually reads, it <em>injects</em> near-white high frequencies — about 32× the teacher's, with the
+      low-frequency shape left intact. A filter can only do the first. A sampler does both, which is why the method has two branches.</p>
+    </div>
+    <figure class="fig reveal">
+      <div class="fig-media"><img src="assets/insight.jpg" alt="Conceptual illustration: the sparse spectrum against the dense spectrum, showing low-frequency excess and spurious high-frequency response." loading="lazy" /></div>
+      <figcaption><b>Fig 1.</b> Different LiDARs observe different spectra of the same world. Sparse sampling attenuates real
+      high frequencies in the point domain and, unlike a filter, creates near-white fake high frequencies on the voxel grid.
+      LiEqualizer distills the spectrum from a teacher trained on densified scenes and equalizes the student's spectral
+      response — matching detail where the teacher has it, suppressing ripple where it does not.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="section" id="method">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="eyebrow">Method</div>
+      <h2>Match where the teacher has structure, suppress where it does not</h2>
+      <p class="lead">Both branches read responses of the same diffusion family, and both are gated by the frozen teacher:
+      the gate decides where to match and where to suppress. The two branches differ in <em>where in the network</em> they act,
+      which is what fixes their band.</p>
+    </div>
+    <figure class="fig reveal">
+      <div class="fig-media"><img src="assets/framework.jpg" alt="The LiEqualizer framework: frozen dense teacher, active sparse student, LF distiller on the TPV planes and HF distiller on the voxel logits." loading="lazy" /></div>
+      <figcaption><b>Fig 2.</b> The frozen teacher reads densified scenes; the student reads the sensor's own sparse scan.
+      The LF distiller acts on the three tri-perspective-view planes, the HF distiller on the common-support voxel logits.
+      Neither adds a trainable parameter to the deployed model.</figcaption>
+    </figure>
+    <div class="mod blue reveal">
+      <span class="tag">Low frequency · the boost</span>
+      <h3>Restore what sampling weakened</h3>
+      <p>In the encoder's compressed code, the student's smoothed response is matched to the teacher's where the teacher's
+      gate is open, and driven toward zero where it is closed. That returns structure the student's beams never measured.</p>
+    </div>
+    <div class="mod orange reveal">
+      <span class="tag">High frequency · the cut</span>
+      <h3>Remove what sampling faked</h3>
+      <p>In the decoder's voxel logits, the student's high-pass response is matched to the teacher's where the teacher has
+      detail, and suppressed toward the teacher's own level where it does not — so aliasing cannot pass as real detail.</p>
+    </div>
+    <div class="two reveal" style="margin-top:20px">
+      <figure class="fig" style="margin-top:0">
+        <div class="fig-media"><img src="assets/LF.jpg" alt="The low-frequency branch." loading="lazy" /></div>
+        <figcaption><b>The low-frequency branch.</b> Teacher and student planes are smoothed by the same diffusion pyramid;
+        the gate comes from the teacher's projected class map, not from the planes themselves.</figcaption>
+      </figure>
+      <figure class="fig" style="margin-top:0">
+        <div class="fig-media"><img src="assets/HF.jpg" alt="The high-frequency branch." loading="lazy" /></div>
+        <figcaption><b>The high-frequency branch.</b> Acts on the voxel logits over the cells teacher and student share,
+        matching detail the teacher holds and shrinking the rest toward it.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section class="section tint" id="results">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="eyebrow">Results</div>
+      <h2>Zero-shot across sensors, with the network untouched</h2>
+      <p class="lead">Every number below is the same backbone, the same schedule and the same generated data as the
+      randomized-sampling baseline. Only the training objective differs.</p>
+    </div>
+
+    <div class="stats reveal">
+      <div class="stat"><div class="num">+11.5<small>mIoU</small></div>
+        <div class="lbl">Largest zero-shot cross-sensor gain over the randomized-sampling baseline (Waymo → SemanticKITTI).</div></div>
+      <div class="stat accent"><div class="num">0<small>extra params</small></div>
+        <div class="lbl">The deployed model is the baseline network: 32,277,463 parameters, 0.224 s per frame, 5.66 GiB peak.</div></div>
+      <div class="stat"><div class="num">3<small>vehicles</small></div>
+        <div class="lbl">The unchanged model transfers to three platforms carrying LiDARs it never saw in training.</div></div>
+    </div>
+
+    <figure class="fig reveal">
+      <div class="fig-media"><div id="lq-main-matrix"></div></div>
+      <figcaption><b>Fig 3.</b> Source-to-unseen generalization. Three training sources × three test sets × three methods.
+      Diagonal cells are same-sensor; the paper's claim is about the off-diagonal ones. Rendered live from the paper's table.</figcaption>
+    </figure>
+
+    <figure class="fig reveal">
+      <div class="fig-media"><div id="lq-gain-strip"></div></div>
+      <figcaption><b>Fig 4.</b> LiEqualizer's gain over the randomized-sampling baseline in every cell.</figcaption>
+    </figure>
+
+    <figure class="fig reveal">
+      <div class="fig-media">
+        <video src="assets/table1_3d_build.mp4" poster="assets/table1_3d.jpg" controls playsinline preload="none"
+               style="width:100%;border-radius:11px"></video>
+      </div>
+      <figcaption><b>Fig 5.</b> The same table, built up. Grey is the single-sensor baseline, orange the randomized-sampling
+      baseline, blue LiEqualizer. Arrows mark the gain over the orange bars.</figcaption>
+    </figure>
+
+    <div class="section-head reveal" style="margin-top:46px">
+      <div class="eyebrow">Ablation</div>
+      <h2>What each piece buys</h2>
+      <p class="lead">Read downwards from the undistilled student; each row adds one module. Brackets are the difference from the first row.</p>
+    </div>
+    <div id="lq-ablation" class="reveal"></div>
+
+    <div class="section-head reveal" style="margin-top:46px">
+      <div class="eyebrow">Comparison</div>
+      <h2>Against other distillation objectives</h2>
+      <p class="lead">Re-implemented under one pipeline with the same teacher, the same student, the same signals and the same
+      schedule, so that only the objective differs.</p>
+    </div>
+    <div id="lq-kd-baselines" class="reveal"></div>
+  </div>
+</section>
+
+<section class="section" id="spectrum">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="eyebrow">Spectrum</div>
+      <h2>An open protocol for measuring what a sensor loses</h2>
+      <p class="lead">The diagnosis is a separate contribution: a measurement protocol that reports what sparse sampling does
+      to a signal, and whether distillation repaired it. Every figure below is rendered live from the released measurements.</p>
+    </div>
+    <div class="reveal" style="display:grid;gap:30px">
+      <div data-lieq-chart="qprofiles"></div>
+      <div data-lieq-chart="rolloff-hfshare"></div>
+      <div data-lieq-chart="class-retention"></div>
+      <div data-lieq-chart="gap-heatmap"></div>
+      <div data-lieq-chart="b0-trend"></div>
+      <div data-lieq-chart="band-profiles"></div>
+    </div>
+  </div>
+</section>
+
+<section class="section tint" id="deploy">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="eyebrow">On-vehicle</div>
+      <h2>Real platforms, unseen LiDARs</h2>
+      <p class="lead">The deployed network is identical to the baseline's, so on-vehicle testing needs no re-integration.
+      Results are qualitative: these platforms carry no labelled ground truth.</p>
+    </div>
+    <div class="cards reveal">
+      <article class="card">
+        <button class="media" data-lightbox="assets/CS55.jpg" data-cap="CS55 platform — unseen LiDAR">
+          <img src="assets/CS55.jpg" alt="Segmentation on the CS55 platform" loading="lazy" /></button>
+        <div class="body"><span class="beam">unseen sensor</span><h3>CS55</h3>
+          <p>Stable segmentation on a LiDAR never seen in training.</p></div>
+      </article>
+      <article class="card">
+        <button class="media" data-lightbox="assets/AVT.jpg" data-cap="AVT platform — unseen LiDAR">
+          <img src="assets/AVT.jpg" alt="Segmentation on the AVT platform" loading="lazy" /></button>
+        <div class="body"><span class="beam">unseen sensor</span><h3>AVT</h3>
+          <p>Same weights, different beam pattern, no re-tuning.</p></div>
+      </article>
+      <article class="card">
+        <button class="media" data-lightbox="assets/Courier.jpg" data-cap="Courier platform — unseen LiDAR">
+          <img src="assets/Courier.jpg" alt="Segmentation on the Courier platform" loading="lazy" /></button>
+        <div class="body"><span class="beam">unseen sensor</span><h3>Courier</h3>
+          <p>A low-speed delivery platform with a sparser scan.</p></div>
+      </article>
+    </div>
+    <figure class="fig reveal">
+      <div class="fig-media"><img src="assets/realdata.jpg" alt="Real-vehicle qualitative results" loading="lazy" /></div>
+      <figcaption><b>Fig 6.</b> Qualitative on-vehicle results. <em>Placeholder — these frames come from the sibling LiSeer
+      release and will be replaced with LiEqualizer's own run.</em></figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="section" id="video">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="eyebrow">Video</div>
+      <h2>Overview</h2>
+      <p class="lead">A narrated overview is in preparation. The build-up of the main table is below.</p>
+    </div>
+    <figure class="fig reveal">
+      <div class="fig-media"><video src="assets/table1_3d_build.mp4" controls playsinline preload="none"
+        poster="assets/table1_3d.jpg" style="width:100%;border-radius:11px"></video></div>
+      <figcaption><b>Video 1.</b> Cross-sensor generalization, built up cell by cell.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="section tint" id="downloads">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="eyebrow">Downloads</div>
+      <h2>Code, data and checkpoints</h2>
+      <p class="lead">The spectral measurement protocol is released with the code so the diagnosis can be reproduced on any sensor pair.</p>
+    </div>
+    <div class="dlist reveal">
+      <a class="dl" href="https://github.com/Easonxu-01/LiEQ-Simple" target="_blank" rel="noopener">
+        <span class="ic">&lt;/&gt;</span><span><span class="t">Source code</span><br /><span class="m">GitHub · LiEQ-Simple</span></span><span class="ar">→</span></a>
+      <a class="dl soon" href="#"><span class="ic">◆</span><span><span class="t">Checkpoints</span><br /><span class="m">coming with the paper</span></span><span class="ar">→</span></a>
+      <a class="dl soon" href="#"><span class="ic">▤</span><span><span class="t">Densified data</span><br /><span class="m">coming with the paper</span></span><span class="ar">→</span></a>
+      <a class="dl soon" href="#"><span class="ic">▶</span><span><span class="t">Real-vehicle clips</span><br /><span class="m">coming with the paper</span></span><span class="ar">→</span></a>
+    </div>
+    <div class="eyebrow" style="margin-top:28px">Documentation</div>
+    <div class="docs reveal">
+      <a class="doc" href="https://github.com/Easonxu-01/LiEQ-Simple/blob/main/docs/install.md">Install</a>
+      <a class="doc" href="https://github.com/Easonxu-01/LiEQ-Simple/blob/main/docs/prepare_data.md">Prepare data</a>
+      <a class="doc" href="https://github.com/Easonxu-01/LiEQ-Simple/blob/main/docs/trainval.md">Train &amp; eval</a>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="cite">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="eyebrow">Citation</div>
+      <h2>BibTeX</h2>
+    </div>
+    <div class="bib reveal">
+      <button class="copy" onclick="copyBib(this)">Copy</button>
+      <pre id="bibtex">@article{xu2026liequalizer,
+  title   = {LiEqualizer: Seeing the Lost Spectrum of Sparse LiDARs via Spectral-Invariant Distillation},
+  author  = {Xu, Zikun and Yang, Shuocheng and Wang, Jianqiang and Li, Keqiang
+             and Lee, Gim Hee and Xu, Shaobing},
+  year    = {2026},
+  note    = {Preprint}
+}</pre>
+    </div>
+  </div>
+</section>
+
+<div class="lightbox" id="lightbox" aria-hidden="true">
+  <div class="lightbox-backdrop" data-lightbox-close></div>
+  <div class="lightbox-inner">
+    <button type="button" data-lightbox-close>Close ✕</button>
+    <img id="lightbox-img" src="" alt="" />
+    <p id="lightbox-cap"></p>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="container footer-inner">
+    <div><span class="brand">Li<b style="color:#56adf0">Equalizer</b></span>
+      <div class="small">Spectral-invariant distillation for cross-LiDAR perception.</div></div>
+    <div class="small"><a href="https://github.com/Easonxu-01/LiEQ-Simple" style="color:#9fd0ff">GitHub</a> ·
+      Page generated for the LiEqualizer project.</div>
+  </div>
+</footer>
+
+<script src="assets/eq-widget.js" defer></script>
+<script src="assets/charts-main.js" defer></script>
+<script src="assets/charts-native.js" defer></script>
+<script>
+(function(){
+  "use strict";
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var bar = document.getElementById('page-progress'), nav = document.getElementById('nav');
+  function onScroll(){
+    var h = document.documentElement.scrollHeight - window.innerHeight;
+    if (bar) bar.style.transform = 'scaleX(' + (h > 0 ? window.scrollY / h : 0) + ')';
+    if (nav) nav.classList.toggle('scrolled', window.scrollY > 40);
+  }
+  window.addEventListener('scroll', onScroll, {passive:true}); onScroll();
+
+  var els = [].slice.call(document.querySelectorAll('.reveal'));
+  if (reduce || !('IntersectionObserver' in window)) {
+    els.forEach(function(e){ e.classList.add('in'); });
+  } else {
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){ if (en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); } });
+    }, {rootMargin:'0px 0px -8% 0px', threshold:.08});
+    els.forEach(function(e){ io.observe(e); });
+  }
+
+  var lb = document.getElementById('lightbox'),
+      lbImg = document.getElementById('lightbox-img'),
+      lbCap = document.getElementById('lightbox-cap');
+  document.addEventListener('click', function(ev){
+    var t = ev.target.closest ? ev.target.closest('[data-lightbox]') : null;
+    if (t){ lbImg.src = t.getAttribute('data-lightbox'); lbImg.alt = t.getAttribute('data-cap') || '';
+            lbCap.textContent = t.getAttribute('data-cap') || '';
+            lb.classList.add('open'); lb.setAttribute('aria-hidden','false'); return; }
+    if (ev.target.closest && ev.target.closest('[data-lightbox-close]')){
+      lb.classList.remove('open'); lb.setAttribute('aria-hidden','true'); }
+  });
+  document.addEventListener('keydown', function(ev){
+    if (ev.key === 'Escape'){ lb.classList.remove('open'); lb.setAttribute('aria-hidden','true'); }
+  });
+})();
+
+function copyBib(btn){
+  var txt = document.getElementById('bibtex').textContent;
+  if (navigator.clipboard) navigator.clipboard.writeText(txt);
+  var old = btn.textContent; btn.textContent = 'Copied'; setTimeout(function(){ btn.textContent = old; }, 1400);
+}
+</script>
+</body>
+</html>
