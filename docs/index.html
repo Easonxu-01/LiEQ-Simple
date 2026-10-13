@@ -100,6 +100,10 @@ h1,h2,h3,h4{font-family:var(--disp);font-weight:700;letter-spacing:-.01em;line-h
 .btn.soon:hover{transform:none;background:none;border-color:rgba(159,178,203,.32);color:#dbe7f5}
 
 /* instrument card (hero widget) --------------------------------- */
+/* ---------- cursor trail (skips the hero and the instrument) ---------- */
+#cursor-trail{position:fixed;top:0;left:0;pointer-events:none;z-index:55}
+@media(prefers-reduced-motion:reduce){#cursor-trail{display:none}}
+@media(max-width:768px){#cursor-trail{display:none}}
 .instrument{position:relative;margin:0;border-radius:25px;padding:clamp(18px,2vw,25px);
   background:linear-gradient(165deg,#16223a 0%,#0c1322 62%,#090f1c 100%);
   border:1px solid rgba(134,182,239,.16);overflow:hidden;
@@ -116,8 +120,6 @@ h1,h2,h3,h4{font-family:var(--disp);font-weight:700;letter-spacing:-.01em;line-h
   font-family:var(--mono);font-size:10px;letter-spacing:.07em;color:#8ea6c4;line-height:1.7}
 .instrument figcaption b{color:#cfe3fb;font-weight:700}
 .instrument .k-blue{color:var(--blue-on-dark)} .instrument .k-orange{color:var(--orange-bright)}
-.instrument figcaption .eq-disclose{display:block;margin-top:9px;padding-top:8px;
-  border-top:1px dashed rgba(134,182,239,.16);color:#6f85a2;font-style:normal}
 
 /* sections ------------------------------------------------------ */
 .section{padding:76px 0;border-bottom:1px solid rgba(52,72,96,.1);position:relative;isolation:isolate;overflow:hidden}
@@ -331,21 +333,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
     <figure class="instrument" id="eq-instrument">
       <div id="eq-mount"></div>
       <figcaption>
-        <b>Drag the two faders.</b> <b>LF</b> pulls the <span class="k-orange">sparse student's</span> overall shape
-        onto the <span class="k-blue">dense teacher's</span>; <b>HF</b> brings its fine ripple up to the teacher's.
-        <div class="fold">
-          <button type="button" data-fold aria-expanded="false" aria-controls="eq-howto"
-                  data-open="Show how it works" data-shut="Hide how it works">Show how it works</button>
-          <div class="fold-body" id="eq-howto" hidden>
-            The faders move continuously and stay where you leave them; both rest at zero, which is the undistilled
-            student. At full travel a small gap is left on purpose — a distilled student lands near the teacher, not
-            on it. <b>You can also pluck either curve</b> — grab it anywhere, pull, and it springs back to the shape
-            the faders imply. Hover to read the local gap. Low frequency is the curve's envelope; high frequency is
-            the fine ripple riding on it. The axis is spatial position, so nothing about a curve's height is a
-            frequency.
-          </div>
-        </div>
-        <span class="eq-disclose" data-eq-caption>Illustrative, not measured: both profiles are drawn procedurally after the paper’s insight figure — one dominant shape carrying fine detail for the dense scan, a smoothed two-hump shape for the sparse one — and not plotted from logged features.</span>
+        <b>Drag the two faders</b>, or <b>pluck either curve</b> &mdash; grab it anywhere and pull.
       </figcaption>
     </figure>
   </div>
@@ -665,19 +653,101 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
   </div>
 </footer>
 
-<script src="assets/eq-widget.js" defer></script>
 <script>
-/* Keep the visible disclosure identical to eq-widget.js's exported constant, so the
- * module stays the single source of that wording. The HTML above carries the same
- * sentence as a no-JS fallback. */
-window.addEventListener('load', function () {
-  var el = document.querySelector('[data-eq-caption]');
-  var w = window.LiEQEqualizer;
-  if (el && w && typeof w.caption === 'string' && w.caption) { el.textContent = w.caption; }
-}, false);
+/* pointer trail: point-cloud dots and soft splats, ported from the sibling
+   page. It skips the hero and the instrument, which have their own motion, and
+   the lightbox. Off on coarse pointers, on narrow screens and under reduced
+   motion. The depth ramp runs from a pale sky tint far away to this page's
+   own blue up close. */
+/* pointer trail: point-cloud dots and soft splats. The hero keeps its own glow,
+   so the trail skips it, and it stays off the 3D viewer to leave orbiting alone. */
+(function(){
+  if(matchMedia('(pointer: coarse)').matches||matchMedia('(max-width:768px)').matches) return;
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  var canvas=document.createElement('canvas');
+  canvas.id='cursor-trail';
+  canvas.setAttribute('aria-hidden','true');
+  document.body.appendChild(canvas);
+  var ctx=canvas.getContext('2d');
+  var dpr=Math.min(window.devicePixelRatio||1,2);
+
+  function resize(){
+    canvas.width=innerWidth*dpr; canvas.height=innerHeight*dpr;
+    canvas.style.width=innerWidth+'px'; canvas.style.height=innerHeight+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  resize();
+  addEventListener('resize',resize);
+
+  var parts=[],px=0,py=0,raf=0;
+  function lerp(a,b,t){return a+(b-a)*t;}
+
+  addEventListener('mousemove',function(e){
+    if(e.target&&e.target.closest&&e.target.closest('header,.lightbox,.instrument,#eq-mount')){
+      px=e.clientX; py=e.clientY; return;
+    }
+    var speed=Math.hypot(e.clientX-px,e.clientY-py);
+    px=e.clientX; py=e.clientY;
+    var count=Math.min(2+Math.floor(speed*0.08),5);
+    for(var i=0;i<count;i++){
+      var angle=Math.random()*Math.PI*2,
+          r=Math.random()*8,
+          splat=Math.random()<0.15;
+      parts.push({
+        x:e.clientX+Math.cos(angle)*r,
+        y:e.clientY+Math.sin(angle)*r,
+        z:Math.random(),
+        vx:(Math.random()-0.5)*(0.2+speed*0.01),
+        vy:(Math.random()-0.5)*(0.2+speed*0.01),
+        vz:(Math.random()-0.5)*0.01,
+        life:1,
+        decay:0.02+Math.random()*0.015,
+        size:splat?2.5+Math.random()*3:0.5+Math.random()*1,
+        splat:splat
+      });
+    }
+    if(!raf) raf=requestAnimationFrame(render);
+  },{passive:true});
+
+  function render(){
+    ctx.clearRect(0,0,innerWidth,innerHeight);
+    for(var i=parts.length-1;i>=0;i--){
+      var p=parts[i];
+      p.x+=p.vx; p.y+=p.vy;
+      p.z=Math.max(0,Math.min(1,p.z+p.vz));
+      p.life-=p.decay;
+      if(p.life<=0){ parts.splice(i,1); continue; }
+      /* depth: far = pale sky blue and small, close = deep site blue and larger */
+      var d=p.z,
+          cr=Math.round(lerp(140,42,d)),
+          cg=Math.round(lerp(196,120,d)),
+          cb=Math.round(lerp(242,214,d)),
+          alpha=p.life*lerp(0.3,0.82,d),
+          size=p.size*lerp(0.5,1.4,d);
+      if(p.splat){
+        var grad=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,size*2);
+        grad.addColorStop(0,'rgba('+cr+','+cg+','+cb+','+(alpha*0.6)+')');
+        grad.addColorStop(0.4,'rgba('+cr+','+cg+','+cb+','+(alpha*0.2)+')');
+        grad.addColorStop(1,'rgba('+cr+','+cg+','+cb+',0)');
+        ctx.fillStyle=grad;
+        ctx.beginPath(); ctx.arc(p.x,p.y,size*2,0,Math.PI*2); ctx.fill();
+      }else{
+        ctx.fillStyle='rgba('+cr+','+cg+','+cb+','+alpha+')';
+        ctx.beginPath(); ctx.arc(p.x,p.y,size,0,Math.PI*2); ctx.fill();
+      }
+    }
+    if(parts.length){ raf=requestAnimationFrame(render); }
+    else { raf=0; ctx.clearRect(0,0,innerWidth,innerHeight); }
+  }
+})();
 </script>
+<script src="assets/eq-widget.js" defer></script>
 <script src="assets/charts-main.js" defer></script>
 <script src="assets/charts-native.js" defer></script>
+<!-- the same numbers charts-paper.js would otherwise fetch; a script tag works
+     from file:// where fetch does not, so the figures draw off a local copy too -->
+<script src="assets/data/paper-data.js" defer></script>
 <script src="assets/charts-paper.js" defer></script>
 <script src="assets/motion.js" defer></script>
 <script>

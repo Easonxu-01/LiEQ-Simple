@@ -1208,15 +1208,28 @@ head('MARKUP — shape, hooks and accessibility');
   ok('no control is inside an aria-hidden group', faderHidden === 0 && chipHidden === 0);
 
   var hooks = ['tArea', 'tCore', 'ghost', 'sArea', 'sCore', 'armDot', 'hit', 'hintg',
-               'annShape', 'shapeT1', 'shapeT2', 'shapeLead', 'gapStem', 'gapTop', 'gapBot',
-               'annDetail', 'detailT1', 'detailT2', 'detailLead', 'detailBr',
                'gapValue', 'roLabel', 'scrub', 'scrubLine', 'scrubDotS', 'scrubDotT'];
+  /* the callouts are opt-in now, so their hooks are checked against markup
+     built with annotations: true */
+  var annHooks = ['annShape', 'shapeT1', 'shapeT2', 'shapeLead', 'gapStem', 'gapTop', 'gapBot',
+                  'annDetail', 'detailT1', 'detailT2', 'detailLead', 'detailBr'];
+  var annSrc = EQ.renderMarkup({ annotations: true });
   var missing = [];
   for (i = 0; i < hooks.length; i++) {
     if (src.indexOf('data-lieq="' + hooks[i] + '"') < 0) { missing.push(hooks[i]); }
   }
+  for (i = 0; i < annHooks.length; i++) {
+    if (annSrc.indexOf('data-lieq="' + annHooks[i] + '"') < 0) { missing.push(annHooks[i]); }
+  }
   ok('every element render() writes to exists in the markup', missing.length === 0,
-     missing.length ? 'missing ' + missing.join(',') : hooks.length + ' hooks');
+     missing.length ? 'missing ' + missing.join(',') : (hooks.length + annHooks.length) + ' hooks');
+  ok('and the callouts are absent unless asked for', (function () {
+       var j;
+       for (j = 0; j < annHooks.length; j++) {
+         if (src.indexOf('data-lieq="' + annHooks[j] + '"') >= 0) { return false; }
+       }
+       return src.indexOf('SHAPE THE SPARSE') < 0 && src.indexOf('DETAIL THE SPARSE') < 0;
+     })(), 'nothing is written on the plot by default but the drag hint');
 
   ok('two faders', (src.match(/data-lieq-fader="/g) || []).length === 2);
   ok('both faders are role=slider', (src.match(/role="slider"/g) || []).length === 2);
@@ -1291,9 +1304,12 @@ head('MARKUP — shape, hooks and accessibility');
      src.indexOf('>LF<') > 0 && src.indexOf('>HF<') > 0 &&
      src.indexOf('aria-label="LF equalizer strength, the overall shape') > 0 &&
      src.indexOf('aria-label="HF equalizer strength, the fine detail') > 0);
-  ok('the two callouts say something true about a SPATIAL curve',
-     src.indexOf('SHAPE THE SPARSE') > 0 && src.indexOf('SCAN GOT WRONG') > 0 &&
-     src.indexOf('DETAIL THE SPARSE SCAN') > 0 && src.indexOf('NEVER RECORDED') > 0);
+  ok('the two callouts, when switched on, say something true about a SPATIAL curve',
+     (function () {
+       var a = EQ.renderMarkup({ annotations: true });
+       return a.indexOf('SHAPE THE SPARSE') > 0 && a.indexOf('SCAN GOT WRONG') > 0 &&
+              a.indexOf('DETAIL THE SPARSE SCAN') > 0 && a.indexOf('NEVER RECORDED') > 0;
+     })());
   ok('each callout has a second wording for when its sentence stops being true',
      EQ.defaults.shapeAnnotationDone[0].length > 0 && EQ.defaults.detailAnnotationDone[0].length > 0 &&
      EQ.constants.ANN_DONE_AT > 0 && EQ.constants.ANN_DONE_AT < 1,
@@ -1327,11 +1343,12 @@ head('MARKUP — shape, hooks and accessibility');
 
   var evil = EQ.renderMarkup({ teacherLabel: '<script>x</script>' });
   ok('option strings are escaped', evil.indexOf('<script>') < 0 && evil.indexOf('&lt;script&gt;') > 0);
-  var evil2 = EQ.renderMarkup({ hint: '<img src=x onerror=1>', shapeAnnotation: ['<b>', '<i>'] });
+  var evil2 = EQ.renderMarkup({ annotations: true, hint: '<img src=x onerror=1>',
+                               shapeAnnotation: ['<b>', '<i>'] });
   ok('the hint and the callouts are escaped too',
      evil2.indexOf('<img') < 0 && evil2.indexOf('<b>') < 0 && evil2.indexOf('&lt;b&gt;') > 0);
   ok('a plain string is accepted where a two-line callout is expected',
-     EQ.renderMarkup({ shapeAnnotation: 'ONE LINE' }).indexOf('ONE LINE') > 0);
+     EQ.renderMarkup({ annotations: true, shapeAnnotation: 'ONE LINE' }).indexOf('ONE LINE') > 0);
 })();
 
 /* ------------------------------------------------------------------ */

@@ -1110,6 +1110,12 @@ function svgMarkup(uid, o) {
   s.push('<circle class="lieq-armdot" data-lieq="armDot" cx="0" cy="0" r="4.2" opacity="0"/>');
   s.push('</g>');
 
+  /* ---- the two callouts. OFF by default: the project owner asked for the
+   *      instrument itself, with the drag hint and nothing else written on
+   *      the plot. The machinery stays because it is correct and tested, and
+   *      `annotations: true` brings both groups back. ---- */
+  if (o.annotations) {
+
   /* ---- callout 1: the SHAPE the sparse scan got wrong. A dimension bar
    *      between the two curves where their shapes differ most, and a label
    *      that stops claiming it once LF has closed the gap. ---- */
@@ -1134,6 +1140,8 @@ function svgMarkup(uid, o) {
   s.push('<line class="lieq-ann-dash" data-lieq="detailLead" x1="0" y1="0" x2="0" y2="0"/>');
   s.push('<path class="lieq-ann-br" data-lieq="detailBr" d=""/>');
   s.push('</g>');
+
+  }
 
   /* ---- scrub cursor ---- */
   s.push('<g class="lieq-scrub" data-lieq="scrub">');
@@ -1237,6 +1245,8 @@ var DEFAULTS = {
   hint: 'DRAG EITHER CURVE',
   /* Plain spatial statements, and each one stops being true at full travel, so
    * each has a second wording the widget swaps in. */
+  /* the on-plot callouts, off by default - see the markup builder */
+  annotations: false,
   shapeAnnotation: ['SHAPE THE SPARSE', 'SCAN GOT WRONG'],
   shapeAnnotationDone: ['SHAPE BROUGHT', 'BACK IN LINE'],
   detailAnnotation: ['DETAIL THE SPARSE SCAN', 'NEVER RECORDED'],

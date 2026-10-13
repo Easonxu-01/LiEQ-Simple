@@ -536,9 +536,22 @@
     return rejected(new Error('no fetch and no XMLHttpRequest'));
   }
 
+  /* The same numbers, embedded by assets/data/paper-data.js. Preferred over the
+   * network because a <script> tag works from a file:// page where fetch does
+   * not: opened straight off disk, both figures used to degrade to a "Figure
+   * data unavailable" card. Absent, we fall back to fetching the JSON, which
+   * is still shipped and still the source of truth. */
+  function embedded(key) {
+    var d = global.LIEQPaperData;
+    return (d && Object.prototype.hasOwnProperty.call(d, key)) ? d[key] : null;
+  }
+
   function dataset(key) {
+    var pre;
     if (!FILES[key]) return rejected(new Error('unknown data key ' + key));
     if (!CACHE[key]) {
+      pre = embedded(key);
+      if (pre) { CACHE[key] = resolved(pre); return CACHE[key]; }
       CACHE[key] = loadJSON(base() + FILES[key]);
       if (CACHE[key] && CACHE[key]['catch']) {
         /* a failed load must not poison the cache for a later retry */
@@ -570,7 +583,9 @@
       hEl('p', 'h', box, 'Figure data unavailable');
       hEl('p', 'd', box, 'This figure is drawn live from ' + names.join(' and ') +
         ' under ' + base() + ', which could not be loaded. Serve the page over http(s) ' +
-        '(the files are read with fetch, which a file:// page blocks), or read the figure ' +
+        '(the files are read with fetch, which a file:// page blocks) or load '
+        + 'assets/data/paper-data.js before this script, which embeds the same numbers '
+        + 'and needs no network, or read the figure ' +
         'in the paper PDF.');
     } catch (e) {
       warn('fallback', e);
@@ -1575,6 +1590,7 @@
     _internals: {
       gf: gf, lw: lw, linScale: linScale, geomOf: geomOf, zOrder: zOrder,
       colorOf: colorOf, injectCSS: injectCSS, bandRange: bandRange, loadJSON: loadJSON,
+      embedded: embedded,
       base: base, CSS: CSS
     }
   };
