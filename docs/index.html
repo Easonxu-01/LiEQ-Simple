@@ -122,7 +122,7 @@ h1,h2,h3,h4{font-family:var(--disp);font-weight:700;letter-spacing:-.01em;line-h
 .instrument .k-blue{color:var(--blue-on-dark)} .instrument .k-orange{color:var(--orange-bright)}
 
 /* sections ------------------------------------------------------ */
-.section{padding:76px 0;border-bottom:1px solid rgba(52,72,96,.1);position:relative;isolation:isolate;overflow:hidden}
+.section{padding:76px 0;border-bottom:1px solid rgba(52,72,96,.1);position:relative;isolation:isolate;overflow:visible;overflow-x:clip}
 .section.tint{background:var(--mist)}
 .section > .container{position:relative;z-index:1}
 .section-head{max-width:70ch;margin-bottom:32px}
@@ -232,6 +232,133 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
 .footer .brand{color:#eaf1fb}
 .footer .small{font-family:var(--mono);font-size:12px}
 
+/* ============================================================
+   On-vehicle wall — thirty clips running at once on a dark slab.
+   Scrolling is the whole interaction: whatever reaches the middle
+   of the screen takes the light and the rest fall back, so moving
+   the wheel is what chooses. Each clip is a 2.7:1 to 3.3:1 strip
+   holding three panels, so two columns is the cap — a third would
+   put each panel near 200px, under the width at which they read.
+   ============================================================ */
+.wall-wrap{position:relative;left:50%;transform:translateX(-50%);width:min(1820px,96vw);margin-top:26px}
+.wall{--edge:rgba(134,182,239,.12);--edge-hi:rgba(134,182,239,.38);--ac:#56adf0;
+  background:
+    radial-gradient(135% 72% at 6% -8%,rgba(42,120,214,.24),transparent 55%),
+    radial-gradient(85% 58% at 98% 1%,rgba(235,104,52,.14),transparent 50%),
+    linear-gradient(180deg,#0b111f,#070d18 52%,#05090f);
+  border:1px solid var(--edge);border-radius:28px;padding:clamp(18px,2.1vw,34px);
+  box-shadow:0 70px 150px -75px rgba(4,8,15,.95),inset 0 1px 0 rgba(255,255,255,.06)}
+
+/* --- control bar ------------------------------------------------ */
+.wall-bar{position:sticky;top:72px;z-index:6;display:flex;flex-wrap:wrap;align-items:center;gap:12px;
+  margin:calc(clamp(18px,2.1vw,34px) * -1) calc(clamp(18px,2.1vw,34px) * -1) 0;
+  padding:14px clamp(18px,2.1vw,34px);
+  background:rgba(8,13,24,.82);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--edge);border-radius:28px 28px 0 0}
+.wall-bar::after{content:"";position:absolute;left:0;bottom:-1px;height:2px;width:var(--prog,0%);
+  background:var(--ac);transition:width .18s linear,background .4s}
+.wall-seg{display:inline-flex;padding:3px;gap:2px;border-radius:999px;
+  background:rgba(207,227,251,.05);border:1px solid var(--edge)}
+.wall-seg button{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.13em;
+  text-transform:uppercase;color:#8ea6c4;background:transparent;border:0;cursor:pointer;
+  padding:8px 15px;border-radius:999px;transition:color .2s,background .2s}
+.wall-seg button:hover{color:#eaf1fb}
+.wall-seg button:focus-visible{outline:2px solid var(--blue-on-dark);outline-offset:1px}
+.wall-seg button[aria-pressed="true"]{color:#06101f;background:#cfe3fb}
+.wall-seg button b{font-weight:700;opacity:.5;margin-left:5px}
+.wall-spacer{flex:1}
+.wall-live{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.15em;
+  text-transform:uppercase;color:#64799a;white-space:nowrap}
+.wall-live b{color:#cfe3fb;font-weight:700}
+.wall-live i{font-style:normal;color:var(--ac);transition:color .4s}
+.wall-btn{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.13em;
+  text-transform:uppercase;color:#8ea6c4;background:rgba(207,227,251,.05);
+  border:1px solid var(--edge);padding:9px 15px;border-radius:999px;cursor:pointer;
+  transition:color .2s,border-color .2s,background .2s}
+.wall-btn:hover{color:#eaf1fb;border-color:var(--edge-hi)}
+.wall-btn:focus-visible{outline:2px solid var(--blue-on-dark);outline-offset:2px}
+.wall-btn[aria-pressed="true"]{color:#06101f;background:#cfe3fb;border-color:#cfe3fb}
+
+/* --- group heading ---------------------------------------------- */
+.wall-group{margin-top:46px}
+.wall-group[hidden]{display:none}
+.wall-head{display:flex;align-items:center;gap:18px;margin:0 0 7px}
+.wall-head .idx{font-family:var(--mono);font-size:clamp(30px,3.6vw,50px);font-weight:700;
+  line-height:.86;color:transparent;-webkit-text-stroke:1.3px var(--ac);letter-spacing:-.04em;
+  opacity:.85;flex:none}
+.wall-head h4{font-family:var(--disp);font-size:clamp(1.3rem,2.3vw,1.95rem);font-weight:700;
+  letter-spacing:-.035em;color:#f2f7ff;margin:0;line-height:1;flex:none}
+.wall-head .ln{flex:1;height:1px;background:linear-gradient(90deg,var(--ac),transparent 92%);opacity:.55}
+.wall-stats{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 16px 0;padding-left:calc(clamp(30px,3.6vw,50px) + 18px)}
+.wall-stats span{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.15em;
+  text-transform:uppercase;color:#8ea6c4;border:1px solid var(--edge);
+  padding:5px 11px;border-radius:999px;white-space:nowrap}
+.wall-stats span.k{color:#06101f;background:var(--ac);border-color:var(--ac)}
+.wall-blurb{font-size:12.6px;line-height:1.62;color:#7b90ae;margin:0 0 18px;max-width:78ch;
+  padding-left:calc(clamp(30px,3.6vw,50px) + 18px)}
+
+/* --- the grid ---------------------------------------------------- */
+.wall-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media(max-width:1180px){.wall-grid{grid-template-columns:1fr}}
+
+.tile{position:relative;margin:0;border-radius:13px;overflow:hidden;background:#05090f;
+  box-shadow:0 0 0 1px var(--edge);
+  opacity:0;transform:translateY(18px);
+  transition:opacity .55s cubic-bezier(.22,.61,.36,1),transform .55s cubic-bezier(.22,.61,.36,1),
+             box-shadow .4s ease,filter .4s ease}
+.tile.in{opacity:.34;transform:none}
+/* everything inside the window is lit, everything outside falls back, so scrolling
+   is what chooses. Opacity only — a filter here would re-rasterize the video and
+   soften it. */
+.tile.in.is-on{opacity:1}
+.tile.in.is-on.is-focus{box-shadow:0 0 0 1px var(--ac),0 30px 80px -40px rgba(4,8,15,.9)}
+.tile.in:hover{opacity:1}
+.tile-media{display:block;width:100%;aspect-ratio:var(--ar);position:relative;border:0;padding:0;
+  margin:0;background:#05090f;cursor:zoom-in;overflow:hidden}
+/* the still sits under the video: a video element stops painting its poster the moment
+   a src is attached and before any frame has arrived, which left tiles blank */
+.tile-media .still{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.tile-media video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;
+  background:transparent}
+.tile-media:focus-visible{outline:2px solid var(--ac);outline-offset:-3px}
+
+.tile-no{position:absolute;left:0;top:0;z-index:3;display:flex;align-items:baseline;gap:3px;
+  font-family:var(--mono);font-weight:700;color:#f2f7ff;
+  padding:7px 11px 8px 10px;background:rgba(5,9,15,.82);border-bottom-right-radius:11px;
+  font-size:12px;letter-spacing:.02em;line-height:1}
+.tile-no s{text-decoration:none;color:#7b90ae;font-size:.76em}
+.tile-chip{position:absolute;right:0;top:0;z-index:3;display:flex;align-items:center;gap:7px;
+  font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:#cfe3fb;padding:8px 11px;background:rgba(5,9,15,.82);border-bottom-left-radius:11px;
+  opacity:0;transition:opacity .3s ease}
+.tile-chip i{font-style:normal;color:var(--ac)}
+.tile.is-focus .tile-chip,.tile:hover .tile-chip,.tile-media:focus-visible .tile-chip{opacity:1}
+.tile-zoom{position:absolute;right:11px;bottom:10px;z-index:3;display:grid;place-items:center;
+  width:26px;height:26px;border-radius:9px;font-size:12px;line-height:1;color:#06101f;
+  background:var(--ac);opacity:0;transition:opacity .28s}
+.tile:hover .tile-zoom,.tile-media:focus-visible .tile-zoom{opacity:1}
+
+.wall-note{font-size:12.4px;line-height:1.64;color:#7b90ae;margin:30px auto 0;max-width:88ch;
+  padding-top:18px;border-top:1px solid var(--edge)}
+.wall-note b{color:#cfe3fb;font-weight:600}
+
+@media(prefers-reduced-motion:reduce){
+  .tile{opacity:1;transform:none;transition:box-shadow .2s}
+  .tile.in,.tile.in.is-on{opacity:1}
+  .tile.in.is-on.is-focus{box-shadow:0 0 0 1px var(--ac)}
+}
+@media(max-width:680px){.wall{border-radius:18px}.wall-live{display:none}
+  .wall-stats,.wall-blurb{padding-left:0}}
+
+/* a clip opened for a closer look, in the page's own lightbox */
+.lightbox.is-clip .lightbox-inner{width:min(1680px,95vw);max-width:min(1680px,95vw)}
+.lightbox.is-clip .lightbox-inner video{width:100%;height:auto;object-fit:contain;
+  border-radius:12px;background:#05090f;display:block;box-shadow:0 30px 80px -30px #000}
+
+/* Every tile is the same 822px: that is below the clips' own 1100px, so each one
+   downsamples and stays sharp. A full-width feature was tried and reverted —
+   it upscaled 1.5x, which these flat instrument panels show plainly. */
+
 /* lightbox ------------------------------------------------------ */
 .lightbox{position:fixed;inset:0;z-index:80;display:none;place-items:center}
 .lightbox.open{display:grid}
@@ -295,6 +422,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
       <a href="#method">Method</a>
       <a href="#results">Results</a>
       <a href="#deploy">On-vehicle</a>
+      <a href="#clips">Clips</a>
       <a href="#analysis">Analysis</a>
       <a href="#downloads">Downloads</a>
       <a href="#spectrum">Protocol</a>
@@ -455,21 +583,6 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
       <figcaption><b>Fig 5.</b> The same table, as bars. Grey is the single-sensor baseline, orange the randomized-sampling
       baseline, blue LiEqualizer. Arrows mark the gain over the orange bars.</figcaption>
     </figure>
-
-    <div class="section-head reveal" style="margin-top:46px">
-      <div class="eyebrow">Ablation</div>
-      <h2>What each piece buys</h2>
-      <p class="lead">Read downwards from the undistilled student; each row adds one module. Brackets are the difference from the first row.</p>
-    </div>
-    <div id="lq-ablation" class="reveal"></div>
-
-    <div class="section-head reveal" style="margin-top:46px">
-      <div class="eyebrow">Comparison</div>
-      <h2>Against other distillation objectives</h2>
-      <p class="lead">Re-implemented under one pipeline with the same teacher, the same student, the same signals and the same
-      schedule, so that only the objective differs.</p>
-    </div>
-    <div id="lq-kd-baselines" class="reveal"></div>
   </div>
 </section>
 
@@ -516,11 +629,390 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
     <div class="section-head reveal">
       <div class="eyebrow">Video</div>
       <h2>Three parts</h2>
-      <p class="lead">The film, the table it is built on, and the vehicles. Parts I and III are in preparation.</p>
+      <p class="lead">The vehicles, the film, and the table it is built on. The overview film is in preparation.</p>
     </div>
     <div class="video-list">
+      <article class="video-block reveal" id="clips">
+        <h3 class="video-part-title"><span>Part I</span>On three vehicles, with LiDARs the model never saw</h3>
+        <p class="video-note">Ten fifteen-second clips from each of the three platforms, thirty in all. Each shows the
+        camera, LiEqualizer's segmentation of the sparse scan, and the drivable area and local plan read from that
+        segmentation. The weights are the zero-shot ones throughout: trained on a single public dataset, deployed on a
+        sensor that appears in none of them, with no fine-tuning and no re-integration.</p>
+        <div class="wall-wrap">
+          <div class="wall" id="wall">
+            <div class="wall-bar">
+              <div class="wall-seg" role="group" aria-label="Filter the wall by platform">
+                <button type="button" data-filter="all" aria-pressed="true">All<b>30</b></button>
+                <button type="button" data-filter="cs55" aria-pressed="false">CS55<b>10</b></button>
+                <button type="button" data-filter="avt" aria-pressed="false">AVT<b>10</b></button>
+                <button type="button" data-filter="courier" aria-pressed="false">Courier<b>10</b></button>
+              </div>
+              <span class="wall-spacer"></span>
+              <span class="wall-live" id="wall-live" role="status" aria-live="off"></span>
+              <button class="wall-btn" type="button" id="wall-pause" aria-pressed="false">&#10073;&#10073; Pause</button>
+            </div>
+
+          <div class="wall-group" data-group="cs55" style="--ac:#56adf0">
+            <div class="wall-head"><span class="idx" aria-hidden="true">01</span><h4>TH-CS55</h4><span class="ln"></span></div>
+            <div class="wall-stats"><span class="k">128 beams</span><span>never seen in training</span><span>trained on Waymo</span><span>10 clips</span></div>
+            <p class="wall-blurb">A full-size passenger platform on dense urban roads, six cameras in the left panel.</p>
+            <div class="wall-grid">
+            <figure class="tile" data-n="0" style="--ar:1100/406;--ac:#56adf0">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-cs55-01.mp4" data-cap="TH-CS55 &middot; trained on Waymo &middot; clip 01" aria-label="Enlarge TH-CS55 clip 01, trained on Waymo">
+                <img class="still" src="assets/clips/rv-cs55-01.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="406" />
+                <video data-src="assets/clips/rv-cs55-01.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">01<s>/30</s></span>
+                <span class="tile-chip"><b>TH-CS55</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            <figure class="tile" data-n="1" style="--ar:1100/406;--ac:#56adf0">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-cs55-02.mp4" data-cap="TH-CS55 &middot; trained on Waymo &middot; clip 02" aria-label="Enlarge TH-CS55 clip 02, trained on Waymo">
+                <img class="still" src="assets/clips/rv-cs55-02.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="406" />
+                <video data-src="assets/clips/rv-cs55-02.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">02<s>/30</s></span>
+                <span class="tile-chip"><b>TH-CS55</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            <figure class="tile" data-n="2" style="--ar:1100/406;--ac:#56adf0">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-cs55-03.mp4" data-cap="TH-CS55 &middot; trained on Waymo &middot; clip 03" aria-label="Enlarge TH-CS55 clip 03, trained on Waymo">
+                <img class="still" src="assets/clips/rv-cs55-03.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="406" />
+                <video data-src="assets/clips/rv-cs55-03.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">03<s>/30</s></span>
+                <span class="tile-chip"><b>TH-CS55</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            <figure class="tile" data-n="3" style="--ar:1100/406;--ac:#56adf0">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-cs55-04.mp4" data-cap="TH-CS55 &middot; trained on Waymo &middot; clip 04" aria-label="Enlarge TH-CS55 clip 04, trained on Waymo">
+                <img class="still" src="assets/clips/rv-cs55-04.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="406" />
+                <video data-src="assets/clips/rv-cs55-04.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">04<s>/30</s></span>
+                <span class="tile-chip"><b>TH-CS55</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            <figure class="tile" data-n="4" style="--ar:1100/406;--ac:#56adf0">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-cs55-05.mp4" data-cap="TH-CS55 &middot; trained on Waymo &middot; clip 05" aria-label="Enlarge TH-CS55 clip 05, trained on Waymo">
+                <img class="still" src="assets/clips/rv-cs55-05.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="406" />
+                <video data-src="assets/clips/rv-cs55-05.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">05<s>/30</s></span>
+                <span class="tile-chip"><b>TH-CS55</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            <figure class="tile" data-n="5" style="--ar:1100/406;--ac:#56adf0">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-cs55-06.mp4" data-cap="TH-CS55 &middot; trained on Waymo &middot; clip 06" aria-label="Enlarge TH-CS55 clip 06, trained on Waymo">
+                <img class="still" src="assets/clips/rv-cs55-06.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="406" />
+                <video data-src="assets/clips/rv-cs55-06.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">06<s>/30</s></span>
+                <span class="tile-chip"><b>TH-CS55</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            <figure class="tile" data-n="6" style="--ar:1100/406;--ac:#56adf0">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-cs55-07.mp4" data-cap="TH-CS55 &middot; trained on Waymo &middot; clip 07" aria-label="Enlarge TH-CS55 clip 07, trained on Waymo">
+                <img class="still" src="assets/clips/rv-cs55-07.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="406" />
+                <video data-src="assets/clips/rv-cs55-07.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">07<s>/30</s></span>
+                <span class="tile-chip"><b>TH-CS55</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            <figure class="tile" data-n="7" style="--ar:1100/406;--ac:#56adf0">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-cs55-08.mp4" data-cap="TH-CS55 &middot; trained on Waymo &middot; clip 08" aria-label="Enlarge TH-CS55 clip 08, trained on Waymo">
+                <img class="still" src="assets/clips/rv-cs55-08.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="406" />
+                <video data-src="assets/clips/rv-cs55-08.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">08<s>/30</s></span>
+                <span class="tile-chip"><b>TH-CS55</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            <figure class="tile" data-n="8" style="--ar:1100/406;--ac:#56adf0">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-cs55-09.mp4" data-cap="TH-CS55 &middot; trained on Waymo &middot; clip 09" aria-label="Enlarge TH-CS55 clip 09, trained on Waymo">
+                <img class="still" src="assets/clips/rv-cs55-09.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="406" />
+                <video data-src="assets/clips/rv-cs55-09.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">09<s>/30</s></span>
+                <span class="tile-chip"><b>TH-CS55</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            <figure class="tile" data-n="9" style="--ar:1100/406;--ac:#56adf0">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-cs55-10.mp4" data-cap="TH-CS55 &middot; trained on Waymo &middot; clip 10" aria-label="Enlarge TH-CS55 clip 10, trained on Waymo">
+                <img class="still" src="assets/clips/rv-cs55-10.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="406" />
+                <video data-src="assets/clips/rv-cs55-10.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">10<s>/30</s></span>
+                <span class="tile-chip"><b>TH-CS55</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            </div>
+          </div>
+          <div class="wall-group" data-group="avt" style="--ac:#f0924a">
+            <div class="wall-head"><span class="idx" aria-hidden="true">02</span><h4>TH-AVT</h4><span class="ln"></span></div>
+            <div class="wall-stats"><span class="k">80 beams</span><span>never seen in training</span><span>trained on nuScenes</span><span>10 clips</span></div>
+            <p class="wall-blurb">A mid-size shuttle on tree-lined campus roads, where a sparse scan loses most fine upright structure.</p>
+            <div class="wall-grid">
+            <figure class="tile" data-n="10" style="--ar:1100/332;--ac:#f0924a">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-avt-01.mp4" data-cap="TH-AVT &middot; trained on nuScenes &middot; clip 01" aria-label="Enlarge TH-AVT clip 01, trained on nuScenes">
+                <img class="still" src="assets/clips/rv-avt-01.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="332" />
+                <video data-src="assets/clips/rv-avt-01.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">11<s>/30</s></span>
+                <span class="tile-chip"><b>TH-AVT</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            <figure class="tile" data-n="11" style="--ar:1100/332;--ac:#f0924a">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-avt-02.mp4" data-cap="TH-AVT &middot; trained on nuScenes &middot; clip 02" aria-label="Enlarge TH-AVT clip 02, trained on nuScenes">
+                <img class="still" src="assets/clips/rv-avt-02.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="332" />
+                <video data-src="assets/clips/rv-avt-02.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">12<s>/30</s></span>
+                <span class="tile-chip"><b>TH-AVT</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            <figure class="tile" data-n="12" style="--ar:1100/332;--ac:#f0924a">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-avt-03.mp4" data-cap="TH-AVT &middot; trained on nuScenes &middot; clip 03" aria-label="Enlarge TH-AVT clip 03, trained on nuScenes">
+                <img class="still" src="assets/clips/rv-avt-03.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="332" />
+                <video data-src="assets/clips/rv-avt-03.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">13<s>/30</s></span>
+                <span class="tile-chip"><b>TH-AVT</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            <figure class="tile" data-n="13" style="--ar:1100/332;--ac:#f0924a">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-avt-04.mp4" data-cap="TH-AVT &middot; trained on nuScenes &middot; clip 04" aria-label="Enlarge TH-AVT clip 04, trained on nuScenes">
+                <img class="still" src="assets/clips/rv-avt-04.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="332" />
+                <video data-src="assets/clips/rv-avt-04.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">14<s>/30</s></span>
+                <span class="tile-chip"><b>TH-AVT</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            <figure class="tile" data-n="14" style="--ar:1100/332;--ac:#f0924a">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-avt-05.mp4" data-cap="TH-AVT &middot; trained on nuScenes &middot; clip 05" aria-label="Enlarge TH-AVT clip 05, trained on nuScenes">
+                <img class="still" src="assets/clips/rv-avt-05.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="332" />
+                <video data-src="assets/clips/rv-avt-05.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">15<s>/30</s></span>
+                <span class="tile-chip"><b>TH-AVT</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            <figure class="tile" data-n="15" style="--ar:1100/332;--ac:#f0924a">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-avt-06.mp4" data-cap="TH-AVT &middot; trained on nuScenes &middot; clip 06" aria-label="Enlarge TH-AVT clip 06, trained on nuScenes">
+                <img class="still" src="assets/clips/rv-avt-06.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="332" />
+                <video data-src="assets/clips/rv-avt-06.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">16<s>/30</s></span>
+                <span class="tile-chip"><b>TH-AVT</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            <figure class="tile" data-n="16" style="--ar:1100/332;--ac:#f0924a">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-avt-07.mp4" data-cap="TH-AVT &middot; trained on nuScenes &middot; clip 07" aria-label="Enlarge TH-AVT clip 07, trained on nuScenes">
+                <img class="still" src="assets/clips/rv-avt-07.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="332" />
+                <video data-src="assets/clips/rv-avt-07.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">17<s>/30</s></span>
+                <span class="tile-chip"><b>TH-AVT</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            <figure class="tile" data-n="17" style="--ar:1100/332;--ac:#f0924a">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-avt-08.mp4" data-cap="TH-AVT &middot; trained on nuScenes &middot; clip 08" aria-label="Enlarge TH-AVT clip 08, trained on nuScenes">
+                <img class="still" src="assets/clips/rv-avt-08.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="332" />
+                <video data-src="assets/clips/rv-avt-08.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">18<s>/30</s></span>
+                <span class="tile-chip"><b>TH-AVT</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            <figure class="tile" data-n="18" style="--ar:1100/332;--ac:#f0924a">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-avt-09.mp4" data-cap="TH-AVT &middot; trained on nuScenes &middot; clip 09" aria-label="Enlarge TH-AVT clip 09, trained on nuScenes">
+                <img class="still" src="assets/clips/rv-avt-09.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="332" />
+                <video data-src="assets/clips/rv-avt-09.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">19<s>/30</s></span>
+                <span class="tile-chip"><b>TH-AVT</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            <figure class="tile" data-n="19" style="--ar:1100/332;--ac:#f0924a">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-avt-10.mp4" data-cap="TH-AVT &middot; trained on nuScenes &middot; clip 10" aria-label="Enlarge TH-AVT clip 10, trained on nuScenes">
+                <img class="still" src="assets/clips/rv-avt-10.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="332" />
+                <video data-src="assets/clips/rv-avt-10.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">20<s>/30</s></span>
+                <span class="tile-chip"><b>TH-AVT</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            </div>
+          </div>
+          <div class="wall-group" data-group="courier" style="--ac:#45c4a8">
+            <div class="wall-head"><span class="idx" aria-hidden="true">03</span><h4>TH-Courier</h4><span class="ln"></span></div>
+            <div class="wall-stats"><span class="k">32 beams</span><span>never seen in training</span><span>trained on SemanticKITTI</span><span>10 clips</span></div>
+            <p class="wall-blurb">A low-speed delivery platform carrying the sparsest scan of the three.</p>
+            <div class="wall-grid">
+            <figure class="tile" data-n="20" style="--ar:1100/340;--ac:#45c4a8">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-courier-01.mp4" data-cap="TH-Courier &middot; trained on SemanticKITTI &middot; clip 01" aria-label="Enlarge TH-Courier clip 01, trained on SemanticKITTI">
+                <img class="still" src="assets/clips/rv-courier-01.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="340" />
+                <video data-src="assets/clips/rv-courier-01.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">21<s>/30</s></span>
+                <span class="tile-chip"><b>TH-Courier</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            <figure class="tile" data-n="21" style="--ar:1100/340;--ac:#45c4a8">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-courier-02.mp4" data-cap="TH-Courier &middot; trained on SemanticKITTI &middot; clip 02" aria-label="Enlarge TH-Courier clip 02, trained on SemanticKITTI">
+                <img class="still" src="assets/clips/rv-courier-02.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="340" />
+                <video data-src="assets/clips/rv-courier-02.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">22<s>/30</s></span>
+                <span class="tile-chip"><b>TH-Courier</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            <figure class="tile" data-n="22" style="--ar:1100/340;--ac:#45c4a8">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-courier-03.mp4" data-cap="TH-Courier &middot; trained on SemanticKITTI &middot; clip 03" aria-label="Enlarge TH-Courier clip 03, trained on SemanticKITTI">
+                <img class="still" src="assets/clips/rv-courier-03.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="340" />
+                <video data-src="assets/clips/rv-courier-03.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">23<s>/30</s></span>
+                <span class="tile-chip"><b>TH-Courier</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            <figure class="tile" data-n="23" style="--ar:1100/340;--ac:#45c4a8">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-courier-04.mp4" data-cap="TH-Courier &middot; trained on SemanticKITTI &middot; clip 04" aria-label="Enlarge TH-Courier clip 04, trained on SemanticKITTI">
+                <img class="still" src="assets/clips/rv-courier-04.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="340" />
+                <video data-src="assets/clips/rv-courier-04.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">24<s>/30</s></span>
+                <span class="tile-chip"><b>TH-Courier</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            <figure class="tile" data-n="24" style="--ar:1100/340;--ac:#45c4a8">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-courier-05.mp4" data-cap="TH-Courier &middot; trained on SemanticKITTI &middot; clip 05" aria-label="Enlarge TH-Courier clip 05, trained on SemanticKITTI">
+                <img class="still" src="assets/clips/rv-courier-05.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="340" />
+                <video data-src="assets/clips/rv-courier-05.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">25<s>/30</s></span>
+                <span class="tile-chip"><b>TH-Courier</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            <figure class="tile" data-n="25" style="--ar:1100/340;--ac:#45c4a8">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-courier-06.mp4" data-cap="TH-Courier &middot; trained on SemanticKITTI &middot; clip 06" aria-label="Enlarge TH-Courier clip 06, trained on SemanticKITTI">
+                <img class="still" src="assets/clips/rv-courier-06.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="340" />
+                <video data-src="assets/clips/rv-courier-06.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">26<s>/30</s></span>
+                <span class="tile-chip"><b>TH-Courier</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            <figure class="tile" data-n="26" style="--ar:1100/340;--ac:#45c4a8">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-courier-07.mp4" data-cap="TH-Courier &middot; trained on SemanticKITTI &middot; clip 07" aria-label="Enlarge TH-Courier clip 07, trained on SemanticKITTI">
+                <img class="still" src="assets/clips/rv-courier-07.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="340" />
+                <video data-src="assets/clips/rv-courier-07.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">27<s>/30</s></span>
+                <span class="tile-chip"><b>TH-Courier</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            <figure class="tile" data-n="27" style="--ar:1100/340;--ac:#45c4a8">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-courier-08.mp4" data-cap="TH-Courier &middot; trained on SemanticKITTI &middot; clip 08" aria-label="Enlarge TH-Courier clip 08, trained on SemanticKITTI">
+                <img class="still" src="assets/clips/rv-courier-08.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="340" />
+                <video data-src="assets/clips/rv-courier-08.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">28<s>/30</s></span>
+                <span class="tile-chip"><b>TH-Courier</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            <figure class="tile" data-n="28" style="--ar:1100/340;--ac:#45c4a8">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-courier-09.mp4" data-cap="TH-Courier &middot; trained on SemanticKITTI &middot; clip 09" aria-label="Enlarge TH-Courier clip 09, trained on SemanticKITTI">
+                <img class="still" src="assets/clips/rv-courier-09.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="340" />
+                <video data-src="assets/clips/rv-courier-09.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">29<s>/30</s></span>
+                <span class="tile-chip"><b>TH-Courier</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            <figure class="tile" data-n="29" style="--ar:1100/340;--ac:#45c4a8">
+              <button class="tile-media" type="button" data-clip="assets/clips/rv-courier-10.mp4" data-cap="TH-Courier &middot; trained on SemanticKITTI &middot; clip 10" aria-label="Enlarge TH-Courier clip 10, trained on SemanticKITTI">
+                <img class="still" src="assets/clips/rv-courier-10.webp" alt="" aria-hidden="true"
+                     loading="lazy" decoding="async" width="1100" height="340" />
+                <video data-src="assets/clips/rv-courier-10.mp4" muted loop playsinline preload="none"
+                       disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
+                <span class="tile-no">30<s>/30</s></span>
+                <span class="tile-chip"><b>TH-Courier</b></span>
+                <span class="tile-zoom" aria-hidden="true">&#8599;</span>
+              </button>
+            </figure>
+            </div>
+          </div>
+
+            <p class="wall-note">Every clip on screen plays at once and loops on its own. Scrolling is the only
+            control: whatever reaches the middle of the screen takes the light, and clips that scroll away stop, so
+            the page stays light however far you go. <b>Nothing is sped up, cut or re-ordered</b> &mdash; each is a
+            continuous fifteen seconds at the platform's own 10&nbsp;Hz, cropped to the viewer's three panels.</p>
+          </div>
+        </div>
+      </article>
       <article class="video-block reveal">
-        <h3 class="video-part-title"><span>Part I</span>Overview: the lost spectrum in two minutes</h3>
+        <h3 class="video-part-title"><span>Part II</span>Overview: the lost spectrum in two minutes</h3>
         <div class="video-frame is-pending" data-pending="In preparation">
           <img class="video-poster" src="assets/insight.jpg" alt="" aria-hidden="true" loading="lazy" decoding="async" />
         </div>
@@ -528,21 +1020,14 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
         argument. Subtitled, not narrated.</p>
       </article>
       <article class="video-block reveal">
-        <h3 class="video-part-title"><span>Part II</span>Cross-sensor generalization, built up cell by cell</h3>
+        <h3 class="video-part-title"><span>Part III</span>Cross-sensor generalization, built up cell by cell</h3>
         <div class="video-frame">
           <video src="assets/table1_3d_build.mp4" poster="assets/table1_3d.jpg" controls playsinline preload="none"></video>
         </div>
         <p class="video-note">Grey is the single-sensor baseline, orange the randomized-sampling baseline, blue
         LiEqualizer. Arrows mark the gain over the orange bars.</p>
       </article>
-      <article class="video-block reveal">
-        <h3 class="video-part-title"><span>Part III</span>On three vehicles, with LiDARs the model never saw</h3>
-        <div class="video-frame is-pending" data-pending="In preparation">
-          <img class="video-poster" src="assets/realdata.jpg" alt="" aria-hidden="true" loading="lazy" decoding="async" />
-        </div>
-        <p class="video-note">Real-vehicle clips, in preparation — the same ones the Downloads list promises. The
-        still frames are in the On-vehicle section above.</p>
-      </article>
+
     </div>
   </div>
 </section>
@@ -569,6 +1054,21 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
       <figcaption><b>Fig 8.</b> How much energy a band carries, and how much of it the teacher accounts for.
       The manuscript's Fig. 4, re-drawn from the released measurements.</figcaption>
     </figure>
+
+    <div class="section-head reveal" style="margin-top:46px">
+      <div class="eyebrow">Ablation</div>
+      <h2>What each piece buys</h2>
+      <p class="lead">Read downwards from the undistilled student; each row adds one module. Brackets are the difference from the first row.</p>
+    </div>
+    <div id="lq-ablation" class="reveal"></div>
+
+    <div class="section-head reveal" style="margin-top:46px">
+      <div class="eyebrow">Comparison</div>
+      <h2>Against other distillation objectives</h2>
+      <p class="lead">Re-implemented under one pipeline with the same teacher, the same student, the same signals and the same
+      schedule, so that only the objective differs.</p>
+    </div>
+    <div id="lq-kd-baselines" class="reveal"></div>
   </div>
 </section>
 
@@ -586,7 +1086,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
         <span class="ic">&lt;/&gt;</span><span><span class="t">Source code</span><br /><span class="m">GitHub · LiEQ-Simple</span></span><span class="ar">→</span></a>
       <a class="dl soon" href="#"><span class="ic">◆</span><span><span class="t">Checkpoints</span><br /><span class="m">coming with the paper</span></span><span class="ar">→</span></a>
       <a class="dl" href="https://github.com/PRBonn/LiDiff" target="_blank" rel="noopener"><span class="ic">▤</span><span><span class="t">Densified data &amp; labels</span><br /><span class="m">generated with LiDiff · SemanticKITTI / nuScenes / Waymo</span></span><span class="ar">→</span></a>
-      <a class="dl soon" href="#"><span class="ic">▶</span><span><span class="t">Real-vehicle clips</span><br /><span class="m">coming with the paper</span></span><span class="ar">→</span></a>
+      <a class="dl" href="#clips"><span class="ic">&#9654;</span><span><span class="t">Real-vehicle clips</span><br /><span class="m">30 clips, on this page</span></span><span class="ar">&rarr;</span></a>
     </div>
     <div class="eyebrow" style="margin-top:28px">Documentation</div>
     <div class="docs reveal">
@@ -640,6 +1140,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
   <div class="lightbox-inner">
     <button type="button" data-lightbox-close>Close ✕</button>
     <img id="lightbox-img" src="" alt="" />
+    <video id="lightbox-vid" hidden controls loop muted playsinline preload="metadata"></video>
     <p id="lightbox-cap"></p>
   </div>
 </div>
@@ -801,6 +1302,207 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
     b.textContent = open ? b.getAttribute('data-open') : b.getAttribute('data-shut');
   });
 })();
+
+  /* on-vehicle wall — thirty clips, all of them running, scroll the only control.
+
+     Three observers do the work. One attaches a source shortly before a tile
+     arrives, because a video element has no native lazy loading. One decides what
+     plays: anything inside a band 200px taller than the viewport, up to MAX at a
+     time, and nothing once it leaves. One reveals tiles as they enter. A
+     rAF-throttled pass then lights the tile nearest the middle of the screen,
+     which is what makes scrolling feel like choosing. */
+  (function(){
+    var wall = document.getElementById('wall');
+    if (!wall) return;
+    var tiles = [].slice.call(wall.querySelectorAll('.tile')),
+        vids  = [].slice.call(wall.querySelectorAll('.tile-media video'));
+    if (!vids.length) return;
+
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+        hasIO  = 'IntersectionObserver' in window,
+        /* Desktops decode these ten-frame-a-second clips cheaply, so a screenful can
+           run at once. Phones and tablets cannot: a handful of simultaneous decoders
+           is the practical ceiling there, past which play() starts failing outright. */
+        small  = window.matchMedia && window.matchMedia('(pointer:coarse),(max-width:900px)').matches,
+        MAX    = small ? 4 : 12,
+        paused = !!reduce,
+        liveEl = document.getElementById('wall-live');
+
+    function attach(v){ if (v.dataset.src){ v.src = v.dataset.src; delete v.dataset.src; } }
+
+    if (!hasIO){                  /* no observer: show the stills, play nothing */
+      tiles.forEach(function(t){ t.classList.add('in'); });
+      return;
+    }
+
+    var loader = new IntersectionObserver(function(es){
+      es.forEach(function(e){ if (e.isIntersecting){ attach(e.target); loader.unobserve(e.target); } });
+    }, {rootMargin:'600px 0px'});
+    vids.forEach(function(v){ loader.observe(v); });
+
+    var revealer = new IntersectionObserver(function(es){
+      es.forEach(function(e){ if (e.isIntersecting){ e.target.classList.add('in'); revealer.unobserve(e.target); } });
+    }, {rootMargin:'140px 0px -2% 0px', threshold:.02});
+    tiles.forEach(function(t){ revealer.observe(t); });
+
+    /* A band taller than the viewport on each side, so a tile is already running by
+       the time it is seen: more of them move at once, and none is caught starting up. */
+    /* Lighting is a separate question from playing: a tile plays a little before it
+       arrives, but it is only lit while it is genuinely in the window. No rootMargin
+       here, so isIntersecting means exactly that. */
+    var lighter = new IntersectionObserver(function(es){
+      es.forEach(function(e){
+        var t = e.target.closest('.tile');
+        if (!t) return;
+        if (e.isIntersecting) t.classList.add('is-on'); else t.classList.remove('is-on');
+      });
+      /* entering the window is also the last chance to catch a tile the play pass
+         missed, and the readout counts what is lit, so both are refreshed here */
+      sync();
+    }, {threshold:0});
+    vids.forEach(function(v){ lighter.observe(v); });
+
+    var watcher = new IntersectionObserver(function(){ sync(); },
+                                           {rootMargin:'200px 0px', threshold:0});
+    vids.forEach(function(v){ watcher.observe(v); });
+
+    /* What should be running is a question about geometry, so it is answered from
+       geometry. An incrementally maintained list drifted out of step with the page
+       and left tiles sitting still inside the window; thirty rect reads, only on an
+       observer callback, cannot. */
+    function sync(){
+      var run = [], h = window.innerHeight;
+      if (!paused){
+        for (var i = 0; i < vids.length && run.length < MAX; i++){
+          var v = vids[i], t = v.closest('.tile');
+          if (!t || t.offsetParent === null) continue;   /* hidden by the filter */
+          var r = v.getBoundingClientRect();
+          if (r.bottom > -200 && r.top < h + 200) run.push(v);
+        }
+      }
+      vids.forEach(function(v){
+        if (run.indexOf(v) > -1){
+          attach(v);
+          if (v.paused){
+            var p = v.play();
+            /* a refusal (iOS Low Power Mode, a strict autoplay setting) leaves the
+               still showing; the tile still reads, and the zoom still works */
+            if (p && p.catch) p.catch(function(){});
+          }
+        } else if (!v.paused) v.pause();
+      });
+      mark();
+    }
+
+    /* whatever reaches the middle of the screen takes the light */
+    var ticking = false, focused = null;
+    function mark(){
+      var vh = window.innerHeight, mid = vh / 2, best = null, bestD = Infinity, lit = 0;
+      for (var i = 0; i < tiles.length; i++){
+        var t = tiles[i];
+        if (t.offsetParent === null) continue;          /* hidden by the filter */
+        var r = t.getBoundingClientRect();
+        if (r.bottom <= 0 || r.top >= vh) continue;     /* only what is really in the window */
+        lit++;
+        var d = Math.abs((r.top + r.height / 2) - mid);
+        if (d < bestD){ bestD = d; best = t; }
+      }
+      if (best !== focused){
+        if (focused) focused.classList.remove('is-focus');
+        focused = best;
+        if (focused){
+          focused.classList.add('is-focus');
+          /* the bar takes the colour of whichever platform the scroll is over, so the
+             accent travels with you instead of sitting still */
+          var ac = focused.style.getPropertyValue('--ac');
+          if (ac) wall.style.setProperty('--ac', ac.trim());
+        }
+      }
+      if (!liveEl) return;
+      if (!focused){ liveEl.textContent = ''; return; }
+      /* each platform carries ten clips, so the count is read inside the group the
+         scroll is over rather than across all thirty */
+      var grp = focused.closest('.wall-group'),
+          b = focused.querySelector('.tile-chip b'),
+          own = 0, tot = 0;
+      if (grp){
+        var gt = grp.querySelectorAll('.tile');
+        tot = gt.length;
+        for (var k = 0; k < gt.length; k++){
+          var rr = gt[k].getBoundingClientRect();
+          if (rr.bottom > 0 && rr.top < vh) own++;
+        }
+      } else { own = lit; tot = tiles.length; }
+      liveEl.innerHTML = 'In view <i>' + (b ? b.textContent : '') + '</i> <b>' +
+                         own + ' of ' + tot + '</b>';
+    }
+    /* how far the wall itself has travelled, drawn under the sticky bar */
+    function progress(){
+      var r = wall.getBoundingClientRect(),
+          span = r.height - window.innerHeight;
+      var f = span > 0 ? (-r.top) / span : 0;
+      wall.style.setProperty('--prog', (Math.max(0, Math.min(1, f)) * 100).toFixed(1) + '%');
+    }
+    addEventListener('scroll', function(){
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(function(){ ticking = false; mark(); progress(); });
+    }, {passive:true});
+    addEventListener('resize', function(){ mark(); progress(); }, {passive:true});
+
+    var pauseBtn = document.getElementById('wall-pause');
+    if (pauseBtn){
+      if (reduce){ pauseBtn.innerHTML = '▶ Play'; pauseBtn.setAttribute('aria-pressed','true'); }
+      pauseBtn.addEventListener('click', function(){
+        paused = !paused;
+        pauseBtn.innerHTML = paused ? '▶ Play' : '❙❙ Pause';
+        pauseBtn.setAttribute('aria-pressed', paused ? 'true' : 'false');
+        sync();
+      });
+    }
+
+    wall.addEventListener('click', function(ev){
+      var f = ev.target.closest && ev.target.closest('[data-filter]');
+      if (!f) return;
+      var want = f.getAttribute('data-filter');
+      [].forEach.call(wall.querySelectorAll('[data-filter]'), function(o){
+        o.setAttribute('aria-pressed', o === f ? 'true' : 'false');
+      });
+      [].forEach.call(wall.querySelectorAll('.wall-group'), function(g){
+        if (want === 'all' || g.getAttribute('data-group') === want) g.removeAttribute('hidden');
+        else g.setAttribute('hidden','hidden');
+      });
+      requestAnimationFrame(mark);
+    });
+
+    /* a closer look, through the page's own lightbox — optional, never required */
+    var lb = document.getElementById('lightbox'),
+        lbImg = document.getElementById('lightbox-img'),
+        lbVid = document.getElementById('lightbox-vid'),
+        lbCap = document.getElementById('lightbox-cap');
+    function closeClip(){
+      if (lb) lb.classList.remove('is-clip');
+      if (!lbVid) return;
+      lbVid.pause(); lbVid.removeAttribute('src'); lbVid.load();
+      lbVid.hidden = true; if (lbImg) lbImg.hidden = false;
+    }
+    wall.addEventListener('click', function(ev){
+      var t = ev.target.closest && ev.target.closest('[data-clip]');
+      if (!t || !lb || !lbVid) return;
+      if (lbImg){ lbImg.hidden = true; lbImg.removeAttribute('src'); }
+      lbVid.hidden = false;
+      lbVid.src = t.getAttribute('data-clip');
+      lbVid.setAttribute('aria-label', t.getAttribute('data-cap') || '');
+      lbCap.textContent = t.getAttribute('data-cap') || '';
+      lb.classList.add('open'); lb.classList.add('is-clip'); lb.setAttribute('aria-hidden','false');
+      var p = lbVid.play(); if (p && p.catch) p.catch(function(){});
+    });
+    document.addEventListener('click', function(ev){
+      if (ev.target.closest && (ev.target.closest('[data-lightbox-close]') ||
+                                ev.target.closest('[data-lightbox]'))) closeClip();
+    });
+    document.addEventListener('keydown', function(ev){ if (ev.key === 'Escape') closeClip(); });
+  })();
 
 function copyBib(btn){
   var txt = document.getElementById('bibtex').textContent;
