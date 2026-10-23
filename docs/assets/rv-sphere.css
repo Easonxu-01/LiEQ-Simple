@@ -1,0 +1,411 @@
+/*!
+ * rv-sphere.css — the on-vehicle wall, carried on a 3D sphere.
+ *
+ * Thirty clips, ten per platform. One platform faces the camera and plays; the
+ * other two are parked at +/-120deg on the same sphere and show their stills,
+ * stopped. Within a face the ten sit at three depths: one at the centre, three
+ * on an inner ring, six on an outer ring.
+ *
+ * GEOMETRY LIVES IN JS, NOT HERE. rv-sphere.js writes --x / --y / --z / --s on
+ * every slot and --spin on the sphere, because the slot a clip occupies changes
+ * when you click it and the numbers have to be swappable at runtime. This sheet
+ * owns the look, the depth cues and every transition curve.
+ *
+ * THE RINGS ARE ELLIPSES, NOT CIRCLES. The clips are letterbox strips -- 2.71:1
+ * on CS55, 3.31:1 on AVT, 3.24:1 on Courier -- so six tiles spaced 60deg apart
+ * on a true circle collide left and right long before they collide top and
+ * bottom. Each ring therefore has its own rx and ry (see RINGS in the JS) while
+ * keeping the angles exactly 120deg and 60deg apart, which is what makes the
+ * triangle and the hexagon read as regular on screen.
+ *
+ * Everything that moves is transform or opacity, so the compositor carries it
+ * and no frame touches layout.
+ */
+
+/* ------------------------------------------------- 0. the two spring curves
+ *
+ * Borrowed from the onetake motion library, whose rule for interface motion is
+ * that it should feel native rather than "animated": SwiftUI's
+ * Spring(duration d, bounce b) is a damped oscillator at zeta = 1 - b and
+ * omega = 2*pi/d. Sampled over one duration the d cancels, so each curve below
+ * is a pure function of its bounce alone and can be reused at any length.
+ *
+ *   --ease-smooth   bounce 0      no overshoot. The 120deg turn between
+ *                                 platforms, where an overshoot on a move that
+ *                                 large reads as a slip rather than as weight.
+ *   --ease-snappy   bounce 0.15   0.03 per cent over. A clip's travel to or
+ *                                 from the centre: it arrives, ticks once, and
+ *                                 is still.
+ *
+ * cubic-bezier is the fallback where linear() is not understood. It is close
+ * enough that nobody will tell the two apart, which is the point.
+ */
+.rvs-root{
+  --ease-smooth:cubic-bezier(.4,0,.2,1);
+  --ease-snappy:cubic-bezier(.34,.01,.2,1);
+}
+@supports (transition-timing-function:linear(0,1)){
+  .rvs-root{
+    --ease-smooth:linear(0.0000, 0.0153, 0.0543, 0.1086, 0.1719, 0.2396, 0.3084, 0.3760, 0.4409, 0.5021, 0.5589, 0.6111, 0.6587, 0.7016, 0.7402, 0.7746, 0.8053, 0.8323, 0.8562, 0.8772, 0.8956, 0.9117, 0.9257, 0.9379, 0.9485, 0.9577, 0.9656, 0.9724, 0.9784, 0.9835, 0.9878, 0.9916, 0.9948, 0.9976, 1.0000);
+    --ease-snappy:linear(0.0000, 0.0153, 0.0551, 0.1115, 0.1786, 0.2514, 0.3263, 0.4005, 0.4720, 0.5395, 0.6021, 0.6593, 0.7108, 0.7567, 0.7972, 0.8325, 0.8630, 0.8892, 0.9113, 0.9299, 0.9453, 0.9580, 0.9684, 0.9767, 0.9832, 0.9883, 0.9922, 0.9951, 0.9972, 0.9987, 0.9996, 1.0001, 1.0003, 1.0002, 1.0000);
+  }
+}
+
+/* ---------------------------------------------------------------- 1. shell */
+
+.rvs-root{
+  position:relative;
+  width:100%;
+  /* height is written by JS: DESIGN_H * --k, so the sphere never leaves a gap */
+  margin:2px 0 0;
+  overflow:hidden;
+  /* the sphere's own corners are soft, so the clip edge has to be soft too */
+  mask-image:linear-gradient(90deg,transparent 0,#000 7%,#000 93%,transparent 100%);
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 7%,#000 93%,transparent 100%);
+}
+
+/* the one 2D scale that makes a fixed design space responsive. It sits OUTSIDE
+   the perspective root on purpose: a scale applied inside a preserve-3d chain
+   flattens the chain in Safari. */
+.rvs-scaler{
+  position:absolute; left:50%; top:0;
+  width:1880px; height:800px;
+  transform:translateX(-50%) scale(var(--k,1));
+  transform-origin:50% 0;
+}
+
+.rvs-stage{
+  position:absolute; inset:0;
+  perspective:3200px;
+  perspective-origin:50% 48%;
+}
+
+.rvs-sphere{
+  position:absolute; inset:0;
+  transform-style:preserve-3d;
+  /* pushed back by the sphere radius so the facing platform lands at z = 0 */
+  transform:translateZ(calc(var(--radius,1150px) * -1)) rotateY(var(--spin,0deg));
+  transition:transform var(--spin-ms,1150ms) var(--ease-smooth);
+}
+
+/* the camera eases back while the sphere turns, then settles. Two properties on
+   two elements rather than one compound transform, so neither fights the other. */
+.rvs-stage{transition:transform var(--spin-ms,1150ms) var(--ease-smooth)}
+.rvs-root[data-spinning="1"] .rvs-stage{transform:scale(.93)}
+
+.rvs-face{
+  position:absolute; inset:0;
+  transform-style:preserve-3d;
+  transform:rotateY(var(--face-deg,0deg)) translateZ(var(--radius,1150px));
+  /* THE FACE MUST NOT BE HIT-TESTABLE. It is a full-size box on its own plane
+     and the clips sit on a cap BEHIND that plane, so in 3D the face stands in
+     front of every one of them and swallowed every click: elementFromPoint
+     returned .rvs-face and the click fell through to the page's lightbox. The
+     face has no surface of its own, only its clips, so it gives up the pointer
+     and they take it back. */
+  pointer-events:none;
+}
+
+/* ------------------------------------------------------------- 2. the slot */
+
+.rvs-slot{
+  position:absolute; left:50%; top:50%;
+  /* the width comes from JS so the CSS box and the solved packing cannot drift
+     apart; they did once, and the tiles rendered 4% larger than the layout
+     assumed, which made every neighbour overlap */
+  width:var(--card-w,596px);
+  aspect-ratio:var(--ar,1100/340);
+  margin:calc(var(--card-w,596px) / var(--arn,3.24) / -2) calc(var(--card-w,596px) / -2);
+  transform-style:preserve-3d;
+  /* position on the cap, then the clip's OWN pose -- it faces out through its
+     own position rather than lying parallel to its neighbours -- then size.
+     The order matters: translate places it, the rotations turn it about its own
+     centre, the scale sizes it. */
+  transform:
+    translate3d(calc(var(--x,0) * 1px), calc(var(--y,0) * 1px), calc(var(--z,0) * 1px))
+    rotateY(var(--lon,0deg)) rotateX(var(--lat,0deg))
+    scale(var(--s,1));
+  pointer-events:auto;
+  transition:transform var(--slot-ms,860ms) var(--ease-snappy);
+}
+
+/* the arc. A slot travelling to or from the centre lifts toward the camera at
+   mid-flight, so two swapping clips pass around each other instead of through.
+   It is a separate element because the slot's own transform is being
+   transitioned at the same time. */
+.rvs-lift{
+  position:absolute; inset:0;
+  transform-style:preserve-3d;
+}
+
+
+/* ------------------------------------------------------------- 3. the card */
+
+.rvs-card{
+  position:absolute; inset:0;
+  transform-style:preserve-3d;
+  border-radius:14px;
+}
+
+.rvs-plate{
+  position:absolute; inset:0;
+  overflow:hidden;
+  border-radius:14px;
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+  /* every clip carries the highlight, not just the focused one: the border is
+     what separates two neighbours three pixels apart and gives the block its
+     grid. It was first seen as the focus ring and kept on purpose. */
+  border:2px solid var(--hl,rgba(86,173,240,.72));
+  background:#070d18;
+  box-shadow:0 26px 60px -30px rgba(3,7,14,.9),
+             0 0 0 1px rgba(86,173,240,.14),
+             0 0 18px -6px rgba(86,173,240,.35);
+  transition:border-color .5s,box-shadow .5s;
+}
+
+/* the back of the panel carries the same still, turned the right way up by its
+   own 180deg, so a parked platform reads as a stopped frame rather than as a
+   mirrored one */
+.rvs-plate.is-back{transform:rotateY(180deg)}
+
+.rvs-plate img,.rvs-plate video{
+  position:absolute; inset:0;
+  width:100%; height:100%;
+  object-fit:cover;
+  display:block;
+}
+.rvs-plate video{opacity:0;transition:opacity .55s}
+.rvs-slot[data-live="1"][data-ready="1"] .rvs-plate.is-front video{opacity:1}
+
+/* a parked platform is dimmed and drained, which is the whole depth cue */
+.rvs-plate.is-back img{filter:saturate(.22) brightness(.38) contrast(1.05) blur(1.4px)}
+/* a parked platform is behind the sphere, so it is defocused as well as dimmed;
+   without the blur its sharp edges compete with the facing platform's clips */
+.rvs-plate.is-back{box-shadow:none;border-width:1px;border-color:rgba(134,182,239,.07)}
+.rvs-plate.is-back::after{
+  content:"";position:absolute;inset:0;
+  background:
+    linear-gradient(180deg,rgba(5,9,15,.52),rgba(5,9,15,.78)),
+    radial-gradient(120% 90% at 50% 0,rgba(86,173,240,.10),transparent 70%);
+}
+
+/* ------------------------------------------------------- 4. depth and focus */
+
+/* the two outer rings sit back a little in tone as well as in z */
+/* NO PER-ROW TONE. Dimming the outer rows to fake depth made the block read as
+   one bright row and three dull ones, which is worse than flat: the clips are
+   the content, and the cap's own geometry already carries the depth. */
+
+
+/* hover only reaches the facing platform's outer clips: the centre one is
+   already home and a parked one has nowhere to go */
+.rvs-face[data-active="1"] .rvs-hit{cursor:zoom-in}
+.rvs-face[data-active="1"] .rvs-hit:hover + .rvs-plate,
+.rvs-face[data-active="1"] .rvs-hit:focus-visible + .rvs-plate{
+  border-color:#bfe0ff;
+  box-shadow:0 40px 90px -40px rgba(3,7,14,.95),0 0 26px -4px rgba(86,173,240,.7);
+}
+
+
+.rvs-hit{
+  position:absolute; inset:0;
+  z-index:3;
+  appearance:none;-webkit-appearance:none;
+  background:none;border:0;padding:0;margin:0;
+  border-radius:14px;
+  /* NO backface-visibility HERE. Chrome stops hit-testing a transformed element
+     that carries it inside a preserve-3d chain, and every clip with a rotateY
+     became unclickable: elementFromPoint returned the face behind it and the
+     click fell through to the page's lightbox. The button is covered by its own
+     card from behind anyway, so it never needed the hint. */
+}
+.rvs-hit:focus-visible{outline:2px solid var(--blue-on-dark,#56adf0);outline-offset:3px}
+
+/* ------------------------------------------------------------ 5. the chips */
+
+.rvs-tag{
+  position:absolute; z-index:2;
+  font-family:var(--mono,ui-monospace,monospace);
+  font-size:10px;font-weight:700;letter-spacing:.14em;
+  color:#cfe3fb;
+  background:rgba(6,12,22,.72);
+  border:1px solid var(--edge,rgba(134,182,239,.12));
+  border-radius:999px;
+  padding:3px 9px;
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  pointer-events:none;
+}
+.rvs-tag.at-tl{left:10px;top:9px}
+.rvs-tag.at-br{right:10px;bottom:9px;color:#06101f;background:var(--ac,#56adf0);border-color:var(--ac,#56adf0)}
+/* the rings are small; their chips would cover the picture */
+/* every clip carries both chips or none would: a platform badge on one tile and
+   not its neighbour reads as a mistake */
+.rvs-plate.is-back .rvs-tag.at-br{display:none}
+
+/* --------------------------------------------------- 5b. the click hints
+ *
+ * Three, each answering a different "can I touch this?":
+ *   .rvs-hint   a pill under the sphere naming the gesture. It retires for good
+ *               the first time anyone swaps a clip, the way eq-widget's pluck
+ *               pill does -- a hint that outstays the lesson is clutter.
+ *   .rvs-badge  an arrow that fades in on an outer clip under the pointer, so
+ *               the cursor is not the only thing saying the clip is live.
+ *   .rvs-turn   a word on a parked platform's centre clip, because nothing else
+ *               says the dark panels at the sides can be clicked at all.
+ */
+.rvs-hint{
+  margin-left:auto;
+  pointer-events:none;
+  transition:opacity .6s,transform .6s;
+}
+.rvs-hint.is-out{opacity:0;transform:translateY(6px)}
+.rvs-hint span{
+  display:inline-block;
+  font-family:var(--mono,ui-monospace,monospace);
+  font-size:10px;font-weight:700;letter-spacing:.17em;
+  color:#cfe3fb;background:rgba(6,12,22,.8);
+  border:1px solid var(--edge-hi,rgba(134,182,239,.38));
+  border-radius:999px;padding:9px 18px;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  animation:rvs-nudge 3.6s ease-in-out infinite;
+}
+@keyframes rvs-nudge{0%,86%,100%{transform:translateY(0)}93%{transform:translateY(-5px)}}
+
+
+.rvs-badge{
+  position:absolute;right:9px;top:9px;z-index:4;
+  width:24px;height:24px;border-radius:50%;
+  display:grid;place-items:center;
+  font-family:var(--mono,ui-monospace,monospace);
+  font-size:13px;font-weight:700;line-height:1;
+  color:#06101f;background:var(--ac,#56adf0);
+  /* the slot it lives in is scaled to its ring, so the badge divides that out
+     and stays the same size on all nine outer clips */
+  opacity:0;transform:scale(calc(.65 / var(--s,1)));
+  transform-origin:50% 50%;
+  pointer-events:none;
+  transition:opacity .28s,transform .28s var(--ease-snappy);
+}
+.rvs-face[data-active="1"] .rvs-hit:hover + .rvs-badge,
+.rvs-face[data-active="1"] .rvs-hit:focus-visible + .rvs-badge{
+  opacity:1;transform:scale(calc(1 / var(--s,1)));
+}
+
+.rvs-turn{
+  position:absolute;left:50%;top:50%;z-index:3;
+  transform:translate(-50%,-50%);
+  font-family:var(--mono,ui-monospace,monospace);
+  font-size:10px;font-weight:700;letter-spacing:.18em;
+  color:#06101f;background:var(--ac,#56adf0);
+  border-radius:999px;padding:8px 15px;
+  opacity:0;transition:opacity .45s;
+  pointer-events:none;white-space:nowrap;
+}
+.rvs-face:not([data-active="1"]) .rvs-slot[data-ring="1"] .rvs-turn{opacity:.92}
+
+@media (prefers-reduced-motion:reduce){
+  .rvs-hint span{animation:none}
+}
+
+/* --------------------------------------------------------------- 6. the bar */
+
+.rvs-bar{
+  position:relative;z-index:8;
+  display:flex;align-items:center;justify-content:center;gap:12px;
+  padding:7px 4px 8px;
+  border-bottom:1px solid var(--edge,rgba(134,182,239,.12));
+}
+/* the readout and the hold sit at the edges so the three platforms keep the
+   middle to themselves; they are the page's furniture, the switch is not */
+.rvs-spacer{display:none}
+.rvs-bar .rvs-live{position:absolute;left:6px;top:50%;transform:translateY(-50%)}
+.rvs-bar .rvs-btn{position:absolute;right:6px;top:50%;transform:translateY(-50%)}
+@media(max-width:1180px){.rvs-bar .rvs-live{display:none}}
+.rvs-seg{
+  display:inline-flex;padding:5px;gap:4px;border-radius:999px;
+  background:rgba(8,14,26,.78);
+  border:1px solid var(--edge-hi,rgba(134,182,239,.38));
+  box-shadow:0 18px 44px -24px rgba(3,7,14,.9);
+}
+.rvs-seg button{
+  position:relative;
+  font-family:var(--mono,ui-monospace,monospace);
+  font-size:13px;font-weight:700;letter-spacing:.17em;
+  color:#8ea4c2;background:none;border:0;border-radius:999px;
+  padding:13px 32px;cursor:pointer;
+  transition:color .35s,background-color .35s;
+}
+@media(max-width:860px){.rvs-seg button{font-size:11px;padding:10px 18px;letter-spacing:.13em}}
+.rvs-seg button:hover{color:#eaf1fb}
+.rvs-seg button:focus-visible{outline:2px solid var(--blue-on-dark,#56adf0);outline-offset:1px}
+.rvs-seg button[aria-pressed="true"]{color:#06101f;background:#cfe3fb}
+.rvs-seg button b{font-weight:700;opacity:.45;margin-left:10px;font-size:11px}
+.rvs-spacer{flex:1}
+.rvs-live{
+  font-family:var(--mono,ui-monospace,monospace);
+  font-size:10px;font-weight:700;letter-spacing:.15em;color:#6d82a0;
+}
+.rvs-live b{color:#cfe3fb;font-weight:700}
+.rvs-live i{font-style:normal;color:var(--ac,#56adf0);transition:color .5s}
+.rvs-btn{
+  font-family:var(--mono,ui-monospace,monospace);
+  font-size:10px;font-weight:700;letter-spacing:.13em;
+  color:#8ea4c2;background:rgba(8,14,26,.72);
+  border:1px solid var(--edge,rgba(134,182,239,.12));
+  border-radius:999px;padding:7px 13px;cursor:pointer;
+  transition:color .3s,border-color .3s,background-color .3s;
+}
+.rvs-btn:hover{color:#eaf1fb;border-color:var(--edge-hi,rgba(134,182,239,.38))}
+.rvs-btn:focus-visible{outline:2px solid var(--blue-on-dark,#56adf0);outline-offset:2px}
+.rvs-btn[aria-pressed="true"]{color:#06101f;background:#cfe3fb;border-color:#cfe3fb}
+
+/* --------------------------------------------------- 7. caption under it */
+
+.rvs-caption{
+  position:relative;z-index:7;
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  padding:0 4px 2px;
+  margin-top:-4px;
+}
+.rvs-caption .n{
+  font-family:var(--mono,ui-monospace,monospace);
+  font-size:clamp(26px,3vw,44px);font-weight:700;line-height:1;
+  color:var(--ac,#56adf0);
+}
+.rvs-caption h4{
+  font-family:var(--disp,inherit);
+  font-size:clamp(1.2rem,2.1vw,1.8rem);font-weight:700;margin:0;color:#eaf1fb;
+}
+.rvs-caption p{margin:0;font-size:12.4px;line-height:1.6;color:#7b90ae;max-width:60ch}
+.rvs-caption .beams{
+  font-family:var(--mono,ui-monospace,monospace);
+  font-size:9.5px;font-weight:700;letter-spacing:.15em;
+  color:#06101f;background:var(--ac,#56adf0);
+  border-radius:999px;padding:4px 9px;
+}
+
+/* onetake's `ribbon` -- its move for "options change under the hand" -- switches
+   the panels and lets the words lag behind them. The caption therefore leaves
+   at once, is rewritten about halfway through the turn, and returns on the
+   snappy curve, so a platform's name arrives just after its clips do. */
+.rvs-caption{transition:opacity .26s ease-out,transform .42s var(--ease-snappy)}
+.rvs-caption.is-out{opacity:0;transform:translateY(9px)}
+@media (prefers-reduced-motion:reduce){
+  .rvs-caption{transition:none}
+  .rvs-caption.is-out{opacity:1;transform:none}
+}
+
+/* -------------------------------------------- 8. phone, and reduced motion */
+
+/* Below the fallback width the sphere is abandoned rather than shrunk: ten
+   letterbox strips on a dome do not survive a 390px viewport, and ten decoders
+   on a phone are a worse idea still. rv-sphere.js hands the page back to its
+   original grid and this class never appears. */
+
+@media (prefers-reduced-motion:reduce){
+  .rvs-sphere,.rvs-slot,.rvs-stage{transition-duration:1ms}
+  .rvs-hint span{animation:none}
+  .rvs-root[data-spinning="1"] .rvs-stage{transform:none}
+  .rvs-plate video{transition:none}
+}
