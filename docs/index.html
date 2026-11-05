@@ -573,14 +573,13 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
   <div class="container">
     <div class="section-head reveal">
       <div class="eyebrow">Video</div>
-      <h2>Four parts</h2>
-      <p class="lead">The vehicles running live, the insight behind the method, the benchmark results built up cell by
-      cell, and the full on-vehicle deployment. Everything here is the zero-shot model: trained on one public dataset,
-      run on sensors that appear in none of them, with no fine-tuning.</p>
+      <h2>Overview &amp; live segmentation</h2>
+      <p class="lead">Every clip and every film shows the same zero-shot model: trained on one public dataset, run on
+      sensors that appear in none of them, with no target-domain data and no fine-tuning.</p>
     </div>
     <div class="video-list">
       <article class="video-block reveal" id="clips">
-        <h3 class="video-part-title"><span>Part I</span>On three vehicles, with LiDARs the model never saw</h3>
+        <h3 class="video-part-title"><span>Live</span>Zero-shot Segmentation Running on Three In-house Vehicles: 36 Clips at 32, 80 and 128 Beams</h3>
         <p class="video-note">Twelve fifteen-second clips from each of the three platforms, thirty-six in all. Each shows the
         camera, LiEqualizer's segmentation of the sparse scan, and the drivable area and local plan read from that
         segmentation. The weights are the zero-shot ones throughout: trained on a single public dataset, deployed on a
@@ -1021,33 +1020,33 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
         </div>
       </article>
       <article class="video-block reveal">
-        <h3 class="video-part-title"><span>Part II</span>The insight: one world, two spectra</h3>
+        <h3 class="video-part-title"><span>Part I</span>Motivation and Core Insight: Different LiDARs Observe Different Spectra of the Same World</h3>
         <div class="video-frame" data-share-url="https://cloud.tsinghua.edu.cn/f/762317d484604b3eabef/"
              data-title="LiEqualizer — the insight: different LiDARs see different spectra of the same world"
              aria-label="The insight: different LiDARs see different spectra of the same world">
-          <img class="video-poster" src="assets/insight.jpg" alt="" aria-hidden="true" loading="lazy" decoding="async" />
+          <img class="video-poster" src="assets/video1_insight.jpg" alt="" aria-hidden="true" loading="lazy" decoding="async" />
         </div>
-        <p class="video-note">Why the sensor gap is a band problem, and what equalizing it means.</p>
+        <p class="video-note">Why the sensor gap is a band problem.</p>
         <p class="video-fallback" hidden><a href="#" target="_blank" rel="noopener">Open in a new tab</a></p>
       </article>
       <article class="video-block reveal">
-        <h3 class="video-part-title"><span>Part III</span>Nine transfers across three benchmarks</h3>
+        <h3 class="video-part-title"><span>Part II</span>Benchmark Zero-shot Generalization on Three Predominant Benchmarks: SemanticKITTI, nuScenes, and Waymo</h3>
         <div class="video-frame" data-share-url="https://cloud.tsinghua.edu.cn/f/02b2d481f7384045a4f4/"
              data-title="LiEqualizer — zero-shot generalization across SemanticKITTI, nuScenes and Waymo"
              aria-label="Zero-shot generalization across SemanticKITTI, nuScenes and Waymo">
-          <img class="video-poster" src="assets/table1_3d.jpg" alt="" aria-hidden="true" loading="lazy" decoding="async" />
+          <img class="video-poster" src="assets/video2_benchmark.jpg" alt="" aria-hidden="true" loading="lazy" decoding="async" />
         </div>
-        <p class="video-note">Cross-sensor results built up cell by cell, against both baselines.</p>
+        <p class="video-note">Nine source-to-unseen transfers, against both baselines.</p>
         <p class="video-fallback" hidden><a href="#" target="_blank" rel="noopener">Open in a new tab</a></p>
       </article>
       <article class="video-block reveal">
-        <h3 class="video-part-title"><span>Part IV</span>Deployed on three vehicles, no fine-tuning</h3>
+        <h3 class="video-part-title"><span>Part III</span>Real-world Deployment on Three Vehicles Carrying previously Unseen 128-, 80-, and 32-beam LiDARs</h3>
         <div class="video-frame" data-share-url="https://cloud.tsinghua.edu.cn/f/6eaaefef111b4188afeb/"
              data-title="LiEqualizer — zero-shot deployment on three vehicles carrying unseen 32-, 80- and 128-beam LiDARs"
              aria-label="Zero-shot deployment on three vehicles carrying unseen LiDARs">
-          <img class="video-poster" src="assets/realdata.jpg" alt="" aria-hidden="true" loading="lazy" decoding="async" />
+          <img class="video-poster" src="assets/video3_onvehicle.jpg" alt="" aria-hidden="true" loading="lazy" decoding="async" />
         </div>
-        <p class="video-note">The full on-vehicle run on unseen 32-, 80- and 128-beam LiDARs.</p>
+        <p class="video-note">Scored against 900 independently labelled frames.</p>
         <p class="video-fallback" hidden><a href="#" target="_blank" rel="noopener">Open in a new tab</a></p>
       </article>
 
