@@ -446,6 +446,10 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
   background:rgba(12,19,34,.74);border:1px solid rgba(134,182,239,.34);
   padding:8px 15px;border-radius:999px;white-space:nowrap}
 .video-note{font-size:12.5px;line-height:1.58;color:#59677a;margin:11px 0 0}
+/* the clip wall now closes the on-vehicle section rather than opening the films */
+.wall-block{margin-top:34px}
+.wall-block-title{font-family:var(--disp);font-weight:600;font-size:1.06rem;line-height:1.48;
+  color:var(--text);margin:0 0 12px}
 /* Click-to-play facade. The iframe is built on click, never on load, so Tsinghua
    Cloud issues a fresh stream token each time and a stale one can never be
    baked into the page. The fallback link is revealed alongside it. */
@@ -629,13 +633,130 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
   <div class="container">
     <div class="section-head reveal">
       <div class="eyebrow">Video</div>
-      <h2>Overview &amp; live segmentation</h2>
-      <p class="lead">Every clip and every film shows the same zero-shot model: trained on one public dataset, run on
-      sensors that appear in none of them, with no target-domain data and no fine-tuning.</p>
+      <h2>Overview films</h2>
+      <p class="lead">Three films: the insight behind the method, the benchmark evaluation, and the on-vehicle
+      deployment. All of them show the same zero-shot model, trained on one public dataset and run on sensors that
+      appear in none of them, with no target-domain data and no fine-tuning.</p>
     </div>
     <div class="video-list">
-      <article class="video-block reveal" id="clips">
-        <h3 class="video-part-title"><span>Live</span>Zero-shot Segmentation Running on Three In-house Vehicles: 36 Clips at 32, 80 and 128 Beams</h3>
+      <article class="video-block reveal">
+        <h3 class="video-part-title"><span>Part I</span>Motivation and Core Insight: Different LiDARs Observe Different Spectra of the Same World</h3>
+        <div class="video-frame" data-share-url="https://cloud.tsinghua.edu.cn/f/762317d484604b3eabef/"
+             data-title="LiEqualizer — the insight: different LiDARs see different spectra of the same world"
+             aria-label="The insight: different LiDARs see different spectra of the same world">
+          <img class="video-poster" src="assets/video1_insight.jpg" alt="" aria-hidden="true" loading="lazy" decoding="async" />
+        </div>
+        <p class="video-note">Why the sensor gap is a band problem.</p>
+        <p class="video-fallback" hidden><a href="#" target="_blank" rel="noopener">Open in a new tab</a></p>
+      </article>
+      <article class="video-block reveal">
+        <h3 class="video-part-title"><span>Part II</span>Benchmark Zero-shot Generalization on Three Predominant Benchmarks: SemanticKITTI, nuScenes, and Waymo</h3>
+        <div class="video-frame" data-share-url="https://cloud.tsinghua.edu.cn/f/02b2d481f7384045a4f4/"
+             data-title="LiEqualizer — zero-shot generalization across SemanticKITTI, nuScenes and Waymo"
+             aria-label="Zero-shot generalization across SemanticKITTI, nuScenes and Waymo">
+          <img class="video-poster" src="assets/video2_benchmark.jpg" alt="" aria-hidden="true" loading="lazy" decoding="async" />
+        </div>
+        <p class="video-note">Nine source-to-unseen transfers, against both baselines.</p>
+        <p class="video-fallback" hidden><a href="#" target="_blank" rel="noopener">Open in a new tab</a></p>
+      </article>
+      <article class="video-block reveal">
+        <h3 class="video-part-title"><span>Part III</span>Real-world Deployment on Three Vehicles Carrying previously Unseen 128-, 80-, and 32-beam LiDARs</h3>
+        <div class="video-frame" data-share-url="https://cloud.tsinghua.edu.cn/f/6eaaefef111b4188afeb/"
+             data-title="LiEqualizer — zero-shot deployment on three vehicles carrying unseen 32-, 80- and 128-beam LiDARs"
+             aria-label="Zero-shot deployment on three vehicles carrying unseen LiDARs">
+          <img class="video-poster" src="assets/video3_onvehicle.jpg" alt="" aria-hidden="true" loading="lazy" decoding="async" />
+        </div>
+        <p class="video-note">Scored against 900 independently labelled frames.</p>
+        <p class="video-fallback" hidden><a href="#" target="_blank" rel="noopener">Open in a new tab</a></p>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+<section class="section" id="results">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="eyebrow">Results</div>
+      <h2>Zero-shot across sensors, with the network untouched</h2>
+      <p class="lead">Every number below is the same backbone, the same schedule and the same generated data as the
+      randomized-sampling baseline. Only the training objective differs.</p>
+    </div>
+
+    <div class="stats reveal">
+      <div class="stat"><div class="num">6/6<small>transfers</small></div>
+        <div class="lbl">Every unseen-sensor transfer improves over the randomized-sampling baseline, by 0.9 to 11.5 mIoU — 6.8 on average. The largest is Waymo → SemanticKITTI.</div></div>
+      <div class="stat accent"><div class="num">3/3<small>benchmarks</small></div>
+        <div class="lbl">On its own sensor, one generalizable model beats the in-domain experts trained on real scans: +3.9 on SemanticKITTI, +5.7 on nuScenes, +18.3 on Waymo.</div></div>
+      <div class="stat"><div class="num">0<small>extra params</small></div>
+        <div class="lbl">The deployed model is the baseline network: 32,277,463 parameters, 0.224 s per frame, 5.66 GiB peak. The only overhead is training the teacher once.</div></div>
+      <div class="stat"><div class="num">9/9<small>on-vehicle</small></div>
+        <div class="lbl">Class-averaged IoU improves in every platform–source setting on 900 independently labelled frames, by 5.4 to 9.8 points.</div></div>
+    </div>
+
+    <figure class="fig reveal">
+      <div class="fig-media"><div id="lq-main-matrix"></div></div>
+      <figcaption><b>Fig 3.</b> Source-to-unseen generalization. Three training sources × three test sets × three methods.
+      Diagonal cells are same-sensor; the paper's claim is about the off-diagonal ones. Rendered live from the paper's table.</figcaption>
+    </figure>
+
+    <figure class="fig reveal">
+      <div class="fig-media"><div id="lq-gain-strip"></div></div>
+      <figcaption><b>Fig 4.</b> LiEqualizer's gain over the randomized-sampling baseline in every cell.</figcaption>
+    </figure>
+
+    <figure class="fig reveal">
+      <div class="fig-media">
+        <a href="#video" title="Play the build-up in the Video section"><img src="assets/table1_3d.jpg"
+           alt="The main table drawn as grouped 3-D bars: grey single-sensor baseline, orange randomized-sampling baseline, blue LiEqualizer." loading="lazy" /></a>
+      </div>
+      <figcaption><b>Fig 5.</b> The same table, as bars. Grey is the single-sensor baseline, orange the randomized-sampling
+      baseline, blue LiEqualizer. Arrows mark the gain over the orange bars.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="section tint" id="deploy">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="eyebrow">On-vehicle</div>
+      <h2>Real platforms, unseen LiDARs</h2>
+      <p class="lead">The deployed network is identical to the baseline's, so on-vehicle testing needs no re-integration.
+      Three platforms carry previously unseen 32-, 80- and 128-beam LiDARs, with mounting heights absent from every training
+      set. A third-party service labelled 900 frames from scratch, with no model output shown to the annotators, and against
+      those labels LiEqualizer improves class-averaged IoU in all nine platform–source settings, by 5.4 to 9.8 points — the
+      gains concentrating on the categories sparse sampling degrades most: vehicles, living beings and ground surfaces.</p>
+    </div>
+    <div class="cards reveal">
+      <article class="card">
+        <button class="media" data-lightbox="assets/CS55.jpg" data-cap="CS55 platform — unseen LiDAR">
+          <img src="assets/CS55.jpg" alt="Segmentation on the CS55 platform" loading="lazy" /></button>
+        <div class="body"><span class="beam">unseen sensor</span><h3>CS55</h3>
+          <p>128-beam Ruby, never seen in training. 600 of its frames carry independent labels.</p></div>
+      </article>
+      <article class="card">
+        <button class="media" data-lightbox="assets/AVT.jpg" data-cap="AVT platform — unseen LiDAR">
+          <img src="assets/AVT.jpg" alt="Segmentation on the AVT platform" loading="lazy" /></button>
+        <div class="body"><span class="beam">unseen sensor</span><h3>AVT</h3>
+          <p>80-beam Ruby. Same weights, different beam pattern, no re-tuning.</p></div>
+      </article>
+      <article class="card">
+        <button class="media" data-lightbox="assets/Courier.jpg" data-cap="Courier platform — unseen LiDAR">
+          <img src="assets/Courier.jpg" alt="Segmentation on the Courier platform" loading="lazy" /></button>
+        <div class="body"><span class="beam">unseen sensor</span><h3>Courier</h3>
+          <p>32-beam Helios on a low-speed delivery platform — the sparsest scan of the three.</p></div>
+      </article>
+    </div>
+    <figure class="fig reveal">
+      <div class="fig-media"><img src="assets/realdata.jpg" alt="Real-vehicle qualitative results" loading="lazy" /></div>
+      <figcaption><b>Fig 6.</b> The three platforms, the sensors they carry and LiEqualizer's segmentation of one scan from
+      each, read zero-shot and with no fine-tuning. Camera images are time-synchronized with the corresponding scans. The
+      scored comparison rests on the 900 independently labelled frames described above; the panels here show what that
+      scoring looks like on a single frame per platform.</figcaption>
+    </figure>
+
+    <article class="wall-block reveal" id="clips">
+      <h3 class="wall-block-title">Zero-shot segmentation running live on all three platforms · 36 clips at 32, 80 and 128 beams</h3>
         <p class="video-note">Twelve fifteen-second clips from each of the three platforms, thirty-six in all. Each shows the
         camera, LiEqualizer's segmentation of the sparse scan, and the drivable area and local plan read from that
         segmentation. The weights are the zero-shot ones throughout: trained on a single public dataset, deployed on a
@@ -1075,121 +1196,6 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
           </div>
         </div>
       </article>
-      <article class="video-block reveal">
-        <h3 class="video-part-title"><span>Part I</span>Motivation and Core Insight: Different LiDARs Observe Different Spectra of the Same World</h3>
-        <div class="video-frame" data-share-url="https://cloud.tsinghua.edu.cn/f/762317d484604b3eabef/"
-             data-title="LiEqualizer — the insight: different LiDARs see different spectra of the same world"
-             aria-label="The insight: different LiDARs see different spectra of the same world">
-          <img class="video-poster" src="assets/video1_insight.jpg" alt="" aria-hidden="true" loading="lazy" decoding="async" />
-        </div>
-        <p class="video-note">Why the sensor gap is a band problem.</p>
-        <p class="video-fallback" hidden><a href="#" target="_blank" rel="noopener">Open in a new tab</a></p>
-      </article>
-      <article class="video-block reveal">
-        <h3 class="video-part-title"><span>Part II</span>Benchmark Zero-shot Generalization on Three Predominant Benchmarks: SemanticKITTI, nuScenes, and Waymo</h3>
-        <div class="video-frame" data-share-url="https://cloud.tsinghua.edu.cn/f/02b2d481f7384045a4f4/"
-             data-title="LiEqualizer — zero-shot generalization across SemanticKITTI, nuScenes and Waymo"
-             aria-label="Zero-shot generalization across SemanticKITTI, nuScenes and Waymo">
-          <img class="video-poster" src="assets/video2_benchmark.jpg" alt="" aria-hidden="true" loading="lazy" decoding="async" />
-        </div>
-        <p class="video-note">Nine source-to-unseen transfers, against both baselines.</p>
-        <p class="video-fallback" hidden><a href="#" target="_blank" rel="noopener">Open in a new tab</a></p>
-      </article>
-      <article class="video-block reveal">
-        <h3 class="video-part-title"><span>Part III</span>Real-world Deployment on Three Vehicles Carrying previously Unseen 128-, 80-, and 32-beam LiDARs</h3>
-        <div class="video-frame" data-share-url="https://cloud.tsinghua.edu.cn/f/6eaaefef111b4188afeb/"
-             data-title="LiEqualizer — zero-shot deployment on three vehicles carrying unseen 32-, 80- and 128-beam LiDARs"
-             aria-label="Zero-shot deployment on three vehicles carrying unseen LiDARs">
-          <img class="video-poster" src="assets/video3_onvehicle.jpg" alt="" aria-hidden="true" loading="lazy" decoding="async" />
-        </div>
-        <p class="video-note">Scored against 900 independently labelled frames.</p>
-        <p class="video-fallback" hidden><a href="#" target="_blank" rel="noopener">Open in a new tab</a></p>
-      </article>
-
-    </div>
-  </div>
-</section>
-
-<section class="section" id="results">
-  <div class="container">
-    <div class="section-head reveal">
-      <div class="eyebrow">Results</div>
-      <h2>Zero-shot across sensors, with the network untouched</h2>
-      <p class="lead">Every number below is the same backbone, the same schedule and the same generated data as the
-      randomized-sampling baseline. Only the training objective differs.</p>
-    </div>
-
-    <div class="stats reveal">
-      <div class="stat"><div class="num">6/6<small>transfers</small></div>
-        <div class="lbl">Every unseen-sensor transfer improves over the randomized-sampling baseline, by 0.9 to 11.5 mIoU — 6.8 on average. The largest is Waymo → SemanticKITTI.</div></div>
-      <div class="stat accent"><div class="num">3/3<small>benchmarks</small></div>
-        <div class="lbl">On its own sensor, one generalizable model beats the in-domain experts trained on real scans: +3.9 on SemanticKITTI, +5.7 on nuScenes, +18.3 on Waymo.</div></div>
-      <div class="stat"><div class="num">0<small>extra params</small></div>
-        <div class="lbl">The deployed model is the baseline network: 32,277,463 parameters, 0.224 s per frame, 5.66 GiB peak. The only overhead is training the teacher once.</div></div>
-      <div class="stat"><div class="num">9/9<small>on-vehicle</small></div>
-        <div class="lbl">Class-averaged IoU improves in every platform–source setting on 900 independently labelled frames, by 5.4 to 9.8 points.</div></div>
-    </div>
-
-    <figure class="fig reveal">
-      <div class="fig-media"><div id="lq-main-matrix"></div></div>
-      <figcaption><b>Fig 3.</b> Source-to-unseen generalization. Three training sources × three test sets × three methods.
-      Diagonal cells are same-sensor; the paper's claim is about the off-diagonal ones. Rendered live from the paper's table.</figcaption>
-    </figure>
-
-    <figure class="fig reveal">
-      <div class="fig-media"><div id="lq-gain-strip"></div></div>
-      <figcaption><b>Fig 4.</b> LiEqualizer's gain over the randomized-sampling baseline in every cell.</figcaption>
-    </figure>
-
-    <figure class="fig reveal">
-      <div class="fig-media">
-        <a href="#video" title="Play the build-up in the Video section"><img src="assets/table1_3d.jpg"
-           alt="The main table drawn as grouped 3-D bars: grey single-sensor baseline, orange randomized-sampling baseline, blue LiEqualizer." loading="lazy" /></a>
-      </div>
-      <figcaption><b>Fig 5.</b> The same table, as bars. Grey is the single-sensor baseline, orange the randomized-sampling
-      baseline, blue LiEqualizer. Arrows mark the gain over the orange bars.</figcaption>
-    </figure>
-  </div>
-</section>
-
-<section class="section tint" id="deploy">
-  <div class="container">
-    <div class="section-head reveal">
-      <div class="eyebrow">On-vehicle</div>
-      <h2>Real platforms, unseen LiDARs</h2>
-      <p class="lead">The deployed network is identical to the baseline's, so on-vehicle testing needs no re-integration.
-      Three platforms carry previously unseen 32-, 80- and 128-beam LiDARs, with mounting heights absent from every training
-      set. A third-party service labelled 900 frames from scratch, with no model output shown to the annotators, and against
-      those labels LiEqualizer improves class-averaged IoU in all nine platform–source settings, by 5.4 to 9.8 points — the
-      gains concentrating on the categories sparse sampling degrades most: vehicles, living beings and ground surfaces.</p>
-    </div>
-    <div class="cards reveal">
-      <article class="card">
-        <button class="media" data-lightbox="assets/CS55.jpg" data-cap="CS55 platform — unseen LiDAR">
-          <img src="assets/CS55.jpg" alt="Segmentation on the CS55 platform" loading="lazy" /></button>
-        <div class="body"><span class="beam">unseen sensor</span><h3>CS55</h3>
-          <p>128-beam Ruby, never seen in training. 600 of its frames carry independent labels.</p></div>
-      </article>
-      <article class="card">
-        <button class="media" data-lightbox="assets/AVT.jpg" data-cap="AVT platform — unseen LiDAR">
-          <img src="assets/AVT.jpg" alt="Segmentation on the AVT platform" loading="lazy" /></button>
-        <div class="body"><span class="beam">unseen sensor</span><h3>AVT</h3>
-          <p>80-beam Ruby. Same weights, different beam pattern, no re-tuning.</p></div>
-      </article>
-      <article class="card">
-        <button class="media" data-lightbox="assets/Courier.jpg" data-cap="Courier platform — unseen LiDAR">
-          <img src="assets/Courier.jpg" alt="Segmentation on the Courier platform" loading="lazy" /></button>
-        <div class="body"><span class="beam">unseen sensor</span><h3>Courier</h3>
-          <p>32-beam Helios on a low-speed delivery platform — the sparsest scan of the three.</p></div>
-      </article>
-    </div>
-    <figure class="fig reveal">
-      <div class="fig-media"><img src="assets/realdata.jpg" alt="Real-vehicle qualitative results" loading="lazy" /></div>
-      <figcaption><b>Fig 6.</b> The three platforms, the sensors they carry and LiEqualizer's segmentation of one scan from
-      each, read zero-shot and with no fine-tuning. Camera images are time-synchronized with the corresponding scans. The
-      scored comparison rests on the 900 independently labelled frames described above; the panels here show what that
-      scoring looks like on a single frame per platform.</figcaption>
-    </figure>
   </div>
 </section>
 
