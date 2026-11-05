@@ -390,7 +390,27 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
   background:rgba(12,19,34,.74);border:1px solid rgba(134,182,239,.34);
   padding:8px 15px;border-radius:999px;white-space:nowrap}
 .video-note{font-size:12.5px;line-height:1.58;color:#59677a;margin:11px 0 0}
-@media(max-width:680px){.video-list{gap:28px}}
+/* Click-to-play facade. The iframe is built on click, never on load, so Tsinghua
+   Cloud issues a fresh stream token each time and a stale one can never be
+   baked into the page. The fallback link is revealed alongside it. */
+.is-ready .video-poster{opacity:0}
+.is-facade{cursor:pointer}
+.video-play{position:absolute;inset:0;z-index:2;display:flex;align-items:center;
+  justify-content:center;border:0;background:transparent;padding:0;cursor:pointer;
+  transition:opacity .3s ease}
+.video-play::before{content:"";position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(12,19,34,.15),rgba(12,19,34,.46))}
+.video-play .disc{position:relative;width:78px;height:78px;border-radius:50%;
+  background:rgba(255,255,255,.92);box-shadow:0 10px 30px -8px rgba(0,0,0,.55);
+  display:flex;align-items:center;justify-content:center;transition:transform .2s,background .2s}
+.video-play .disc svg{width:30px;height:30px;margin-left:5px;fill:#0c1322}
+.video-play:hover .disc,.video-play:focus-visible .disc{transform:scale(1.07);background:#fff}
+.video-play .hint{position:absolute;bottom:16px;left:0;right:0;text-align:center;
+  font-family:var(--mono);font-size:12px;letter-spacing:.03em;color:rgba(255,255,255,.92);
+  text-shadow:0 1px 3px rgba(0,0,0,.5)}
+.video-fallback{margin-top:9px;font-family:var(--mono);font-size:12.5px;color:#59677a;text-align:right}
+.video-fallback a{font-weight:600}
+@media(max-width:680px){.video-list{gap:28px}.video-play .disc{width:62px;height:62px}}
 
 /* reveal -------------------------------------------------------- */
 .reveal{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
@@ -421,9 +441,9 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
       <a href="#abstract">Abstract</a>
       <a href="#idea">Idea</a>
       <a href="#method">Method</a>
+      <a href="#video">Video</a>
       <a href="#results">Results</a>
       <a href="#deploy">On-vehicle</a>
-      <a href="#clips">Clips</a>
       <a href="#analysis">Analysis</a>
       <a href="#downloads">Downloads</a>
       <a href="#spectrum">Protocol</a>
@@ -441,13 +461,13 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
       <p class="lede">LiEqualizer equalizes a sparse-LiDAR student's spectrum against a dense teacher — during training only. The deployed network is unchanged.</p>
       <p class="authors">
         <span class="me">Zikun Xu</span><sup>1,2</sup>, Shuocheng Yang<sup>1</sup>,
-        Jianqiang Wang<sup>1,*</sup>, Keqiang Li<sup>1,*</sup>,
-        Gim Hee Lee<sup>2,*</sup>, Shaobing Xu<sup>1,*</sup>
+        Jianqiang Wang<sup>1</sup>, Keqiang Li<sup>1</sup>,
+        Gim Hee Lee<sup>2</sup>, Shaobing Xu<sup>1,*</sup>
       </p>
       <p class="affil">
         1 · School of Vehicle and Mobility, Tsinghua University, Beijing, China<br />
         2 · Department of Computer Science, National University of Singapore<br />
-        * Corresponding authors
+        * Corresponding author
       </p>
       <div class="btns">
         <a class="btn" href="assets/LiEqualizer_paper.pdf" target="_blank" rel="noopener">Paper (PDF)</a>
@@ -549,95 +569,14 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
   </div>
 </section>
 
-<section class="section tint" id="results">
-  <div class="container">
-    <div class="section-head reveal">
-      <div class="eyebrow">Results</div>
-      <h2>Zero-shot across sensors, with the network untouched</h2>
-      <p class="lead">Every number below is the same backbone, the same schedule and the same generated data as the
-      randomized-sampling baseline. Only the training objective differs.</p>
-    </div>
-
-    <div class="stats reveal">
-      <div class="stat"><div class="num">6/6<small>transfers</small></div>
-        <div class="lbl">Every unseen-sensor transfer improves over the randomized-sampling baseline, by 0.9 to 11.5 mIoU — 6.8 on average. The largest is Waymo → SemanticKITTI.</div></div>
-      <div class="stat accent"><div class="num">3/3<small>benchmarks</small></div>
-        <div class="lbl">On its own sensor, one generalizable model beats the in-domain experts trained on real scans: +3.9 on SemanticKITTI, +5.7 on nuScenes, +18.3 on Waymo.</div></div>
-      <div class="stat"><div class="num">0<small>extra params</small></div>
-        <div class="lbl">The deployed model is the baseline network: 32,277,463 parameters, 0.224 s per frame, 5.66 GiB peak. The only overhead is training the teacher once.</div></div>
-      <div class="stat"><div class="num">9/9<small>on-vehicle</small></div>
-        <div class="lbl">Class-averaged IoU improves in every platform–source setting on 900 independently labelled frames, by 0.4 to 4.8 points.</div></div>
-    </div>
-
-    <figure class="fig reveal">
-      <div class="fig-media"><div id="lq-main-matrix"></div></div>
-      <figcaption><b>Fig 3.</b> Source-to-unseen generalization. Three training sources × three test sets × three methods.
-      Diagonal cells are same-sensor; the paper's claim is about the off-diagonal ones. Rendered live from the paper's table.</figcaption>
-    </figure>
-
-    <figure class="fig reveal">
-      <div class="fig-media"><div id="lq-gain-strip"></div></div>
-      <figcaption><b>Fig 4.</b> LiEqualizer's gain over the randomized-sampling baseline in every cell.</figcaption>
-    </figure>
-
-    <figure class="fig reveal">
-      <div class="fig-media">
-        <a href="#video" title="Play the build-up in the Video section"><img src="assets/table1_3d.jpg"
-           alt="The main table drawn as grouped 3-D bars: grey single-sensor baseline, orange randomized-sampling baseline, blue LiEqualizer." loading="lazy" /></a>
-      </div>
-      <figcaption><b>Fig 5.</b> The same table, as bars. Grey is the single-sensor baseline, orange the randomized-sampling
-      baseline, blue LiEqualizer. Arrows mark the gain over the orange bars.</figcaption>
-    </figure>
-  </div>
-</section>
-
-<section class="section" id="deploy">
-  <div class="container">
-    <div class="section-head reveal">
-      <div class="eyebrow">On-vehicle</div>
-      <h2>Real platforms, unseen LiDARs</h2>
-      <p class="lead">The deployed network is identical to the baseline's, so on-vehicle testing needs no re-integration.
-      Three platforms carry previously unseen 32-, 80- and 128-beam LiDARs, with mounting heights absent from every training
-      set. A third-party service labelled 900 frames from scratch, with no model output shown to the annotators, and against
-      those labels LiEqualizer improves class-averaged IoU in all nine platform–source settings, by 0.4 to 4.8 points — the
-      gains concentrating on the categories sparse sampling degrades most: vehicles, living beings and ground surfaces.</p>
-    </div>
-    <div class="cards reveal">
-      <article class="card">
-        <button class="media" data-lightbox="assets/CS55.jpg" data-cap="CS55 platform — unseen LiDAR">
-          <img src="assets/CS55.jpg" alt="Segmentation on the CS55 platform" loading="lazy" /></button>
-        <div class="body"><span class="beam">unseen sensor</span><h3>CS55</h3>
-          <p>128-beam Ruby, never seen in training. 600 of its frames carry independent labels.</p></div>
-      </article>
-      <article class="card">
-        <button class="media" data-lightbox="assets/AVT.jpg" data-cap="AVT platform — unseen LiDAR">
-          <img src="assets/AVT.jpg" alt="Segmentation on the AVT platform" loading="lazy" /></button>
-        <div class="body"><span class="beam">unseen sensor</span><h3>AVT</h3>
-          <p>80-beam Ruby. Same weights, different beam pattern, no re-tuning.</p></div>
-      </article>
-      <article class="card">
-        <button class="media" data-lightbox="assets/Courier.jpg" data-cap="Courier platform — unseen LiDAR">
-          <img src="assets/Courier.jpg" alt="Segmentation on the Courier platform" loading="lazy" /></button>
-        <div class="body"><span class="beam">unseen sensor</span><h3>Courier</h3>
-          <p>32-beam Helios on a low-speed delivery platform — the sparsest scan of the three.</p></div>
-      </article>
-    </div>
-    <figure class="fig reveal">
-      <div class="fig-media"><img src="assets/realdata.jpg" alt="Real-vehicle qualitative results" loading="lazy" /></div>
-      <figcaption><b>Fig 6.</b> The three platforms, the sensors they carry and LiEqualizer's segmentation of one scan from
-      each, read zero-shot and with no fine-tuning. Camera images are time-synchronized with the corresponding scans. The
-      scored comparison rests on the 900 independently labelled frames described above; the panels here show what that
-      scoring looks like on a single frame per platform.</figcaption>
-    </figure>
-  </div>
-</section>
-
 <section class="section tint" id="video">
   <div class="container">
     <div class="section-head reveal">
       <div class="eyebrow">Video</div>
-      <h2>Three parts</h2>
-      <p class="lead">The vehicles, the argument, and the table it rests on. The overview film is in preparation.</p>
+      <h2>Four parts</h2>
+      <p class="lead">The vehicles running live, the insight behind the method, the benchmark results built up cell by
+      cell, and the full on-vehicle deployment. Everything here is the zero-shot model: trained on one public dataset,
+      run on sensors that appear in none of them, with no fine-tuning.</p>
     </div>
     <div class="video-list">
       <article class="video-block reveal" id="clips">
@@ -1082,23 +1021,119 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
         </div>
       </article>
       <article class="video-block reveal">
-        <h3 class="video-part-title"><span>Part II</span>Overview: the lost spectrum in two minutes</h3>
-        <div class="video-frame is-pending" data-pending="In preparation">
+        <h3 class="video-part-title"><span>Part II</span>The insight: one world, two spectra</h3>
+        <div class="video-frame" data-share-url="https://cloud.tsinghua.edu.cn/f/762317d484604b3eabef/"
+             data-title="LiEqualizer — the insight: different LiDARs see different spectra of the same world"
+             aria-label="The insight: different LiDARs see different spectra of the same world">
           <img class="video-poster" src="assets/insight.jpg" alt="" aria-hidden="true" loading="lazy" decoding="async" />
         </div>
-        <p class="video-note">A two-minute overview film, in preparation. Until it lands, Fig 1 carries the same
-        argument. Subtitled, not narrated.</p>
+        <p class="video-note">Why the sensor gap is a band problem, and what equalizing it means.</p>
+        <p class="video-fallback" hidden><a href="#" target="_blank" rel="noopener">Open in a new tab</a></p>
       </article>
       <article class="video-block reveal">
-        <h3 class="video-part-title"><span>Part III</span>Cross-sensor generalization, built up cell by cell</h3>
-        <div class="video-frame">
-          <video src="assets/table1_3d_build.mp4" poster="assets/table1_3d.jpg" controls playsinline preload="none"></video>
+        <h3 class="video-part-title"><span>Part III</span>Nine transfers across three benchmarks</h3>
+        <div class="video-frame" data-share-url="https://cloud.tsinghua.edu.cn/f/02b2d481f7384045a4f4/"
+             data-title="LiEqualizer — zero-shot generalization across SemanticKITTI, nuScenes and Waymo"
+             aria-label="Zero-shot generalization across SemanticKITTI, nuScenes and Waymo">
+          <img class="video-poster" src="assets/table1_3d.jpg" alt="" aria-hidden="true" loading="lazy" decoding="async" />
         </div>
-        <p class="video-note">Grey is the single-sensor baseline, orange the randomized-sampling baseline, blue
-        LiEqualizer. Arrows mark the gain over the orange bars.</p>
+        <p class="video-note">Cross-sensor results built up cell by cell, against both baselines.</p>
+        <p class="video-fallback" hidden><a href="#" target="_blank" rel="noopener">Open in a new tab</a></p>
+      </article>
+      <article class="video-block reveal">
+        <h3 class="video-part-title"><span>Part IV</span>Deployed on three vehicles, no fine-tuning</h3>
+        <!-- data-share-url goes here once the upload finishes; the facade script
+             skips any frame without one and leaves the pending label standing. -->
+        <div class="video-frame is-pending" data-pending="Uploading">
+          <img class="video-poster" src="assets/realdata.jpg" alt="" aria-hidden="true" loading="lazy" decoding="async" />
+        </div>
+        <p class="video-note">The full on-vehicle run on unseen 32-, 80- and 128-beam LiDARs.</p>
       </article>
 
     </div>
+  </div>
+</section>
+
+<section class="section" id="results">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="eyebrow">Results</div>
+      <h2>Zero-shot across sensors, with the network untouched</h2>
+      <p class="lead">Every number below is the same backbone, the same schedule and the same generated data as the
+      randomized-sampling baseline. Only the training objective differs.</p>
+    </div>
+
+    <div class="stats reveal">
+      <div class="stat"><div class="num">6/6<small>transfers</small></div>
+        <div class="lbl">Every unseen-sensor transfer improves over the randomized-sampling baseline, by 0.9 to 11.5 mIoU — 6.8 on average. The largest is Waymo → SemanticKITTI.</div></div>
+      <div class="stat accent"><div class="num">3/3<small>benchmarks</small></div>
+        <div class="lbl">On its own sensor, one generalizable model beats the in-domain experts trained on real scans: +3.9 on SemanticKITTI, +5.7 on nuScenes, +18.3 on Waymo.</div></div>
+      <div class="stat"><div class="num">0<small>extra params</small></div>
+        <div class="lbl">The deployed model is the baseline network: 32,277,463 parameters, 0.224 s per frame, 5.66 GiB peak. The only overhead is training the teacher once.</div></div>
+      <div class="stat"><div class="num">9/9<small>on-vehicle</small></div>
+        <div class="lbl">Class-averaged IoU improves in every platform–source setting on 900 independently labelled frames, by 5.4 to 9.8 points.</div></div>
+    </div>
+
+    <figure class="fig reveal">
+      <div class="fig-media"><div id="lq-main-matrix"></div></div>
+      <figcaption><b>Fig 3.</b> Source-to-unseen generalization. Three training sources × three test sets × three methods.
+      Diagonal cells are same-sensor; the paper's claim is about the off-diagonal ones. Rendered live from the paper's table.</figcaption>
+    </figure>
+
+    <figure class="fig reveal">
+      <div class="fig-media"><div id="lq-gain-strip"></div></div>
+      <figcaption><b>Fig 4.</b> LiEqualizer's gain over the randomized-sampling baseline in every cell.</figcaption>
+    </figure>
+
+    <figure class="fig reveal">
+      <div class="fig-media">
+        <a href="#video" title="Play the build-up in the Video section"><img src="assets/table1_3d.jpg"
+           alt="The main table drawn as grouped 3-D bars: grey single-sensor baseline, orange randomized-sampling baseline, blue LiEqualizer." loading="lazy" /></a>
+      </div>
+      <figcaption><b>Fig 5.</b> The same table, as bars. Grey is the single-sensor baseline, orange the randomized-sampling
+      baseline, blue LiEqualizer. Arrows mark the gain over the orange bars.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="section tint" id="deploy">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="eyebrow">On-vehicle</div>
+      <h2>Real platforms, unseen LiDARs</h2>
+      <p class="lead">The deployed network is identical to the baseline's, so on-vehicle testing needs no re-integration.
+      Three platforms carry previously unseen 32-, 80- and 128-beam LiDARs, with mounting heights absent from every training
+      set. A third-party service labelled 900 frames from scratch, with no model output shown to the annotators, and against
+      those labels LiEqualizer improves class-averaged IoU in all nine platform–source settings, by 5.4 to 9.8 points — the
+      gains concentrating on the categories sparse sampling degrades most: vehicles, living beings and ground surfaces.</p>
+    </div>
+    <div class="cards reveal">
+      <article class="card">
+        <button class="media" data-lightbox="assets/CS55.jpg" data-cap="CS55 platform — unseen LiDAR">
+          <img src="assets/CS55.jpg" alt="Segmentation on the CS55 platform" loading="lazy" /></button>
+        <div class="body"><span class="beam">unseen sensor</span><h3>CS55</h3>
+          <p>128-beam Ruby, never seen in training. 600 of its frames carry independent labels.</p></div>
+      </article>
+      <article class="card">
+        <button class="media" data-lightbox="assets/AVT.jpg" data-cap="AVT platform — unseen LiDAR">
+          <img src="assets/AVT.jpg" alt="Segmentation on the AVT platform" loading="lazy" /></button>
+        <div class="body"><span class="beam">unseen sensor</span><h3>AVT</h3>
+          <p>80-beam Ruby. Same weights, different beam pattern, no re-tuning.</p></div>
+      </article>
+      <article class="card">
+        <button class="media" data-lightbox="assets/Courier.jpg" data-cap="Courier platform — unseen LiDAR">
+          <img src="assets/Courier.jpg" alt="Segmentation on the Courier platform" loading="lazy" /></button>
+        <div class="body"><span class="beam">unseen sensor</span><h3>Courier</h3>
+          <p>32-beam Helios on a low-speed delivery platform — the sparsest scan of the three.</p></div>
+      </article>
+    </div>
+    <figure class="fig reveal">
+      <div class="fig-media"><img src="assets/realdata.jpg" alt="Real-vehicle qualitative results" loading="lazy" /></div>
+      <figcaption><b>Fig 6.</b> The three platforms, the sensors they carry and LiEqualizer's segmentation of one scan from
+      each, read zero-shot and with no fine-tuning. Camera images are time-synchronized with the corresponding scans. The
+      scored comparison rests on the 900 independently labelled frames described above; the panels here show what that
+      scoring looks like on a single frame per platform.</figcaption>
+    </figure>
   </div>
 </section>
 
@@ -1322,6 +1357,60 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
 <script src="assets/charts-paper.js" defer></script>
 <script src="assets/motion.js" defer></script>
 <script src="assets/rv-sphere.js" defer></script>
+<script>
+/* Tsinghua Cloud videos, mounted the way the LiSeer page mounts them.
+ *
+ * A share link's stream token expires, so the <iframe> is NEVER created at page
+ * load: the frame shows a poster and a play button, and only the click builds
+ * the iframe against the share page. The cloud then issues a fresh token for
+ * that view, which is why a page served for months keeps playing. A frame with
+ * no data-share-url is left alone, so a part still uploading keeps its pending
+ * label until its link is pasted in.
+ */
+(function mountCloudVideos(){
+  "use strict";
+  function showFallback(el, url){
+    if (!el || !url) return;
+    var a = el.querySelector('a');
+    if (!a) return;
+    a.href = url;
+    el.hidden = false;
+  }
+  function embed(mount, url, title, fallbackEl){
+    var f = document.createElement('iframe');
+    f.src = url;
+    f.title = title || 'LiEqualizer video';
+    f.allow = 'autoplay; fullscreen';
+    f.allowFullscreen = true;
+    f.loading = 'lazy';
+    f.addEventListener('load', function(){ mount.classList.add('is-ready'); });
+    mount.appendChild(f);
+    showFallback(fallbackEl, url);
+  }
+  document.querySelectorAll('.video-frame[data-share-url]').forEach(function(mount){
+    var url = (mount.getAttribute('data-share-url') || '').trim();
+    var title = mount.getAttribute('data-title') || mount.getAttribute('aria-label') || '';
+    var fallbackEl = mount.parentElement && mount.parentElement.querySelector('.video-fallback');
+    if (!url) return;
+    mount.classList.add('is-facade');
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'video-play';
+    btn.setAttribute('aria-label', 'Play ' + (title || 'video'));
+    btn.innerHTML = '<span class="disc"><svg viewBox="0 0 24 24" aria-hidden="true">'
+      + '<path d="M8 5v14l11-7z"/></svg></span>'
+      + '<span class="hint">Click to play · streamed from Tsinghua Cloud</span>';
+    btn.addEventListener('click', function(){
+      mount.classList.remove('is-facade');
+      btn.remove();
+      embed(mount, url, title, fallbackEl);
+    });
+    mount.appendChild(btn);
+    showFallback(fallbackEl, url);
+  });
+}());
+</script>
+
 <script>
 (function(){
   "use strict";
