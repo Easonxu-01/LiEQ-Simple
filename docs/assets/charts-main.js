@@ -117,19 +117,19 @@
       { label: 'LiSeer-P, no distillation', ruleAfter: true,
         cells: [{ v: 68.1 }, { v: 54.6 }, { v: 56.8 }] },
       { label: '+ LF alone',
-        cells: [{ v: 74.5, d: 6.4 }, { v: 65.4, d: 10.8, mark: 'second' }, { v: 58.8, d: 2.0, mark: 'second' }] },
+        cells: [{ v: 74.5, d: 6.4 }, { v: 65.4, d: 10.8, mark: 'second' }, { v: 58.8, d: 2.0 }] },
       { label: '+ HF alone',
         cells: [{ v: 73.5, d: 5.4 }, { v: 63.7, d: 9.1 }, { v: 57.4, d: 0.6 }] },
       { label: '+ both branches, ungated',
         cells: [{ v: 73.8, d: 5.7 }, { v: 64.0, d: 9.4 }, { v: 57.8, d: 1.0 }] },
       { label: '+ gates, matching only',
-        cells: [{ v: 74.6, d: 6.5, mark: 'second' }, { v: 64.1, d: 9.5 }, { v: 58.3, d: 1.5 }] },
+        cells: [{ v: 74.6, d: 6.5, mark: 'second' }, { v: 64.1, d: 9.5 }, { v: 60.3, d: 3.5 }] },
       { label: '+ gates, suppressing only', ruleAfter: true,
-        cells: [{ v: 74.2, d: 6.1 }, { v: 64.2, d: 9.6 }, { v: 57.6, d: 0.8 }] },
-      { label: 'LiEqualizer (gates, matching and suppressing)', ours: true, ruleAfter: true,
-        cells: [{ v: 76.5, d: 8.4, mark: 'best' }, { v: 66.5, d: 11.9, mark: 'best' }, { v: 63.9, d: 7.1, mark: 'best' }] },
-      { label: 'with LF suppressed towards the teacher', indent: true,
-        cells: [{ v: 74.6, d: 6.5, mark: 'second' }, { v: 64.0, d: 9.4 }, { v: 58.3, d: 1.5 }] }
+        cells: [{ v: 74.2, d: 6.1 }, { v: 64.2, d: 9.6 }, { v: 59.6, d: 2.8 }] },
+      { label: 'LiEqualizer, with LF suppressed towards the teacher', ruleAfter: true,
+        cells: [{ v: 74.6, d: 6.5, mark: 'second' }, { v: 64.0, d: 9.4 }, { v: 61.3, d: 4.5, mark: 'second' }] },
+      { label: 'LiEqualizer (gates, matching and suppressing)', ours: true,
+        cells: [{ v: 76.5, d: 8.4, mark: 'best' }, { v: 66.5, d: 11.9, mark: 'best' }, { v: 63.9, d: 7.1, mark: 'best' }] }
     ],
     note: 'The table is read downwards, from the undistilled student to the full objective, and each bracketed figure is the difference from the first row. That row is the randomized-sampling student of Table 1 trained on SemanticKITTI, quoted from the original publication. The two single-branch rows are alternatives rather than steps: one keeps the low-frequency branch alone, the other the high-frequency branch that shares its switch. The three rows after them hold both branches and differ in how much of the gate they carry.'
   };
