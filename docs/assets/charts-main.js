@@ -6,7 +6,7 @@
  *
  * Public API (window.LiEQCharts):
  *   renderMainTable(el, opts)     3x3 cross-sensor matrix as three grouped-bar panels
- *   renderGainStrip(el, opts)     the nine LiEqualizer-over-LiSeer gains, sorted
+ *   renderGainStrip(el, opts)     the nine LiEqualizer-over-LiSeer-P gains, sorted
  *   renderAblation(el, opts)      additive ablation, HTML table
  *   renderKDBaselines(el, opts)   distillation-objective comparison, HTML table
  *   renderAll(opts)               renders into the four default mount ids
@@ -52,14 +52,14 @@
    * against, because it is not the same for all three rows:
    *   'own-source'  P-baseline's green figures are the collapse against that
    *                 same row's own-sensor score (e.g. 19.4 vs 71.6 = -52.2).
-   *   'p-baseline'  LiSeer and LiEqualizer's red figures are the improvement
+   *   'p-baseline'  LiSeer-P and LiEqualizer's red figures are the improvement
    *                 over P-baseline in the same cell (same source, same test).
    * Never relabel them.
    */
   var METHODS = [
     { key: 'base', name: 'P-baseline', deltaRef: 'own-source' },
-    { key: 'liseer', name: 'LiSeer-P-RSCL', deltaRef: 'p-baseline' },
-    { key: 'lieq', name: 'LiEqualizer-P', deltaRef: 'p-baseline' }
+    { key: 'liseer', name: 'LiSeer-P', deltaRef: 'p-baseline' },
+    { key: 'lieq', name: 'LiEqualizer', deltaRef: 'p-baseline' }
   ];
 
   /* Table 1 — S -> U domain generalization, zero-shot mIoU.
@@ -69,37 +69,37 @@
     SK: {
       base: { SK: { v: 71.6, d: null }, NU: { v: 19.4, d: -52.2 }, WA: { v: 17.3, d: -54.3 } },
       liseer: { SK: { v: 68.1, d: -3.5 }, NU: { v: 56.8, d: 37.4 }, WA: { v: 54.6, d: 37.3 } },
-      lieq: { SK: { v: 75.5, d: 3.9 }, NU: { v: 58.3, d: 38.9 }, WA: { v: 64.4, d: 47.1 } }
+      lieq: { SK: { v: 76.5, d: 4.9 }, NU: { v: 63.9, d: 44.5 }, WA: { v: 66.5, d: 49.2 } }
     },
     NU: {
       base: { SK: { v: 20.5, d: -49.9 }, NU: { v: 70.4, d: null }, WA: { v: 18.1, d: -52.3 } },
       liseer: { SK: { v: 54.4, d: 33.9 }, NU: { v: 66.5, d: -3.9 }, WA: { v: 53.8, d: 35.7 } },
-      lieq: { SK: { v: 55.3, d: 34.8 }, NU: { v: 76.1, d: 5.7 }, WA: { v: 61.4, d: 43.3 } }
+      lieq: { SK: { v: 59.2, d: 38.7 }, NU: { v: 78.4, d: 8.0 }, WA: { v: 69.4, d: 51.3 } }
     },
     WA: {
       base: { SK: { v: 24.7, d: -36.2 }, NU: { v: 5.4, d: -55.5 }, WA: { v: 60.9, d: null } },
       liseer: { SK: { v: 52.3, d: 27.6 }, NU: { v: 49.0, d: 43.6 }, WA: { v: 62.2, d: 1.3 } },
-      lieq: { SK: { v: 63.8, d: 39.1 }, NU: { v: 58.5, d: 53.1 }, WA: { v: 79.2, d: 18.3 } }
+      lieq: { SK: { v: 67.6, d: 42.9 }, NU: { v: 66.1, d: 60.7 }, WA: { v: 80.2, d: 19.3 } }
     }
   };
 
-  /* LiEqualizer-P minus LiSeer-P-RSCL for each of the nine cells of Table 1.
+  /* LiEqualizer minus LiSeer-P for each of the nine cells of Table 1.
    * Written out rather than computed, so the page cannot drift from the table
    * through floating-point arithmetic. Sorted descending.
-   * The cross-sensor maximum is +11.5 at Waymo -> SemanticKITTI (63.8 - 52.3),
-   * which is the figure the abstract quotes. Waymo -> Waymo is larger (+17.0)
+   * The cross-sensor maximum is +17.1 at Waymo -> nuScenes (66.1 - 49.0),
+   * which is the figure the abstract quotes. Waymo -> Waymo is larger (+18.0)
    * but is same-sensor, which is why the claim says "cross-sensor".
    */
   var GAINS = [
-    { src: 'WA', test: 'WA', g: 17.0, same: true },
-    { src: 'WA', test: 'SK', g: 11.5, same: false, callout: true },
-    { src: 'SK', test: 'WA', g: 9.8, same: false },
-    { src: 'NU', test: 'NU', g: 9.6, same: true },
-    { src: 'WA', test: 'NU', g: 9.5, same: false },
-    { src: 'NU', test: 'WA', g: 7.6, same: false },
-    { src: 'SK', test: 'SK', g: 7.4, same: true },
-    { src: 'SK', test: 'NU', g: 1.5, same: false },
-    { src: 'NU', test: 'SK', g: 0.9, same: false }
+    { src: 'WA', test: 'WA', g: 18.0, same: true },
+    { src: 'WA', test: 'NU', g: 17.1, same: false, callout: true },
+    { src: 'NU', test: 'WA', g: 15.6, same: false },
+    { src: 'WA', test: 'SK', g: 15.3, same: false },
+    { src: 'SK', test: 'WA', g: 11.9, same: false },
+    { src: 'NU', test: 'NU', g: 11.9, same: true },
+    { src: 'SK', test: 'SK', g: 8.4, same: true },
+    { src: 'SK', test: 'NU', g: 7.1, same: false },
+    { src: 'NU', test: 'SK', g: 4.8, same: false }
   ];
 
   /* Table 3 — additive ablation. mark: 'best' = \textbf, 'second' = \underline,
@@ -114,22 +114,22 @@
     rowHead: 'Objective',
     cols: ['SK→SK', 'SK→Waymo', 'SK→nuScenes'],
     rows: [
-      { label: 'LiSeer-P-SK, no distillation', ruleAfter: true,
-        cells: [{ v: 68.1 }, { v: 54.6 }, { v: 56.8, mark: 'second' }] },
+      { label: 'LiSeer-P, no distillation', ruleAfter: true,
+        cells: [{ v: 68.1 }, { v: 54.6 }, { v: 56.8 }] },
       { label: '+ LF alone',
-        cells: [{ v: 74.5, d: 6.4 }, { v: 65.4, d: 10.8, mark: 'best' }, { v: 54.4, d: -2.4 }] },
-      { label: '+ HF and soft label alone',
-        cells: [{ v: 73.5, d: 5.4 }, { v: 63.7, d: 9.1 }, { v: 53.0, d: -3.8 }] },
+        cells: [{ v: 74.5, d: 6.4 }, { v: 65.4, d: 10.8, mark: 'second' }, { v: 58.8, d: 2.0, mark: 'second' }] },
+      { label: '+ HF alone',
+        cells: [{ v: 73.5, d: 5.4 }, { v: 63.7, d: 9.1 }, { v: 57.4, d: 0.6 }] },
       { label: '+ both branches, ungated',
-        cells: [{ v: 73.8, d: 5.7 }, { v: 64.0, d: 9.4 }, { v: 53.3, d: -3.5 }] },
+        cells: [{ v: 73.8, d: 5.7 }, { v: 64.0, d: 9.4 }, { v: 57.8, d: 1.0 }] },
       { label: '+ gates, matching only',
-        cells: [{ v: 74.6, d: 6.5, mark: 'second' }, { v: 64.1, d: 9.5 }, { v: 53.9, d: -2.9 }] },
-      { label: '+ gates, suppressing only',
-        cells: [{ v: 74.2, d: 6.1 }, { v: 64.2, d: 9.6 }, { v: 53.1, d: -3.7 }] },
-      { label: 'with LF suppressed towards the teacher', indent: true, ruleAfter: true,
-        cells: [{ v: 74.6, d: 6.5, mark: 'second' }, { v: 64.0, d: 9.4 }, { v: 53.7, d: -3.1 }] },
-      { label: 'LiEqualizer (gates, matching and suppressing)', ours: true,
-        cells: [{ v: 75.5, d: 7.4, mark: 'best' }, { v: 64.4, d: 9.8, mark: 'second' }, { v: 58.3, d: 1.5, mark: 'best' }] }
+        cells: [{ v: 74.6, d: 6.5, mark: 'second' }, { v: 64.1, d: 9.5 }, { v: 58.3, d: 1.5 }] },
+      { label: '+ gates, suppressing only', ruleAfter: true,
+        cells: [{ v: 74.2, d: 6.1 }, { v: 64.2, d: 9.6 }, { v: 57.6, d: 0.8 }] },
+      { label: 'LiEqualizer (gates, matching and suppressing)', ours: true, ruleAfter: true,
+        cells: [{ v: 76.5, d: 8.4, mark: 'best' }, { v: 66.5, d: 11.9, mark: 'best' }, { v: 63.9, d: 7.1, mark: 'best' }] },
+      { label: 'with LF suppressed towards the teacher', indent: true,
+        cells: [{ v: 74.6, d: 6.5, mark: 'second' }, { v: 64.0, d: 9.4 }, { v: 58.3, d: 1.5 }] }
     ],
     note: 'The table is read downwards, from the undistilled student to the full objective, and each bracketed figure is the difference from the first row. That row is the randomized-sampling student of Table 1 trained on SemanticKITTI, quoted from the original publication. The two single-branch rows are alternatives rather than steps: one keeps the low-frequency branch alone, the other the high-frequency branch that shares its switch. The three rows after them hold both branches and differ in how much of the gate they carry.'
   };
@@ -152,17 +152,19 @@
       { label: 'student (no distillation)', attached: '—',
         cells: [{ v: 68.1 }, { v: 54.6 }, { v: 56.8, mark: 'second' }] },
       { label: '+ feature mimicking [LiDAR Distillation]', attached: 'TPV planes',
-        cells: [{ v: 73.7, d: 5.6 }, { v: 64.8, d: 10.2, mark: 'best' }, { v: 54.0, d: -2.8 }] },
+        cells: [{ v: 73.7, d: 5.6 }, { v: 64.8, d: 10.2, mark: 'second' }, { v: 54.0, d: -2.8 }] },
       { label: '+ soft-label KL [LESS; Hinton]', attached: 'Voxel logits',
         cells: [{ v: 74.1, d: 6.0 }, { v: 64.1, d: 9.5 }, { v: 53.6, d: -3.2 }] },
       { label: '+ both, the two-term pointwise form', attached: 'Both',
         cells: [{ v: 73.6, d: 5.5 }, { v: 64.0, d: 9.4 }, { v: 53.9, d: -2.9 }] },
       { label: '+ PVKD', attached: 'Both',
-        cells: [{ v: 73.8, d: 5.7 }, { v: 64.5, d: 9.9, mark: 'second' }, { v: 54.1, d: -2.7 }] },
+        cells: [{ v: 73.8, d: 5.7 }, { v: 64.4, d: 9.8 }, { v: 54.1, d: -2.7 }] },
       { label: '+ CWD', attached: 'TPV planes',
         cells: [{ v: 74.2, d: 6.1, mark: 'second' }, { v: 64.2, d: 9.6 }, { v: 53.7, d: -3.1 }] },
+      { label: '+ focal frequency loss', attached: 'TPV planes',
+        cells: [{ v: 74.1, d: 6.0 }, { v: 64.7, d: 10.1 }, { v: 53.5, d: -3.3 }] },
       { label: '+ LiEqualizer (ours)', attached: 'Both', ours: true,
-        cells: [{ v: 75.5, d: 7.4, mark: 'best' }, { v: 64.4, d: 9.8 }, { v: 58.3, d: 1.5, mark: 'best' }] }
+        cells: [{ v: 76.5, d: 8.4, mark: 'best' }, { v: 66.5, d: 11.9, mark: 'best' }, { v: 63.9, d: 7.1, mark: 'best' }] }
     ],
     note: 'All competing objectives are implemented by us within this pipeline. Where the released code runs on this architecture we follow it and its default hyper-parameters; the substitutions we made are listed in Appendix E. The first row is the same student without any distillation, and the bracketed figures are differences against that row.'
   };
@@ -173,7 +175,7 @@
 
   /* Series colours. Brand values from the paper's own figure palette
    * (TPV_SPECTRAL/scripts/tpvstyle.py) and from the dark-card tokens of the
-   * sibling LiSeer page. Data colours are emitted as attributes so one page
+   * sibling LiSeer-P page. Data colours are emitted as attributes so one page
    * can hold a light and a dark copy of the same chart. */
   var THEMES = {
     light: {
@@ -409,7 +411,7 @@
     h.push((srOnly ? '<div class="lq-sr"><table class="lq-srtable">' : '<table class="lq-table">'));
     h.push('<caption>Table 1. S' + ARROW + 'U domain generalization, zero-shot mIoU. ' +
       'Bracketed figures are the deltas printed in the manuscript: for P-baseline the drop ' +
-      'against that row’s own-sensor score, for LiSeer-P and LiEqualizer-P the gain over ' +
+      'against that row’s own-sensor score, for LiSeer-P and LiEqualizer the gain over ' +
       'P-baseline in the same cell.</caption>');
     h.push('<thead><tr><th scope="col">Trained on</th><th scope="col">Method</th>');
     for (var t = 0; t < TESTS.length; t++) {
@@ -437,12 +439,12 @@
   function gainDataTable(srOnly) {
     var h = [];
     h.push((srOnly ? '<div class="lq-sr"><table class="lq-srtable">' : '<table class="lq-table">'));
-    h.push('<caption>LiEqualizer-P minus LiSeer-P-RSCL for each of the nine cells of Table 1, ' +
-      'sorted. The largest cross-sensor gain is +11.5 mIoU on Waymo' + ARROW +
-      'SemanticKITTI.</caption>');
+    h.push('<caption>LiEqualizer minus LiSeer-P for each of the nine cells of Table 1, ' +
+      'sorted. The largest cross-sensor gain is +17.1 mIoU on Waymo' + ARROW +
+      'nuScenes.</caption>');
     h.push('<thead><tr><th scope="col">Trained on</th><th scope="col">Tested on</th>' +
       '<th scope="col">Pair</th><th scope="col">LiSeer-P mIoU</th>' +
-      '<th scope="col">LiEqualizer-P mIoU</th><th scope="col">Gain</th></tr></thead><tbody>');
+      '<th scope="col">LiEqualizer mIoU</th><th scope="col">Gain</th></tr></thead><tbody>');
     for (var i = 0; i < GAINS.length; i++) {
       var r = GAINS[i];
       h.push('<tr><th scope="row">' + esc(srcOf(r.src).name) + '</th>' +
@@ -646,8 +648,8 @@
     h.push('</figcaption>');
     h.push(legendHTML([
       { name: 'P-baseline', note: 'single dataset', style: 'background:' + T.series.base },
-      { name: 'LiSeer-P-RSCL', note: 'randomized sampling', style: 'background:' + T.series.liseer },
-      { name: 'LiEqualizer-P', note: 'ours', style: 'background:' + T.series.lieq },
+      { name: 'LiSeer-P', note: 'randomized sampling', style: 'background:' + T.series.liseer },
+      { name: 'LiEqualizer', note: 'ours', style: 'background:' + T.series.lieq },
       { name: 'same sensor', note: '', style: 'background:' + T.diagFill +
         ';box-shadow:inset 0 0 0 1px ' + T.hatch +
         ';background-image:repeating-linear-gradient(45deg,' + T.hatch + ' 0 1px,transparent 1px 4px)' }
@@ -702,8 +704,8 @@
       parts.push(pairLabel(GAINS[i], false) + ' ' + signed(GAINS[i].g) +
         (GAINS[i].same ? ' (same sensor)' : '') + '.');
     }
-    parts.push('The largest cross-sensor gain is +11.5 on Waymo to SemanticKITTI, ' +
-      '63.8 against 52.3.');
+    parts.push('The largest cross-sensor gain is +17.1 on Waymo to nuScenes, ' +
+      '66.1 against 49.0.');
     return parts.join(' ');
   }
 
@@ -716,7 +718,7 @@
     o.push('<svg class="lq-svg" viewBox="0 0 ' + c.W + ' ' + c.H + '" role="img"' +
       ' data-lq-theme="' + th.name + '" data-lq-bucket="' + esc(bucket) + '"' +
       ' preserveAspectRatio="xMidYMin meet" aria-labelledby="' + tid + ' ' + did + '">');
-    o.push('<title id="' + tid + '">LiEqualizer-P minus LiSeer-P-RSCL, all nine cells</title>');
+    o.push('<title id="' + tid + '">LiEqualizer minus LiSeer-P, all nine cells</title>');
     o.push('<desc id="' + did + '">' + esc(gainDesc()) + '</desc>');
     o.push('<defs><clipPath id="' + cid + '"><rect x="' + c.barX + '" y="0" width="' +
       r2(c.W - c.barX) + '" height="' + c.H + '"/></clipPath>' +
@@ -784,7 +786,7 @@
     if (bucket === 'c') {
       var fy = c.top + c.rowsH + 16;
       o.push('<text class="lq-callout-t" x="' + c.padL + '" y="' + fy + '" font-size="8.4">' +
-        'largest cross-sensor gain +11.5 (Waymo' + ARROW + 'SK, 63.8 vs 52.3)</text>');
+        'largest cross-sensor gain +17.1 (Waymo' + ARROW + 'NU, 66.1 vs 49.0)</text>');
       o.push('<text class="lq-callout-t" x="' + c.padL + '" y="' + (fy + 11) +
         '" font-size="7.6">SK SemanticKITTI · NU nuScenes · WA Waymo</text>');
     }
@@ -796,7 +798,7 @@
         '" width="' + r2(c.W - c.padL * 2) + '" height="' + c.rowH + '" data-tip="' +
         esc('<b>' + pairLabel(rh, false) + '</b>||' +
           (rh.same ? '<i>same sensor</i>' : '<i>cross-sensor</i>') + '||' +
-          'LiEqualizer-P <b>' + f1(MAIN[rh.src].lieq[rh.test].v) + '</b> vs LiSeer-P ' +
+          'LiEqualizer <b>' + f1(MAIN[rh.src].lieq[rh.test].v) + '</b> vs LiSeer-P ' +
           f1(MAIN[rh.src].liseer[rh.test].v) + '||<b>' + signed(rh.g) + '</b> mIoU') +
         '"/>');
     }
@@ -813,10 +815,10 @@
     h.push('<span class="lq-eyebrow">Gain over LiSeer-P</span>');
     h.push('<h3 class="lq-head">What the spectral objective is worth, cell by cell</h3>');
     h.push('</figcaption>');
-    h.push('<div class="lq-hero"><span class="lq-hero-n">+11.5</span>' +
+    h.push('<div class="lq-hero"><span class="lq-hero-n">+17.1</span>' +
       '<span class="lq-hero-l">largest cross-sensor gain</span>' +
-      '<span class="lq-hero-d">Trained on Waymo, tested on SemanticKITTI: <b>63.8</b> mIoU ' +
-      'against <b>52.3</b>. Waymo' + ARROW + 'Waymo is larger at +17.0, but that is the same ' +
+      '<span class="lq-hero-d">Trained on Waymo, tested on nuScenes: <b>66.1</b> mIoU ' +
+      'against <b>49.0</b>. Waymo' + ARROW + 'Waymo is larger at +18.0, but that is the same ' +
       'sensor, which is why the claim says cross-sensor.</span></div>');
     h.push(legendHTML([
       { name: 'cross-sensor', note: '', style: 'background:' + T.cross },

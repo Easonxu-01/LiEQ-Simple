@@ -2,7 +2,7 @@
 
 The paper's **result** figures, re-created as live HTML and inline SVG rather than
 embedded as bitmaps. Design artwork (`insight.jpg`, `framework.jpg`, `realdata.jpg`,
-`LF.jpg`, `HF.jpg`, `LiSeer.jpg`, the real-vehicle photos) stays as images; the
+`LF.jpg`, `HF.jpg`, `LiSeer-P.jpg`, the real-vehicle photos) stays as images; the
 numbers on this page are drawn by the browser.
 
 One file, no build step, no framework, no bundler, no CDN. Vanilla ES5. Drop it in
@@ -100,7 +100,7 @@ screen-reader table, so the two can never disagree.)
 ### `renderMainTable(el, opts)` — Table 1, as a grouped bar chart
 
 Three panels, one per training source, each with three groups (the three test
-sets) of three bars (P-baseline, LiSeer-P-RSCL, LiEqualizer-P). 27 bars, every one
+sets) of three bars (P-baseline, LiSeer-P, LiEqualizer). 27 bars, every one
 labelled with its mIoU.
 
 * The y scale is **0–80 with ticks at 0 / 20 / 40 / 60 / 80**, the same ticks as the
@@ -114,9 +114,9 @@ labelled with its mIoU.
   so a single-column panel never scales its 8.4px axis type past ~1.4×. Verified
   legible at 360px and at 1180px.
 
-### `renderGainStrip(el, opts)` — LiEqualizer over LiSeer, all nine cells
+### `renderGainStrip(el, opts)` — LiEqualizer over LiSeer-P, all nine cells
 
-A sorted horizontal strip of the nine `LiEqualizer-P − LiSeer-P-RSCL` differences,
+A sorted horizontal strip of the nine `LiEqualizer − LiSeer-P` differences,
 from **+17.0** down to **+0.9**, with the **cross-sensor maximum +11.5** called out
 twice: as a hero stat above the strip (`+11.5 · largest cross-sensor gain · Waymo →
 SemanticKITTI, 63.8 against 52.3`) and as an annotated row inside it.
@@ -160,7 +160,7 @@ anything else at render time.
 
 **The deltas in Table 1 do not all mean the same thing.** The green figures on the
 P-baseline rows are that row's collapse against *its own sensor* (nuScenes 19.4
-against SemanticKITTI 71.6 = −52.2). The red figures on the LiSeer and LiEqualizer
+against SemanticKITTI 71.6 = −52.2). The red figures on the LiSeer-P and LiEqualizer
 rows are the gain over *P-baseline in the same cell*. The data carries a
 `deltaRef` field per method for exactly this reason, and the tooltips label each
 one with its own reference. Do not relabel them.
@@ -168,7 +168,7 @@ one with its own reference. Do not relabel them.
 **The nine gains are written out, not computed.** `GAINS` holds `+11.5` as a
 literal so the page can never drift from the table through floating-point
 arithmetic. The verification script checks every one of them against
-`LiEqualizer-P − LiSeer-P` in `MAIN`, so the two cannot silently disagree.
+`LiEqualizer − LiSeer-P` in `MAIN`, so the two cannot silently disagree.
 
 ### 3.2 The one place this departs from the printed tex
 
@@ -200,8 +200,8 @@ Brand values are used exactly as given. The one addition is the P-baseline grey.
 
 | role | light | dark card | source |
 |---|---|---|---|
-| LiEqualizer-P | `#2a78d6` | `#56adf0` | brand |
-| LiSeer-P-RSCL | `#eb6834` | `#e58236` | brand |
+| LiEqualizer | `#2a78d6` | `#56adf0` | brand |
+| LiSeer-P | `#eb6834` | `#e58236` | brand |
 | **P-baseline** | `#8f8d88` | `#8f8d88` | see below |
 | same-sensor gain bar | `#86b6ef` | `#2a78d6` | brand light variant |
 | gain delta (positive) | `#DC2626` | `#FCA5A5` | tex `gainRed` / `gainRedLight` |
@@ -272,12 +272,8 @@ node       $S/verify-dom.js           #  16 assertions - mounting, against a DOM
 python3 -I $S/verify-tex.py           #  13 assertions - SVG XML + a diff against the tex
 ```
 
-The three scripts are **not part of the deployed page**. They live outside the repo,
-in the session scratchpad:
-
-```
-S=/private/tmp/claude-501/-Users-eason-Documents-LiEqualizer/d1a88a99-a9f0-49ed-96c1-4bde53aff9a4/scratchpad
-```
+The three scripts are **not part of the deployed page**; they are kept outside the
+repo and run by hand.
 
 Copy them somewhere permanent if you want them in CI. They need only `node` and
 `python3`; `verify-tex.py` additionally reads `LiEqualizer_main.tex` by absolute
@@ -299,7 +295,7 @@ What is asserted:
   bold/underline mark of Tables 2 and 3 against `DATA`. The only permitted
   difference is the documented `(+0.5)` → `(+1.5)` one, which is asserted
   explicitly rather than merely tolerated.
-* **Arithmetic.** All nine gains are checked to equal `LiEqualizer-P − LiSeer-P`;
+* **Arithmetic.** All nine gains are checked to equal `LiEqualizer − LiSeer-P`;
   the cross-sensor maximum is checked to be `+11.5` at `Waymo → SemanticKITTI`.
 * **Geometry.** Every bar is checked to sit inside the plot box and land on the
   clipped baseline; every value label in both gain-strip layouts is checked to fit

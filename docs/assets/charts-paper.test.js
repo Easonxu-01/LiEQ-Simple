@@ -286,11 +286,31 @@ function scalesOf(svg) {
   var p = svg.getAttribute('data-plot').split(',').map(Number);
   var xl = svg.getAttribute('data-xlim').split(',').map(Number);
   var yl = svg.getAttribute('data-ylim').split(',').map(Number);
+  /* Rows b and d of Fig. 4 declare a broken y axis. Rebuild it here from what
+     the panel states rather than trusting the module's own helper, so the test
+     still measures the markup against an independently computed position. */
+  var sp = svg.getAttribute('data-ysplit');
+  var ys;
+  if (sp) {
+    var q = sp.split(',').map(Number);
+    var zero = p[2] - q[2] * (p[2] - p[3]);
+    ys = function (v) {
+      if (v >= 0) return q[0] > 0 ? zero - (v / q[0]) * (zero - p[3]) : zero;
+      return q[1] > 0 ? zero + (-v / q[1]) * (p[2] - zero) : zero;
+    };
+  } else {
+    ys = function (v) { return p[2] + (v - yl[0]) * (p[3] - p[2]) / (yl[1] - yl[0]); };
+  }
   return {
-    x0: p[0], x1: p[1], y0: p[2], y1: p[3], xl: xl, yl: yl,
+    x0: p[0], x1: p[1], y0: p[2], y1: p[3], xl: xl, yl: yl, split: sp || null,
     xs: function (v) { return p[0] + (v - xl[0]) * (p[1] - p[0]) / (xl[1] - xl[0]); },
-    ys: function (v) { return p[2] + (v - yl[0]) * (p[3] - p[2]) / (yl[1] - yl[0]); }
+    ys: ys
   };
+}
+
+/* the panels carry their size in the viewBox, not in a height attribute */
+function vbH(svg) {
+  return Number(String(svg.getAttribute('viewBox')).split(' ')[3]);
 }
 
 function pathPoints(d) {
@@ -365,7 +385,13 @@ function checkPanel(svg, panel, label) {
       }
       ok(label + ': "' + ser.name + '" every median point at its axis position', !bad, bad);
 
-      if (ok(label + ': "' + ser.name + '" quartile ribbon', !!ribPath)) {
+      /* the stack-top "energy distribution" lines carry no quartiles, and a
+         ribbon drawn for them would be a ribbon of nothing */
+      var wantRibbon = !!(ser.q25 && ser.q75);
+      ok(label + ': "' + ser.name + '" ' +
+        (wantRibbon ? 'has a quartile ribbon' : 'draws no ribbon without quartiles'),
+        wantRibbon === !!ribPath);
+      if (wantRibbon && ribPath) {
         var R = pathPoints(ribPath.getAttribute('d'));
         ok(label + ': "' + ser.name + '" ribbon traces q75 out and q25 back',
           R.length === 2 * med.length, 'got ' + R.length);
@@ -511,8 +537,8 @@ ok('merged into window.LiEQCharts without clobbering', !!W.LiEQCharts &&
 ok('four render keys', API.keys.join(',') === 'paper-fig3,paper-fig3a,paper-fig3b,paper-fig4',
   API.keys.join(','));
 ok('data is not embedded in the module',
-  fs.readFileSync(MODULE, 'utf8').indexOf('0.921059') < 0 &&
-  fs.readFileSync(MODULE, 'utf8').indexOf('48.492387') < 0);
+  fs.readFileSync(MODULE, 'utf8').indexOf(String(J3A.panels[0].series[3].q25[0])) < 0 &&
+  fs.readFileSync(MODULE, 'utf8').indexOf(String(J4.panels[0].series[1].y[0])) < 0);
 line('module size: ' + Math.round(fs.statSync(MODULE).size / 1024) + ' KB, ' +
   fs.readFileSync(MODULE, 'utf8').split('\n').length + ' lines');
 
@@ -529,16 +555,21 @@ Promise.all([
   var fig3 = figs[0];
   ok('fig 3 rendered', !!fig3);
   var P3 = panelsOf(fig3);
-  ok('fig 3 draws 6 panels: two rows of three', P3.length === 6, 'got ' + P3.length);
+  ok('fig 3 draws 12 panels: two levels, three datasets, a gap strip each',
+    P3.length === 12, 'got ' + P3.length);
   var rows = byTag(fig3, 'div').filter(function (n) {
     return n.getAttribute('class') === 'lqp-row';
   });
-  ok('fig 3 has two rows', rows.length === 2, 'got ' + rows.length);
+  ok('fig 3 has one row per representation level', rows.length === 2, 'got ' + rows.length);
 
-  var want3 = [
-    ['3a', J3A, 0], ['3a', J3A, 1], ['3a', J3A, 2],
-    ['3b', J3B, 0], ['3b', J3B, 1], ['3b', J3B, 2]
-  ];
+  var want3 = [];
+  [['3a', J3A], ['3b', J3B]].forEach(function (lv) {
+    lv[1].panels.forEach(function (p, k) { want3.push([lv[0], lv[1], k]); });
+  });
+  ok('fig 3 panel order is the three datasets, then their gap strips',
+    P3.map(function (p) { return p.getAttribute('data-panel'); }).join(',') ===
+    'cka_SK,cka_NU,cka_WA,gap_SK,gap_NU,gap_WA,cka_SK,cka_NU,cka_WA,gap_SK,gap_NU,gap_WA',
+    P3.map(function (p) { return p.getAttribute('data-panel'); }).join(','));
   want3.forEach(function (w, i) {
     var panel = w[1].panels[w[2]];
     var svg = P3[i];
@@ -548,92 +579,183 @@ Promise.all([
     if (r) { worst = Math.max(worst, r.worst); pts += r.pts; }
   });
 
-  head('FIG. 3  shared y axis');
-  [0, 3].forEach(function (i) {
-    var left = P3[i], mid = P3[i + 1], right = P3[i + 2];
-    var want = J3A.panels[0].y.tick_labels;
-    var lt = textsWithClass(left, 't-tick');
-    var mt = textsWithClass(mid, 't-tick');
-    var rt = textsWithClass(right, 't-tick');
-    ok('row ' + (i ? 'b' : 'a') + ': leftmost panel prints ' + want.join('/'),
-      want.every(function (t) { return lt.indexOf(t) >= 0; }), lt.join('|'));
-    ok('row ' + (i ? 'b' : 'a') + ': middle panel (shared_with_panel) prints none of them',
-      !want.some(function (t) { return mt.indexOf(t) >= 0; }), mt.join('|'));
-    ok('row ' + (i ? 'b' : 'a') + ': gap panel prints its own percent ticks on the right',
-      rt.indexOf('20%') >= 0 || rt.indexOf('100%') >= 0, rt.join('|'));
-    var yl = byTag(left, 'text').filter(function (n) {
+  head('FIG. 3  three datasets side by side');
+  [0, 6].forEach(function (base) {
+    var lvl = base ? 'b' : 'a';
+    var src = base ? J3B : J3A;
+    ['SemanticKITTI', 'nuScenes', 'Waymo'].forEach(function (name, k) {
+      ok('row ' + lvl + ': column ' + k + ' is titled ' + name,
+        textsWithClass(P3[base + k], 't-pan')[0] === name,
+        textsWithClass(P3[base + k], 't-pan')[0]);
+      var ct = textsWithClass(P3[base + k], 't-tick');
+      ok('row ' + lvl + ' ' + name + ': the CKA panel prints its own y ticks',
+        src.panels[k].y.tick_labels.every(function (t) { return ct.indexOf(t) >= 0; }),
+        ct.join('|'));
+      var gt = textsWithClass(P3[base + 3 + k], 't-tick');
+      ok('row ' + lvl + ' ' + name + ': the gap strip prints percent ticks',
+        gt.some(function (t) { return /%$/.test(t); }), gt.join('|'));
+      ok('row ' + lvl + ' ' + name + ': the gap strip is shorter than the CKA panel',
+        vbH(P3[base + 3 + k]) < vbH(P3[base + k]),
+        vbH(P3[base + 3 + k]) + ' vs ' + vbH(P3[base + k]));
+    });
+    var yl = byTag(P3[base], 'text').filter(function (n) {
       return n.getAttribute('class') === 't-ax';
     });
-    ok('row ' + (i ? 'b' : 'a') + ': y label keeps its line break',
+    ok('row ' + lvl + ': y label keeps its line break',
       yl.length === 1 && byTag(yl[0], 'tspan').length === 2,
       yl.length ? byTag(yl[0], 'tspan').length + ' tspans' : 'no label');
   });
+
+  head('FIG. 3  the merged support domain');
+  ok('no panel still names a single support domain',
+    !JSON.stringify([J3A.panels, J3B.panels]).match(/observed by (both|the teacher only)/i));
+  ok('every CKA panel is normalised, with the ceiling at 1',
+    [J3A, J3B].every(function (d) {
+      return d.panels.slice(0, 3).every(function (p) {
+        return p.series[0].kind === 'hline' && p.series[0].y === 1;
+      });
+    }));
 
   /* ------------------------------------------------------------- Fig. 4 -- */
   head('FIG. 4  (' + J4.paper_ref + ')');
   var fig4 = figs[1];
   ok('fig 4 rendered', !!fig4);
   var P4 = panelsOf(fig4);
-  ok('fig 4 draws 6 panels', P4.length === 6, 'got ' + P4.length);
-  ok('fig 4 lays them out in three rows of two',
+  var FLAT4 = [].concat.apply([], J4.grid.rows);
+  ok('fig 4 draws 12 panels: four readings across three datasets',
+    P4.length === 12, 'got ' + P4.length);
+  ok('fig 4 lays them out in four rows of three',
     byTag(fig4, 'div').filter(function (n) {
       return n.getAttribute('class') === 'lqp-row';
-    }).length === 3);
-  ok('fig 4 panel order is a,b,c,d,e,f',
-    P4.map(function (p) { return p.getAttribute('data-panel'); }).join('') === 'abcdef',
-    P4.map(function (p) { return p.getAttribute('data-panel'); }).join(''));
-  ok('fig 4 titles keep their a-f letters',
+    }).length === 4);
+  ok('fig 4 panel order follows the grid declared in the data',
+    P4.map(function (p) { return p.getAttribute('data-panel'); }).join(',') ===
+    FLAT4.join(','), P4.map(function (p) { return p.getAttribute('data-panel'); }).join(','));
+  ok('fig 4 titles are the dataset names, three to a row',
     P4.every(function (p, i) {
-      return textsWithClass(p, 't-pan')[0].indexOf('abcdef'.charAt(i)) === 0;
+      return textsWithClass(p, 't-pan')[0] ===
+        ['SemanticKITTI', 'nuScenes', 'Waymo'][i % 3];
     }));
-  ok('fig 3 titles carry no letter',
+  ok('fig 4 names its four readings once each above the rows',
+    J4.grid.row_titles.length === 4 &&
+    byTag(fig4, 'span').filter(function (n) {
+      return J4.grid.row_titles.indexOf(n.textContent) >= 0;
+    }).length === 4);
+  ok('fig 3 titles carry no a-f letter',
     P3.every(function (p) { return !/^[a-f]\s/.test(textsWithClass(p, 't-pan')[0]); }));
 
-  J4.panels.forEach(function (panel, i) {
-    var r = checkPanel(P4[i], panel, 'fig 4' + panel.id);
+  FLAT4.forEach(function (id, i) {
+    var panel = J4.panels.filter(function (p) { return p.id === id; })[0];
+    var r = checkPanel(P4[i], panel, 'fig 4 ' + id);
     if (r) { worst = Math.max(worst, r.worst); pts += r.pts; }
   });
 
-  head('FIG. 4  the figure-specific kinds');
-  var cSeg = groupNamed(P4[2], 'Teacher, re-truncated: reproducible part');
-  ok('panel c segments are 11 separate <line> marks',
-    byTag(cSeg, 'line').filter(function (n) { return n.hasAttribute('data-band'); }).length === 11);
-  var s2 = scalesOf(P4[2]);
-  var band5 = byTag(cSeg, 'line').filter(function (n) {
-    return n.getAttribute('data-band') === '5';
-  })[0];
-  line('spot check  fig 4c segment band 5: y=' + J4.panels[2].series[4].y[5] +
-    ' -> ' + s2.ys(J4.panels[2].series[4].y[5]).toFixed(2) + 'px, markup says ' +
-    band5.getAttribute('y1'));
-  line('spot check  fig 4c segment band 5 spans x 4.58..5.42 -> ' +
-    s2.xs(4.58).toFixed(2) + '..' + s2.xs(5.42).toFixed(2) + 'px, markup says ' +
-    band5.getAttribute('x1') + '..' + band5.getAttribute('x2'));
+  head('FIG. 4  the broken y axis of the paired rows');
+  ['b_SK', 'b_NU', 'b_WA', 'd_SK', 'd_NU', 'd_WA'].forEach(function (id) {
+    var svg = P4[FLAT4.indexOf(id)];
+    var panel = J4.panels.filter(function (p) { return p.id === id; })[0];
+    var sa = panel.y.split_axis;
+    var sp = svg.getAttribute('data-ysplit');
+    ok(id + ': the panel states its split axis',
+      sp === [sa.P, sa.N, sa.h].join(','), sp);
+    var s = scalesOf(svg);
+    var zero = s.y0 - sa.h * (s.y0 - s.y1);
+    ok(id + ': zero sits at the fraction h of the plot height',
+      near(s.ys(0), zero), s.ys(0).toFixed(2) + ' vs ' + zero.toFixed(2));
+    ok(id + ': +P reaches the top of the plot', near(s.ys(sa.P), s.y1),
+      s.ys(sa.P).toFixed(2) + ' vs ' + s.y1);
+    ok(id + ': -N reaches the bottom of the plot', near(s.ys(-sa.N), s.y0),
+      s.ys(-sa.N).toFixed(2) + ' vs ' + s.y0);
+    var zl = byTag(groupNamed(svg, 'zero'), 'line')[0];
+    ok(id + ': the zero rule is drawn at that height',
+      near(parseFloat(zl.getAttribute('y1')), zero));
+  });
+  ok('h is shared across each paired row, so the datasets stay comparable',
+    ['b_SK', 'b_NU', 'b_WA'].map(function (id) {
+      return J4.panels.filter(function (p) { return p.id === id; })[0].y.split_axis.h;
+    }).every(function (v, _, a) { return v === a[0]; }) &&
+    ['d_SK', 'd_NU', 'd_WA'].map(function (id) {
+      return J4.panels.filter(function (p) { return p.id === id; })[0].y.split_axis.h;
+    }).every(function (v, _, a) { return v === a[0]; }));
 
-  var ePseudo = groupNamed(P4[4], 'Δ pseudo energy (LiEqualizer − LiSeer)');
-  var r0 = byTag(ePseudo, 'rect').filter(function (n) {
-    return n.getAttribute('data-band') === '0';
-  })[0];
-  var s4 = scalesOf(P4[4]);
-  ok('panel e negative bar hangs below zero',
-    near(parseFloat(r0.getAttribute('y')), s4.ys(0)) &&
-    near(parseFloat(r0.getAttribute('height')), s4.ys(-0.170997) - s4.ys(0)),
-    'y=' + r0.getAttribute('y') + ' h=' + r0.getAttribute('height') +
-    ' zero at ' + s4.ys(0).toFixed(2));
-  line('spot check  fig 4e pseudo band 0: ' + J4.panels[4].series[1].y[0] +
-    ' -> top ' + s4.ys(0).toFixed(2) + 'px, bottom ' + s4.ys(-0.170997).toFixed(2) + 'px');
+  head('FIG. 4  unsupported bands and broken bars');
+  var hatchTotal = 0, overTotal = 0;
+  J4.panels.forEach(function (panel) {
+    var svg = P4[FLAT4.indexOf(panel.id)];
+    var want = panel.hatched_bands || [];
+    var got = byTag(svg, 'rect').filter(function (n) {
+      return n.hasAttribute('data-hatched');
+    });
+    var bands = {};
+    got.forEach(function (n) { bands[n.getAttribute('data-hatched')] = 1; });
+    hatchTotal += got.length;
+    ok(panel.id + ': hatches exactly the unsupported bands [' + want.join(',') + ']',
+      want.length === Object.keys(bands).length &&
+      want.every(function (b) { return bands[String(b)]; }),
+      Object.keys(bands).join(','));
+    var sp = scalesOf(svg), plotW = sp.x1 - sp.x0;
+    ok(panel.id + ': the hatch is on the bars, not behind them',
+      got.every(function (n) {
+        return /^url\(#lqp-hatch-/.test(n.getAttribute('fill')) &&
+          parseFloat(n.getAttribute('width')) > 0 &&
+          parseFloat(n.getAttribute('width')) < plotW / 4;
+      }));
+    var over = panel.overflow || [];
+    var marks = byTag(svg, 'text').filter(function (n) {
+      return n.hasAttribute('data-overflow');
+    });
+    overTotal += marks.length;
+    ok(panel.id + ': ' + over.length + ' broken bar(s), each printing its true value',
+      marks.length === over.length &&
+      over.every(function (o) {
+        return marks.some(function (m) {
+          return m.textContent === String(Math.round(o.true_value * 100) / 100) ||
+            m.textContent.indexOf(String(o.true_value).slice(0, 4)) === 0;
+        });
+      }), marks.map(function (m) { return m.textContent; }).join(','));
+  });
+  line('hatched bar rects: ' + hatchTotal + ' · broken-bar labels: ' + overTotal);
+  ok('some band is hatched and some bar is broken, so both paths are exercised',
+    hatchTotal > 0 && overTotal > 0);
+
+  head('NOTHING IS PAINTED OUTSIDE ITS PANEL');
+  /* a stack top of 10.24 on an axis that stops at 1.5 put a marker a thousand
+     pixels above its panel, on top of the figure above it. Every mark that can
+     leave the plot box must carry the panel's clip. */
+  var unclipped = 0, offplot = [];
+  [['fig 3', P3], ['fig 4', P4]].forEach(function (t) {
+    t[1].forEach(function (svg) {
+      var s = scalesOf(svg), pid = svg.getAttribute('data-panel');
+      byTag(svg, 'circle').concat(byTag(svg, 'rect')).forEach(function (n) {
+        var cy = n.hasAttribute('cy') ? parseFloat(n.getAttribute('cy'))
+          : (n.hasAttribute('y') ? parseFloat(n.getAttribute('y')) : null);
+        if (cy === null || isNaN(cy)) return;
+        var out = cy < s.y1 - 12 || cy > s.y0 + 12;
+        if (!out) return;
+        offplot.push(t[0] + ' ' + pid + ' at y=' + cy.toFixed(1));
+        if (!n.getAttribute('clip-path')) unclipped++;
+      });
+    });
+  });
+  ok('every mark that falls outside its plot box is clipped to it',
+    unclipped === 0, unclipped + ' unclipped of ' + offplot.length +
+    ' off-plot marks: ' + offplot.slice(0, 4).join(', '));
+  line('off-plot marks found: ' + offplot.length + ', all clipped');
 
   var s0 = scalesOf(P3[0]);
-  line('spot check  fig 3a left LiEqualizer band 0 median: ' +
+  line('spot check  fig 3a SemanticKITTI LiEqualizer band 0 median: ' +
     J3A.panels[0].series[3].q50[0] + ' -> ' +
     s0.ys(J3A.panels[0].series[3].q50[0]).toFixed(2) + 'px of plot [' +
     s0.y1 + '..' + s0.y0 + '] on y range ' + s0.yl.join('..'));
-  var sg = scalesOf(P3[2]);
-  var gb = byTag(groupNamed(P3[2], 'observed by both'), 'rect').filter(function (n) {
+  var sg = scalesOf(P3[3]);
+  var gb = byTag(groupNamed(P3[3], 'Gap closed by LiEqualizer'), 'rect').filter(function (n) {
     return n.getAttribute('data-band') === '0';
   })[0];
-  line('spot check  fig 3a gap bar band 0: ' + J3A.panels[2].series[0].y[0] +
-    '% -> y ' + sg.ys(48.492387).toFixed(2) + 'px (zero at ' + sg.ys(0).toFixed(2) +
-    '), markup y=' + gb.getAttribute('y') + ' h=' + gb.getAttribute('height'));
+  line('spot check  fig 3a SemanticKITTI gap bar band 0: ' +
+    J3A.panels[3].series[0].y[0] + '% -> y ' +
+    sg.ys(J3A.panels[3].series[0].y[0]).toFixed(2) + 'px (zero at ' +
+    sg.ys(0).toFixed(2) + '), markup y=' + gb.getAttribute('y') +
+    ' h=' + gb.getAttribute('height'));
 
   /* ------------------------------------------------------------ legends -- */
   head('LEGENDS AND AXIS LINE');
@@ -646,40 +768,35 @@ Promise.all([
     return n.getAttribute('class') === 'lqp-legend';
   })[0];
   var want3Keys = J3A.figure_legends[0].entries.map(function (e) { return e.label; });
-  ok('fig 3 legend reproduces the published 4 entries in order',
+  ok('fig 3 legend reproduces the published ' + want3Keys.length + ' entries in order',
     legendKeys(top3).join('|') === want3Keys.join('|'), legendKeys(top3).join('|'));
   ok('fig 3 axis line names both y quantities',
     byTag(fig3, 'p').some(function (p) {
       return p.getAttribute('class') === 'lqp-axes' &&
-        p.textContent.indexOf(J3A.units.y_right) >= 0;
+        p.textContent.indexOf(J3A.units.y_strip) >= 0;
     }));
-  var rowLegends = byTag(fig4, 'div').filter(function (n) {
-    return n.getAttribute('class') === 'lqp-legend is-row';
+  var fig4Legends = byTag(fig4, 'div').filter(function (n) {
+    return n.getAttribute('class') === 'lqp-legend';
   });
-  ok('fig 4 has one legend per row', rowLegends.length === 3, 'got ' + rowLegends.length);
-  ok('fig 4 row 1 legend is the published 3-entry line legend',
-    legendKeys(rowLegends[0]).join('|') ===
+  ok('fig 4 carries one legend for the whole figure, as published',
+    fig4Legends.length === 1, 'got ' + fig4Legends.length);
+  ok('fig 4 legend reproduces the published entries in order',
+    legendKeys(fig4Legends[0]).join('|') ===
     J4.figure_legends[0].entries.map(function (e) { return e.label; }).join('|'),
-    legendKeys(rowLegends[0]).join('|'));
-  ok('fig 4 row 2 legend is the published 6-entry real/pseudo legend',
-    legendKeys(rowLegends[1]).join('|') ===
-    J4.figure_legends[1].entries.map(function (e) { return e.label; }).join('|'),
-    legendKeys(rowLegends[1]).join('|'));
-  ok('fig 4 row 3 legend is derived from the e/f bar series themselves',
-    legendKeys(rowLegends[2]).join('|') ===
-    J4.panels[4].series.filter(function (s) { return s.kind === 'bar'; })
-      .map(function (s) { return s.name; }).join('|'),
-    legendKeys(rowLegends[2]).join('|'));
-  ok('fig 4 prints the published column headers',
+    legendKeys(fig4Legends[0]).join('|'));
+  ok('fig 4 legend explains the hatch and the broken bar',
+    legendKeys(fig4Legends[0]).join('|').indexOf('unsupported by sparse scan') >= 0 &&
+    legendKeys(fig4Legends[0]).join('|').indexOf('broken bar') >= 0);
+  ok('fig 4 prints the three dataset headers',
     byTag(fig4, 'div').some(function (n) {
       return n.getAttribute('class') === 'lqp-cols' &&
-        n.textContent === J4.panels[0].column + J4.panels[1].column;
+        n.textContent === 'SemanticKITTInuScenesWaymo';
     }));
-  ok('every row repeats the x-axis label from the JSON',
+  ok('the x-axis label is printed once, under the last row',
     byTag(fig4, 'p').filter(function (p) {
       return p.getAttribute('class') === 'lqp-xlab' &&
-        p.textContent === J4.panels[0].x.label;
-    }).length === 3);
+        p.textContent === J4.figure_texts[0].text;
+    }).length === 1);
   ok('every panel tags the figure it belongs to',
     P3.every(function (p) { return /^Fig\. 3[ab]$/.test(p.getAttribute('data-figure')); }) &&
     P4.every(function (p) { return p.getAttribute('data-figure') === 'Fig. 4'; }));
@@ -688,35 +805,52 @@ Promise.all([
   head('CAPTIONS AND NOTES');
   var note3 = byTag(fig3, 'figcaption')[0].textContent;
   var note4 = byTag(fig4, 'figcaption')[0].textContent;
-  ok('fig 3 note states the frame count and selection',
-    note3.indexOf('199 frames') >= 0 && note3.indexOf('round(linspace(0, 4070, 200))') >= 0);
+  ok('fig 3 note states the per-dataset frame counts from the JSON',
+    Object.keys(J3A.protocol.frames.per_dataset).every(function (k) {
+      return note3.indexOf(J3A.protocol.frames.per_dataset[k] + ' on ' + k) >= 0;
+    }), note3.slice(0, 120));
   ok('fig 3 note names the field and the operator',
     note3.indexOf('TPV feature plane xy') >= 0 && note3.indexOf('voxel logits') >= 0 &&
     note3.indexOf('grid Laplacian') >= 0 && note3.indexOf('support-subgraph Laplacian') >= 0);
   ok('fig 3 note names the noise-ceiling denominator',
     note3.indexOf('re-truncation noise ceiling') >= 0);
+  ok('fig 3 note states the support domain plainly, with no version history',
+    note3.indexOf('teacher support \u03a9_T as a single domain') >= 0 &&
+    !/earlier version|used to|previously|merged here/i.test(note3));
+  ok('fig 4 note carries no version history either',
+    !/earlier version|used to|previously|merged here/i.test(note4));
+  ok('fig 3 note states the gap-closed formula with the ceiling at 1',
+    note3.indexOf('(1 − CKA_LiSeer-P)') >= 0);
   ok('fig 4 note says "divided by the teacher’s own band energy"',
     note4.indexOf('divided by the teacher’s own band energy') >= 0);
   ok('fig 4 note does NOT say "divided by Dense teacher"',
     note4.indexOf('divided by Dense teacher') < 0);
-  ok('fig 4 note says the denominator input was re-truncated',
-    note4.indexOf('re-truncated') >= 0);
-  ok('fig 3 note discloses the epoch-21 checkpoint and the epoch-24 readings',
-    note3.indexOf('epoch-21') >= 0 && note3.indexOf('epoch 24') >= 0);
-  ok('fig 4 note discloses the epoch-21 checkpoint and the epoch-24 readings',
-    note4.indexOf('epoch-21') >= 0 && note4.indexOf('epoch 24') >= 0);
-  ok('the epoch disclosure is one sentence',
-    /epoch-21 checkpoint[^.]*epoch 24\./.test(note4));
-  ok('the JSON states epoch 21, so the note is not invented',
-    J4.protocol.models[3].checkpoint.indexOf('epoch-21') >= 0,
-    J4.protocol.models[3].checkpoint);
-  ok('fig 4 note explains the dagger flag', note4.indexOf('†') >= 0 &&
-    note4.indexOf('0.05') >= 0);
-  ok('fig 4 keeps the published footnote verbatim',
-    byTag(fig4, 'p').some(function (p) {
-      return p.getAttribute('class') === 'lqp-pub' &&
-        p.textContent.indexOf(J4.figure_texts[2].text) >= 0;
-    }));
+  ok('fig 4 note explains the hatch as unsupported structure, not attenuation',
+    note4.indexOf('white diagonals') >= 0 &&
+    note4.indexOf('absent from the observation rather than attenuated') >= 0);
+  ok('fig 4 note explains the broken bar and says the true value is printed',
+    note4.indexOf('cut by two strokes') >= 0 &&
+    note4.indexOf('true value is printed') >= 0);
+  ok('fig 4 note explains the broken y axis of rows b and d',
+    note4.indexOf('broken y axis') >= 0 &&
+    note4.indexOf('zero sits at the same height') >= 0);
+  ok('fig 4 note warns that the paired bars are not a stack',
+    note4.indexOf('not a stack') >= 0);
+  // One name per model (2026-11-14): no internal run name, checkpoint number
+  // or hash reaches the page, and no note implies a second LiSeer-P.
+  ok('no note names an internal run or checkpoint',
+    !/LiSeer[_-](?:SK|NU|WA)|curmap|retrain|\b[0-9a-f]{7,}\b|checkpoints:|LiEqualizer-P/
+      .test(note3 + ' ' + note4), note4.slice(-180));
+  ok('the data files carry no internal model names either',
+    !/LiSeer[_-](?:SK|NU|WA)|curmap|retrain/
+      .test(JSON.stringify(J3A) + JSON.stringify(J3B) + JSON.stringify(J4)));
+  ok('fig 4 protocol no longer carries a models block',
+    J4.protocol.models === undefined && J3A.protocol.models === undefined);
+  ok('no note still claims an epoch-21 / epoch-24 mismatch',
+    note3.indexOf('epoch-21') < 0 && note4.indexOf('epoch-21') < 0);
+  ok('no note still explains a dagger flag that is no longer drawn',
+    note4.indexOf('†') < 0 &&
+    JSON.stringify(J4.panels).indexOf('flagged_bands') < 0);
 
   /* ------------------------------------------------------ accessibility -- */
   head('ACCESSIBILITY');
@@ -774,9 +908,13 @@ Promise.all([
   var row0 = byTag(byTag(t3a, 'tbody')[0], 'tr').filter(function (tr) {
     return tr.textContent.indexOf('LiEqualizer (median)') >= 0;
   })[0];
+  var wantCell = Number(J3A.panels[0].series[3].q50[0]).toPrecision(4)
+    .replace(/0+$/, '').replace(/\.$/, '');
   ok('fig 3a table prints the JSON value for LiEqualizer band 0',
-    row0.childNodes[1].textContent === '0.9211', row0.childNodes[1].textContent);
-  line('table cell check  LiEqualizer band 0 median 0.921059 -> "' +
+    row0.childNodes[1].textContent === wantCell,
+    row0.childNodes[1].textContent + ' vs ' + wantCell);
+  line('table cell check  LiEqualizer band 0 median ' +
+    J3A.panels[0].series[3].q50[0] + ' -> "' +
     row0.childNodes[1].textContent + '" (4 significant digits)');
 
   /* -------------------------------------------------------- resilience -- */
@@ -814,7 +952,8 @@ Promise.all([
 
     head('NARROW LAYOUT (360px)');
     var narrow = panelsOf(r[4]);
-    ok('fig 4 still draws all six panels at 360px', narrow.length === 6);
+    ok('fig 4 still draws all twelve panels at 360px', narrow.length === 12,
+      'got ' + narrow.length);
     var sN = scalesOf(narrow[0]);
     ok('the plot box is still positive at 360px', sN.x1 > sN.x0 && sN.y0 > sN.y1,
       [sN.x0, sN.x1, sN.y0, sN.y1].join(','));
@@ -831,8 +970,10 @@ Promise.all([
       e6.API.renderFig3a(ma, { width: 1180, watch: false }),
       e6.API.renderFig3b(mb, { width: 1180, watch: false })
     ]).then(function (rr) {
-      ok('fig 3a alone draws three panels', panelsOf(rr[0]).length === 3);
-      ok('fig 3b alone draws three panels', panelsOf(rr[1]).length === 3);
+      ok('fig 3a alone draws its six panels', panelsOf(rr[0]).length === 6,
+        'got ' + panelsOf(rr[0]).length);
+      ok('fig 3b alone draws its six panels', panelsOf(rr[1]).length === 6,
+        'got ' + panelsOf(rr[1]).length);
       ok('3a-alone note describes only the feature plane',
         byTag(rr[0], 'figcaption')[0].textContent.indexOf('TPV feature plane xy') >= 0 &&
         byTag(rr[0], 'figcaption')[0].textContent.indexOf('Jackson') < 0);
@@ -859,7 +1000,7 @@ Promise.all([
           .then(function (figD) {
             ok('dark theme sets the theme attribute',
               figD.getAttribute('data-lqp-theme') === 'dark');
-            var g = groupNamed(panelsOf(figD)[0], 'LiEqualizer');
+            var g = groupNamed(panelsOf(figD)[0], 'LiEqualizer, energy distribution');
             var stroke = byTag(g, 'path').filter(function (n) {
               return n.getAttribute('data-part') === 'median';
             })[0].getAttribute('stroke');

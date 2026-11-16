@@ -52,10 +52,10 @@ The four keys are:
 
 | key | draws |
 |---|---|
-| `paper-fig3` | both rows: (a) feature planes and (b) voxel logits, 6 panels |
-| `paper-fig3a` | row (a) alone, 3 panels |
-| `paper-fig3b` | row (b) alone, 3 panels |
-| `paper-fig4` | panels a–f, 6 panels |
+| `paper-fig3` | both rows: (a) feature planes and (b) voxel logits, 12 panels |
+| `paper-fig3a` | row (a) alone, 6 panels |
+| `paper-fig3b` | row (b) alone, 6 panels |
+| `paper-fig4` | four readings across three datasets, 12 panels |
 
 `data-lieq-chart="paper-fig3"` works too: the sibling `charts-native.js` ignores keys it does
 not own, and so does this module, so the two can share the attribute safely.
@@ -137,11 +137,12 @@ background so hollow markers stay hollow.
 
 | role | colour | where |
 |---|---|---|
-| LiEqualizer / after distillation | `#2a78d6` | lines, gap bars (observed by both), real energy |
-| LiEqualizer light | `#86b6ef` | gap bars (teacher only), pseudo energy, Δ pseudo |
-| LiSeer / before distillation | `#eb6834` | lines, real energy |
-| LiSeer light | `#f5b896` | pseudo energy |
-| Dense teacher / reference | `#52514e` | reference lines, the grey re-truncation marks |
+| LiEqualizer / after distillation | `#2a78d6` | lines, real energy, Δ real |
+| LiEqualizer light | `#86b6ef` | pseudo energy, Δ pseudo |
+| LiSeer-P / before distillation | `#eb6834` | lines, real energy |
+| LiSeer-P light | `#f6b79a` | pseudo energy |
+| gap closed by LiEqualizer | `#56b89a` | the bars in Fig. 3's gap strips |
+| Dense teacher / reference | `#52514e` | reference lines, the `= 1` rule in Fig. 4 |
 | noise ceiling / re-truncated | `#8f8d88` | the `= 1` ceiling line in Fig. 3 |
 | high-frequency shading | `#f3f2ef` | the λ ≥ .60 strip |
 
@@ -157,39 +158,55 @@ colour are unchanged. The map lives in `DARK_MAP` near the top of the file.
 
 ### Fig. 3 — alignment, band by band
 
-Two rows, each of three panels, labelled with the published figure's own sub-captions,
-`(a) on the feature planes` and `(b) on the voxel logits`.
+Two rows, one per representation level, labelled with the published figure's own
+sub-captions, `(a) on the feature planes` and `(b) on the voxel logits`. Each row is six
+panels: one column per training source, with a short gap strip under each.
 
 | panel | content |
 |---|---|
-| left, *Observed by both ↑* | CKA to the Dense teacher ÷ the noise ceiling, on Ω_S ∩ Ω_T |
-| middle, *Observed by teacher only ↑* | the same on Ω_T \ Ω_S; **shares the left panel's y axis** |
-| right, *Gap to teacher closed by LiEQ* | the share of the LiSeer-to-ceiling gap LiEqualizer closes, two bars per band |
+| `cka_SK`, `cka_NU`, `cka_WA` | CKA to the Dense teacher ÷ the noise ceiling, over the teacher support Ω_T, one dataset each |
+| `gap_SK`, `gap_NU`, `gap_WA` | under each: the share of the LiSeer-P-to-ceiling gap LiEqualizer closes, one bar per band |
 
 Each curve draws its median as a line with markers and its interquartile range as a 14 %
-ribbon. The `= 1` ceiling is a flat reference line, true by construction. The right panel
-carries its y ticks on the **right**, as published, and its own two-swatch legend inside the
-plot.
+ribbon. The `= 1` ceiling is a flat dashed reference line, true by construction. The gap
+strips carry `height_ratio`, so they are drawn shorter than the panel above them.
+
+The layout comes from the data: `grid.cols` and `grid.rows` in the JSON say how the panels
+are arranged, and the renderer follows them rather than carrying a hard-coded order.
 
 ### Fig. 4 — energy per band
 
-Three rows of two; the left column is the TPV feature plane, the right the voxel logits, and
-the panel titles keep their `a`–`f` letters, as published.
+Four rows of three; the columns are the training sources and the rows are the readings,
+named above each row by `grid.row_titles`.
 
-| panel | content |
+| row | content |
 |---|---|
-| a, b | log₂ of the band energy share relative to the Dense teacher (0 = ×1), median + IQR ribbon |
-| c, d | the real / pseudo split, as two stacked bars per model, plus the grey re-truncation marks and the dashed `= 1` line |
-| e, f | the paired LiEqualizer − LiSeer change in each part, as two **unstacked** bars per band around a zero line |
+| a | TPV features: the real / pseudo split, as two stacked bars per model, with the dotted stack-top line and the dashed `= 1` rule |
+| b | TPV features: the paired LiEqualizer − LiSeer-P change in each part, as two **unstacked** bars per band, on a broken y axis |
+| c | voxel logits: the same split as row a |
+| d | voxel logits: the same paired change as row b |
 
-### The four series kinds
+**The broken y axis** of rows b and d comes from `y.split_axis = {P, N, h}`: zero sits at the
+fraction `h` of the plot height from the bottom, `[0, P]` is mapped above it and `[−N, 0]`
+below, each side tight to its own data. `h` is shared across a row, so the three datasets
+stay comparable. The panel states it in the DOM as `data-ysplit="P,N,h"`, which is what the
+harness re-reads.
+
+**Unsupported bands** carry `hatch_bands` on the bar series: those bars are overlaid with
+white 45° strokes, on the bar itself rather than behind it, because the structure is absent
+from the sparse observation rather than attenuated in it.
+
+**Broken bars** come from the panel's `overflow` list: the bar is cut at the frame, marked
+with two strokes, and its true value printed above the plot.
+
+### The series kinds
 
 | kind | drawn as |
 |---|---|
 | `line` | `q50` as the path, `q25`–`q75` as a filled ribbon, one marker and one hover target per band. `markers: "hollow"` gives a hollow marker (teacher, sparse input) |
 | `bar` | one rect per band, centred on the series' own `x` (which already carries the dodge offset), `width` in data units. A `bottom` array stacks it on the segment below; negative values hang below the baseline |
 | `hline` | one flat reference line across the plot; `style: "dashed"` is honoured |
-| `segments` | **one short horizontal mark per band**, from `x0[k]` to `x1[k]` at `y[k]` — not a line, not a bar. This is Fig. 4 c/d's "what the teacher itself still accounts for when its input is re-truncated" |
+| `segments` | **one short horizontal mark per band**, from `x0[k]` to `x1[k]` at `y[k]` — not a line, not a bar. Supported, though no current panel uses it |
 
 Every series group in the DOM carries `data-series="<name>"` and `data-kind="<kind>"`, and
 every panel `<svg>` carries `data-panel`, `data-figure`, `data-plot="x0,x1,y0,y1"`,
@@ -202,13 +219,16 @@ rendered figure inspectable in devtools.
 * the high-frequency region: shading from x = 6.5 to 10.5 (clamped to the axis), a dotted
   edge at its start, and the `high frequency (λ ≥ .60)` annotation
 * every annotation, in `data` or `axes_fraction` coordinates, with its point offset, its
-  horizontal and vertical alignment and its line breaks — including the `†` null flags
-* the shared-y marking: the middle panel of Fig. 3 prints no y tick labels, and its plot box
-  is given the same gutter as the leftmost panel so the two are directly comparable
+  horizontal and vertical alignment and its line breaks
+* `grid.cols`, `grid.rows` and `grid.row_titles`: the panel arrangement is data, not code
+* `y.split_axis` for the broken axes, `hatch_bands` for unsupported bands, and the panel's
+  `overflow` list for broken bars
+* one gutter shared by every panel of a figure, so the columns line up even where the rows
+  carry different y scales
 * y-axis labels keep their literal `\n` as two rotated lines, the first nearest the plot, as
   matplotlib stacks them
-* the published figure legends, entry for entry, in order; Fig. 4's two legends sit above the
-  rows they describe
+* the published figure legends, entry for entry, in order; Fig. 4 carries one legend for the
+  whole figure, as published
 
 ---
 
@@ -225,11 +245,9 @@ it are deliberate and should not be "tidied away":
    JSON and are drawn verbatim, abbreviate it as `÷ Dense teacher`; the note says so
    explicitly rather than leaving the two in silent contradiction.
 
-2. **The epoch.** The model labelled *LiSeer* — before distillation — is the **epoch-21**
-   checkpoint, which `protocol.models[].checkpoint` states in all three files, while the
-   manuscript's scalar readings elsewhere are read from **epoch 24**. Both notes say this in
-   one sentence. It is a real discrepancy in the record; the figure is honest about it rather
-   than hiding it.
+2. **The checkpoints.** Fig. 4's note names the LiSeer-P checkpoint behind each dataset,
+   read out of `protocol.models` rather than written by hand, so a swap in the measurement
+   files shows up in the note.
 
 ---
 
@@ -285,7 +303,7 @@ node docs/assets/charts-paper.test.js
 The test file sits next to the module, the way `eq-widget.test.js` sits next to
 `eq-widget.js`: plain node, no jsdom, no framework, no network, runnable from any directory.
 It renders both figures into a hand-rolled DOM with `fetch` reading the real JSON off disk,
-then checks **552 assertions**, of which the substantive ones are:
+then checks **1,111 assertions**, of which the substantive ones are:
 
 * **Structure.** Fig. 3 draws 6 panels in 2 rows, Fig. 4 draws 6 in 3 rows, in the order
   a, b, c, d, e, f; Fig. 4's titles keep their letters and Fig. 3's carry none; each panel
@@ -301,18 +319,21 @@ then checks **552 assertions**, of which the substantive ones are:
   48.492387 % on 0…60 → y = 61.76 px, height 142.24 px with zero at 204 px. Fig. 4c segment
   band 5: 0.900432 → y = 104.74 px, spanning x 4.58…5.42 → 288.33…325.67 px. Fig. 4e pseudo
   band 0: −0.170997 → a bar hanging from y = 115.27 px (zero) to 145.12 px.
-* **Shared y.** The leftmost panel of each Fig. 3 row prints `0.00`…`1.00`; the middle panel
-  prints none of them; the gap panel prints its own percent ticks on the right; the y label
-  keeps its line break as two tspans.
+* **Axes.** Every Fig. 3 CKA panel prints its own y ticks and the gap strip under it prints
+  percent ticks; the gap strip is drawn shorter; the y label keeps its line break as two
+  tspans. The six broken axes of Fig. 4 are rebuilt from `data-ysplit` and checked at zero,
+  at `+P` and at `−N`.
 * **Captions.** The frame count and selection, the field and the operator appear; Fig. 4's
   note contains "divided by the teacher's own band energy" and does **not** contain "divided
-  by Dense teacher"; both notes carry the epoch-21 / epoch-24 sentence, and the JSON is
-  re-read to confirm epoch 21 is what the data file says.
+  by Dense teacher"; it explains the hatch, the broken bar and the broken axis; it names
+  every LiSeer-P checkpoint from the JSON; and neither note narrates how the figure used to
+  be drawn.
 * **Accessibility.** `role="img"` + title + desc per panel; the table starts hidden; the
   button toggles `aria-expanded`, the class and its own label; headers are 1 + 11 and every
-  row has 12 cells with a `scope="row"` header; the LiEqualizer band-0 cell reads `0.9211`.
+  row has 12 cells with a `scope="row"` header; the LiEqualizer band-0 cell is recomputed
+  from the JSON rather than written in.
 * **Resilience.** Missing mount → `null`; 404 → the fallback note naming the file; rejected
-  fetch → the same; reduced motion → no animation class; at 360 px all six panels still draw,
+  fetch → the same; reduced motion → no animation class; at 360 px all twelve panels draw,
   every panel keeps its y ticks and gains the column name as a subtitle.
 * **Fetch.** Two mounts needing the same file produce one request; the URL is
   `assets/data/…`; dark theme maps `#2a78d6` to `#56adf0`.
@@ -356,7 +377,7 @@ legends, panel titles, tick labels, the `high frequency (λ ≥ .60)` annotation
   captions (the source-to-unseen matrix and the gain strip). These are the manuscript's
   Fig. 3 and Fig. 4. The two numbering schemes now collide — renumber one of them before
   publishing.
-* Both figures are tall: Fig. 4 is six panels. Consider giving them their own section, or
+* Both figures are tall: each is twelve panels. Consider giving them their own section, or
   using `paper-fig3a` / `paper-fig3b` to place the two rows apart.
 * If the page is served from a project sub-path and you load the script with an absolute URL,
   the data path follows the script automatically; only set `LiEQPaperCharts.dataBase` if you

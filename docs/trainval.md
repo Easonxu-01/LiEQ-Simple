@@ -133,8 +133,8 @@ It reports two families of quantities:
 
 - **Native suite**, on raw point clouds: high-frequency retention per signal and per class, the spectral roll-off, and
   the band-energy gap between a dense and a sparse observation of the same scene.
-- **Voxel suite**, on the grid the network actually reads: the high-frequency energy ratio against the teacher, the
-  per-band discrepancy, and the flatness of the residual profile.
+- **Voxel suite**, on the grid the network actually reads: the frequency-band discrepancy to the teacher, split low /
+  mid / high (FBD), the spectral curve correlation of the log band profiles (SCC), and their symmetric divergence (SID).
 
 Both are computed from the same graph-spectral machinery the losses use, so a number that moves in the diagnosis and a
 number that moves in the loss are the same quantity. The entry points and their arguments are documented alongside the

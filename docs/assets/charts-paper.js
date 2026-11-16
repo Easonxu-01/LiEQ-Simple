@@ -8,7 +8,7 @@
  * Fig. 3  per-band CKA to the Dense teacher, divided by the teacher's re-truncation
  *         noise ceiling: row a on the TPV xy feature plane, row b on the voxel logits.
  * Fig. 4  band-wise energy relative to the Dense teacher: shares (a, b), the real /
- *         pseudo split (c, d) and the paired LiEqualizer - LiSeer change (e, f).
+ *         pseudo split (c, d) and the paired LiEqualizer - LiSeer-P change (e, f).
  *
  * Data is NOT embedded. The three JSON files written by the engineer who produced the
  * published matplotlib figures stay the single source of truth and are fetched at
@@ -792,6 +792,30 @@
       if (e.kind === 'patch') {
         sEl('rect', { x: 0, y: 1, width: 21, height: 10, fill: col }, svg);
         sEl('rect', { x: 0, y: 1, width: 21, height: 10, 'class': 'edge' }, svg);
+      } else if (e.kind === 'patch2') {
+        /* one key for the stacked pair: dark real below, light pseudo above */
+        sEl('rect', { x: 0, y: 1, width: 10, height: 10, fill: col }, svg);
+        sEl('rect', {
+          x: 11, y: 1, width: 10, height: 10,
+          fill: colorOf(e.color2, theme)
+        }, svg);
+        sEl('rect', { x: 0, y: 1, width: 21, height: 10, 'class': 'edge' }, svg);
+      } else if (e.kind === 'hatch') {
+        sEl('rect', { x: 0, y: 1, width: 21, height: 10, fill: col }, svg);
+        sEl('rect', {
+          x: 0, y: 1, width: 21, height: 10, fill: hatcherFor(svg)('var(--lqp-surface)')
+        }, svg);
+        sEl('rect', { x: 0, y: 1, width: 21, height: 10, 'class': 'edge' }, svg);
+      } else if (e.kind === 'break') {
+        sEl('rect', { x: 5, y: 1, width: 11, height: 10, fill: col }, svg);
+        sEl('line', {
+          x1: 3, y1: 9, x2: 18, y2: 3, stroke: 'var(--lqp-surface)', 'stroke-width': 2.6
+        }, svg);
+        sEl('line', {
+          x1: 3, y1: 12, x2: 18, y2: 6, stroke: 'var(--lqp-surface)', 'stroke-width': 2.6
+        }, svg);
+        sEl('line', { x1: 3, y1: 9, x2: 18, y2: 3, stroke: col, 'stroke-width': 1 }, svg);
+        sEl('line', { x1: 3, y1: 12, x2: 18, y2: 6, stroke: col, 'stroke-width': 1 }, svg);
       } else {
         sEl('line', {
           x1: 0, y1: 6, x2: 21, y2: 6, stroke: col,
@@ -880,9 +904,27 @@
     var xl = panel.x.lim, yl = panel.y.lim;
     g.xlim = xl; g.ylim = yl;
     g.xs = linScale(xl[0], xl[1], g.x0, g.x1);
-    g.ys = linScale(yl[0], yl[1], g.y0, g.y1);
+    var sa = panel.y && panel.y.split_axis;
+    g.ys = sa ? splitScale(sa, g.y0, g.y1) : linScale(yl[0], yl[1], g.y0, g.y1);
+    g.split = sa || null;
     g.unit = (g.x1 - g.x0) / (xl[1] - xl[0]);
     return g;
+  }
+
+  /* Rows b and d of Fig. 4 carry a broken y axis: LiEqualizer adds a little real
+     energy and removes a lot of pseudo energy, so one linear scale over both
+     would flatten the positive bars to nothing. Zero sits at the fraction h of
+     the panel height from the bottom, [0, P] is mapped above it and [−N, 0]
+     below, each side tight to its own data. The published figure does the same,
+     and h is shared across a row so the three datasets stay comparable. */
+  function splitScale(sa, y0, y1) {
+    var zero = y0 - sa.h * (y0 - y1);
+    var P = sa.P, N = sa.N;
+    return function (v) {
+      if (!isNum(v)) return zero;
+      if (v >= 0) return P > 0 ? zero - (v / P) * (zero - y1) : zero;
+      return N > 0 ? zero + (-v / N) * (y0 - zero) : zero;
+    };
   }
 
   function clipFor(svg, g) {
@@ -891,6 +933,30 @@
     var cp = sEl('clipPath', { id: id }, defs);
     sRect(cp, g.x0, g.y1, g.x1 - g.x0, g.y0 - g.y1, {});
     return 'url(#' + id + ')';
+  }
+
+  /* White 45° strokes laid over a bar, for bands the sparse scan does not
+     support. The structure is absent from the observation rather than
+     attenuated in it, so no objective can recover it, and the figure has to
+     say so on the bar itself rather than behind it. One pattern per svg per
+     stroke colour, made on first use. */
+  function hatcherFor(svg) {
+    var defs = sEl('defs', null, svg), made = {};
+    return function (stroke) {
+      var key = String(stroke);
+      if (!made[key]) {
+        var id = uid('hatch');
+        var pat = sEl('pattern', {
+          id: id, width: 5, height: 5, patternUnits: 'userSpaceOnUse',
+          patternTransform: 'rotate(45)'
+        }, defs);
+        sEl('line', {
+          x1: 0, y1: 0, x2: 0, y2: 5, stroke: stroke, 'stroke-width': 1.7
+        }, pat);
+        made[key] = 'url(#' + id + ')';
+      }
+      return made[key];
+    };
   }
 
   function drawFrame(svg, panel, g, theme, opts) {
@@ -1000,19 +1066,26 @@
     sEl('path', {
       d: path, fill: 'none', stroke: col, 'stroke-width': lw(d.linewidth_pt || 1.5),
       'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+      'stroke-dasharray': d.dashed ? '1 2.6' : null,
       'data-part': 'median', 'clip-path': ctx.clip
     }, grp);
 
     var hollow = d.markers === 'hollow';
     for (i = 0; i < xs.length; i++) {
+      /* A few stack-top values run several times past the top of the axis.
+         The path is clipped, so without the same clip here the marker would be
+         painted a thousand pixels above the panel and land on whatever is
+         there. Clip both the dot and its hover target. */
       sEl('circle', {
         cx: r2(g.xs(xs[i])), cy: r2(g.ys(med[i])), r: 2.9,
         fill: hollow ? 'var(--lqp-surface)' : col,
         stroke: hollow ? col : 'var(--lqp-halo)',
-        'stroke-width': 0.9, 'data-part': 'marker', 'data-band': i
+        'stroke-width': 0.9, 'data-part': 'marker', 'data-band': i,
+        'clip-path': ctx.clip
       }, grp);
       tipFor(sEl('circle', {
-        cx: r2(g.xs(xs[i])), cy: r2(g.ys(med[i])), r: 9, 'class': 'hit'
+        cx: r2(g.xs(xs[i])), cy: r2(g.ys(med[i])), r: 9, 'class': 'hit',
+        'clip-path': ctx.clip
       }, grp), s.name + '\n' + bandRange(xa, i) +
         '\nmedian  ' + gf(med[i], 5) +
         (lo && hi ? '\nIQR  ' + gf(lo[i], 4) + ' – ' + gf(hi[i], 4) : '') +
@@ -1029,7 +1102,9 @@
       'data-series': s.name, 'data-kind': 'bar', 'data-n': ys.length,
       'data-stacked-on': s.stacked_on || null
     }, parent);
-    var i, b, top, py0, py1, cx, tipTxt;
+    var i, b, top, py0, py1, cx, tipTxt, bi;
+    var hatched = {};
+    for (i = 0; i < (s.hatch_bands || []).length; i++) hatched[s.hatch_bands[i]] = 1;
 
     for (i = 0; i < xs.length; i++) {
       if (!isNum(ys[i])) continue;
@@ -1038,15 +1113,23 @@
       py0 = g.ys(b);
       py1 = g.ys(top);
       cx = g.xs(xs[i]);
+      bi = s.band_index ? s.band_index[i] : i;
       sRect(grp, cx - w / 2, Math.min(py0, py1), w, Math.abs(py1 - py0), {
         fill: col, 'data-band': i, 'clip-path': ctx.clip
       });
+      if (hatched[bi] && ctx.hatch) {
+        sRect(grp, cx - w / 2, Math.min(py0, py1), w, Math.abs(py1 - py0), {
+          fill: ctx.hatch('var(--lqp-surface)'), 'data-hatched': bi,
+          'clip-path': ctx.clip
+        });
+      }
       sRect(grp, cx - w / 2, Math.min(py0, py1), w, Math.abs(py1 - py0), {
         'class': 'edge', 'clip-path': ctx.clip
       });
       tipTxt = s.name + '\n' + bandRange(xa, i) + '\n' +
         (ctx.percent ? gf(ys[i], 4) + ' %' : gf(ys[i], 5));
       if (bot) tipTxt += '\nstacked on ' + gf(b, 4) + ', top ' + gf(top, 4);
+      if (hatched[bi]) tipTxt += '\nnot supported by the sparse scan';
       if (s.n_frames_finite) tipTxt += '\n' + s.n_frames_finite[i] + ' frames';
       /* the hit column is exactly the bar's own column: paired bars sit 0.02 units
          apart, so any padding here would steal the neighbour's hover */
@@ -1146,9 +1229,18 @@
       'data-figure': cfg.figRef,
       'data-plot': [r2(g.x0), r2(g.x1), r2(g.y0), r2(g.y1)].join(','),
       'data-xlim': g.xlim.join(','),
-      'data-ylim': g.ylim.join(',')
+      'data-ylim': g.ylim.join(','),
+      /* a broken y axis cannot be read off data-ylim alone, so the panel states
+         it: [0, P] above the zero line, [-N, 0] below it, zero at the fraction
+         h of the plot height from the bottom */
+      'data-ysplit': g.split
+        ? [g.split.P, g.split.N, g.split.h].join(',') : null
     });
-    var ctx = { clip: clipFor(svg, g), percent: (panel.y && panel.y.unit) === 'percent' };
+    var ctx = {
+      clip: clipFor(svg, g),
+      percent: (panel.y && panel.y.unit) === 'percent',
+      hatch: hatcherFor(svg)
+    };
 
     drawFrame(svg, panel, g, theme, {
       drawY: cfg.drawY, yTickLabels: cfg.yTickLabels
@@ -1166,9 +1258,49 @@
       else if (s.kind === 'segments') drawSegmentSeries(svg, s, g, theme, panel.x, ctx);
     }
 
+    drawOverflow(svg, panel, g, theme);
     drawAnnotations(svg, panel, g, theme);
     drawPanelLegend(svg, panel.legend, g, theme);
     return svg;
+  }
+
+  /* A handful of LiSeer-P's pseudo-energy bars run several times past the top of
+     the axis. Letting them set the scale would squash every other bar flat, so
+     the bar is cut at the frame, marked with the two strokes the published
+     figure uses, and its true value printed above. The break is the claim that
+     the bar is taller than it is drawn, so the number has to be on the page. */
+  function drawOverflow(svg, panel, g, theme) {
+    var list = panel.overflow || [], i, o, cx, py, col, half = 4.6;
+    var w = 0.38 * g.unit;
+    for (i = 0; i < list.length; i++) {
+      o = list[i];
+      cx = g.xs(o.band + (o.offset || 0));
+      py = g.ys(o.break_y);
+      col = colorOf(o.color, theme);
+      sLine(svg, cx - w / 2 - 1, py + half, cx + w / 2 + 1, py - half, null, {
+        stroke: 'var(--lqp-surface)', 'stroke-width': 3.4, fill: 'none'
+      });
+      sLine(svg, cx - w / 2 - 1, py + half + 3.4, cx + w / 2 + 1, py - half + 3.4, null, {
+        stroke: 'var(--lqp-surface)', 'stroke-width': 3.4, fill: 'none'
+      });
+      sLine(svg, cx - w / 2 - 1, py + half, cx + w / 2 + 1, py - half, null, {
+        stroke: col, 'stroke-width': 1.1, fill: 'none'
+      });
+      sLine(svg, cx - w / 2 - 1, py + half + 3.4, cx + w / 2 + 1, py - half + 3.4, null, {
+        stroke: col, 'stroke-width': 1.1, fill: 'none'
+      });
+      /* two broken bars can share a band, and their printed values would sit
+         on top of each other; give each model its own line above the plot */
+      sTxt(svg, cx, g.y1 - (o.variant === 'S_lieq' ? 3 : 13), o.true_value.toFixed(2),
+        't-anno', {
+          'text-anchor': 'middle', fill: col,
+          'font-weight': 700, 'data-overflow': o.band
+        });
+      tipFor(sRect(svg, cx - w / 2, g.y1, w, g.y0 - g.y1, { 'class': 'hit' }),
+        'broken bar\n' + bandRange(panel.x, o.band) +
+        '\ntrue value  ' + gf(o.true_value, 5) +
+        '\ndrawn to the top of the axis only');
+    }
   }
 
   /* --------------------------------------------------------------- tables */
@@ -1211,14 +1343,18 @@
 
   /* ---------------------------------------------------------------- notes */
 
-  var EPOCH_NOTE = 'The model labelled LiSeer — before distillation — is the ' +
-    'epoch-21 checkpoint named in the released measurement file, while the manuscript’s ' +
-    'scalar readings elsewhere are read from epoch 24.';
+  var SUPPORT_NOTE = 'Every statistic is read over the teacher support Ω_T as a single ' +
+    'domain, with one column per training source.';
 
   function framesLine(p) {
     var f = (p && p.frames) || {};
-    return (f.count || '?') + ' frames of ' + (p.dataset || 'SemanticKITTI') +
-      ' sequence ' + (p.sequence || '08') + ' (' + (f.selection || 'see data file') + ').';
+    var per = f.per_dataset, names = (p && p.datasets) || [], parts = [], k;
+    if (per) {
+      for (k in per) if (per.hasOwnProperty(k)) parts.push(per[k] + ' on ' + k);
+      return 'Frames: ' + parts.join(', ') + '.';
+    }
+    return (f.count || '?') + ' frames' +
+      (names.length ? ' on each of ' + names.join(', ') : '') + '.';
   }
 
   var CKA_LINE = 'Each curve is the linear CKA between the band-filtered model field and the ' +
@@ -1226,8 +1362,9 @@
     're-truncation noise ceiling, so 1.00 is that ceiling; the line is the per-band median ' +
     'across frames (frames are the unit) and the ribbon the interquartile range.';
 
-  var GAP_LINE = 'The right-hand panel is 100 × the median of (CKA_LiEQ − CKA_LiSeer) ' +
-    '/ (CKA_ceiling − CKA_LiSeer) per band and region.';
+  var GAP_LINE = 'The strip under each panel is 100 × the median of (CKA_LiEQ − CKA_LiSeer-P) ' +
+    '/ (1 − CKA_LiSeer-P) per band: the share of the distance still separating LiSeer-P from ' +
+    'the ceiling that LiEqualizer closes.';
 
   var HF_LINE = 'The shaded strip is the high-frequency region, λ ≥ 0.60 ' +
     '(bands 7–10).';
@@ -1251,7 +1388,7 @@
     return [
       framesLine(d.protocol),
       key === 'fig3b' ? ROW_B_LINE : ROW_A_LINE,
-      OMEGA_LINE, CKA_LINE, GAP_LINE, HF_LINE, EPOCH_NOTE
+      OMEGA_LINE, CKA_LINE, GAP_LINE, HF_LINE, SUPPORT_NOTE
     ].join(' ');
   }
 
@@ -1270,39 +1407,37 @@
       'band-pass filters by Jackson–Chebyshev approximation at order K = 1024.',
       'Both rows use the same 11-band partition, remove the per-channel mean and divide by the ' +
       'RMS inside Ω_T, and restrict every statistic to Ω_T.',
-      CKA_LINE, GAP_LINE, HF_LINE, EPOCH_NOTE
+      CKA_LINE, GAP_LINE, HF_LINE, SUPPORT_NOTE
     ].join(' ');
   }
 
   function note4(d) {
     var p = d.protocol;
     return [
-      framesLine(p),
-      'The left column measures the TPV feature plane xy at neck scale s0 with the 4-neighbour ' +
-      'normalized grid Laplacian, the low-frequency distiller’s operator; the right column ' +
-      'measures the 8-class voxel logits on the teacher support Ω_T with the 3-D ' +
+      'Three training sources, one column each.',
+      'Rows a and b measure the TPV feature plane xy at neck scale s0 with the 4-neighbour ' +
+      'normalized grid Laplacian, the low-frequency distiller’s operator; rows c and d ' +
+      'measure the 8-class voxel logits on the teacher support Ω_T with the 3-D ' +
       'support-subgraph Laplacian L_Ω, the high-frequency distiller’s operator. Both ' +
       'use the same 11 bands, with the per-channel mean removed and the RMS over Ω_T ' +
       'divided out.',
-      'Panels a and b plot log₂ of the band energy share relative to the Dense teacher, so ' +
-      '0 is ×1: the line is the per-band median across frames and the ribbon the ' +
-      'interquartile range.',
-      'In panels c–f, real energy is the part of a student’s band energy that a ' +
+      'In rows a and c, real energy is the part of a student’s band energy that a ' +
       'cross-fitted ridge regression reproduces from the teacher’s own band-k field ' +
       '(outer 2-fold split by alternating 60° φ sectors, inner leave-one-sector-out ' +
-      'choice of the ridge parameter) and pseudo energy is the remainder; both are divided by ' +
-      'the teacher’s own band energy in that band, measured with the teacher’s input ' +
-      're-truncated under a different 500,000-point seed. The panel axis labels abbreviate that ' +
-      'denominator as “÷ Dense teacher”.',
+      'choice of the ridge parameter) and pseudo energy is the remainder, drawn stacked on ' +
+      'it; both are divided by the teacher’s own band energy in that band. The dotted line ' +
+      'is the top of the stack, the total band energy relative to the teacher’s.',
       'Real energy is a lower bound and pseudo an upper bound, because only same-band linear ' +
       'relations count.',
-      'The grey segments in c and d are the same quantity for the re-truncated teacher: the part ' +
-      'the teacher itself still accounts for.',
-      'In e and f the dark and light bars are separate medians of the per-frame LiEqualizer ' +
-      '− LiSeer difference, not a stack, so their sum is not the median of the total change.',
-      '† marks bands where the cross-scene null median R² exceeds 0.05, where real ' +
-      'energy may be slightly overestimated.',
-      EPOCH_NOTE
+      'Bars carrying white diagonals sit in bands the sparse scan does not support: the ' +
+      'structure is absent from the observation rather than attenuated in it, so no ' +
+      'objective can recover it. A bar cut by two strokes runs past the top of the axis, ' +
+      'and its true value is printed above it.',
+      'In rows b and d the dark and light bars are separate medians of the per-frame ' +
+      'LiEqualizer − LiSeer-P difference, not a stack, so their sum is not the median of the ' +
+      'total change. Those two rows carry a broken y axis: zero sits at the same height in ' +
+      'all three panels of a row, and the scales above and below it are each tight to their ' +
+      'own data, so the small positive bars stay readable beside the large negative ones.'
     ].join(' ');
   }
 
@@ -1333,7 +1468,8 @@
 
   function drawFig3Row(body, d, key, W, theme, opts) {
     var panels = d.panels || [];
-    var cols = W >= 880 ? 3 : (W >= 620 ? 2 : 1);
+    var want = (d.grid && d.grid.cols) || 3;
+    var cols = Math.min(want, W >= 880 ? 3 : (W >= 620 ? 2 : 1));
     var pw = panelWidth(W, cols, 14, 232, 440);
     var ph = 236;
     var row = hEl('div', 'lqp-row', body);
@@ -1366,7 +1502,7 @@
          has collapsed to one column, where a panel with no y labels is unreadable. */
       drawY = shared ? (cols === 1) : ((p.y.tick_label_side || 'left') !== 'none');
       drawPanel(grid, p, {
-        pw: pw, ph: ph, theme: theme, padL: padL,
+        pw: pw, ph: Math.round(ph * (p.height_ratio || 1)), theme: theme, padL: padL,
         drawY: drawY,
         hasYLabel: hasYLabel && !shared,
         yTickLabels: shared && leader ? leader.y.tick_labels : null,
@@ -1385,8 +1521,8 @@
     var a = sets.fig3a, b = sets.fig3b;
     var ctx = scaffold(mount, {
       key: 'paper-fig3', theme: theme,
-      axes: 'x: ' + (a.units && a.units.x) + ' · y: ' + (a.units && a.units.y_left_middle) +
-        ' (left, middle), ' + (a.units && a.units.y_right) + ' (right)',
+      axes: 'x: ' + (a.units && a.units.x) + ' · y: ' + (a.units && a.units.y_curves) +
+        ' (curves), ' + (a.units && a.units.y_strip) + ' (gap strips)',
       note: note3(a, b)
     });
     legendEntries(ctx.legend, (a.figure_legends && a.figure_legends[0] &&
@@ -1396,7 +1532,7 @@
     drawFig3Row(ctx.body, b, 'fig3b', W, theme, opts);
 
     tableFor(ctx.table, 'Fig. 3a, TPV feature plane xy: per-band CKA to the Dense teacher ' +
-      'divided by the noise ceiling, and the share of the LiSeer-to-ceiling gap closed by ' +
+      'divided by the noise ceiling, and the share of the LiSeer-P-to-ceiling gap closed by ' +
       'LiEqualizer. Columns are the 11 graph-frequency bands by lower λ edge; 4 ' +
       'significant digits.', a.panels);
     tableFor(ctx.table, 'Fig. 3b, voxel logits: the same quantities on the 8-class voxel ' +
@@ -1410,8 +1546,8 @@
       var ctx = scaffold(mount, {
         key: 'paper-' + key, theme: theme,
         axes: 'x: ' + (d.units && d.units.x) + ' · y: ' +
-          (d.units && d.units.y_left_middle) + ' (left, middle), ' +
-          (d.units && d.units.y_right) + ' (right)',
+          (d.units && d.units.y_curves) + ' (curves), ' +
+          (d.units && d.units.y_strip) + ' (gap strips)',
         note: note3one(d, key)
       });
       legendEntries(ctx.legend, (d.figure_legends && d.figure_legends[0] &&
@@ -1426,68 +1562,55 @@
 
   /* ============================================================== Fig. 4 == */
 
-  var FIG4_ROWS = [['a', 'b'], ['c', 'd'], ['e', 'f']];
-
   function panelById(d, id) {
     var i, ps = d.panels || [];
     for (i = 0; i < ps.length; i++) if (ps[i].id === id) return ps[i];
     return null;
   }
 
-  function derivedLegend(panels) {
-    var out = [], seen = {}, i, j, s;
-    for (i = 0; i < panels.length; i++) {
-      for (j = 0; j < (panels[i].series || []).length; j++) {
-        s = panels[i].series[j];
-        if (s.kind !== 'bar' || seen[s.name]) continue;
-        seen[s.name] = 1;
-        out.push({ label: s.name, kind: 'patch', color: s.color });
-      }
-    }
-    return out;
-  }
-
   function drawFig4(mount, W, theme, sets, opts) {
     var d = sets.fig4;
     var ctx = scaffold(mount, {
       key: 'paper-fig4', theme: theme,
-      axes: 'x: ' + (d.units && d.units.x) + ' · y: a, b — ' +
-        (d.units && d.units.y_a_b) + ' · c, d — ' + (d.units && d.units.y_c_d) +
-        ' · e, f — ' + (d.units && d.units.y_e_f),
+      axes: 'x: ' + (d.units && d.units.x) + ' · y: a, c — ' +
+        (d.units && d.units.y_a_c) + ' · b, d — ' + (d.units && d.units.y_b_d),
       note: note4(d)
     });
 
-    var cols = W >= 720 ? 2 : 1;
-    var pw = panelWidth(W, cols, 14, 268, 570);
-    var ph = 252;
+    var gspec = d.grid || {};
+    var rows = gspec.rows || [];
+    var titles = gspec.row_titles || [];
+    var cols = Math.min(gspec.cols || 3, W >= 900 ? 3 : (W >= 620 ? 2 : 1));
+    var pw = panelWidth(W, cols, 14, 250, 470);
+    var ph = 244;
     var hasYLabel = pw >= 300;
     var legends = d.figure_legends || [];
     var ri, ci, row, head, grid, ids, p, i;
 
-    /* one gutter for all six panels, so the three rows line up column by column */
+    /* one gutter for every panel in the figure, so the rows line up column by
+       column even though each row carries its own y scale */
     var padL = 0;
     for (i = 0; i < d.panels.length; i++) {
       padL = Math.max(padL, padLFor(d.panels[i], d.panels[i].y.tick_labels, hasYLabel));
     }
 
-    /* column headers, as in the published figure, only while the columns exist */
-    if (cols === 2) {
+    /* one legend for the whole figure, as in the published version */
+    legendEntries(ctx.legend, (legends[0] && legends[0].entries) || [], theme);
+
+    /* dataset headers, as in the published figure, only while the columns exist */
+    if (cols === rows[0].length) {
       var ch = hEl('div', 'lqp-cols', ctx.body);
-      hEl('span', null, ch, (panelById(d, 'a') || {}).column || '');
-      hEl('span', null, ch, (panelById(d, 'b') || {}).column || '');
+      for (ci = 0; ci < rows[0].length; ci++) {
+        hEl('span', null, ch, (panelById(d, rows[0][ci]) || {}).column || '');
+      }
     }
 
-    for (ri = 0; ri < FIG4_ROWS.length; ri++) {
-      ids = FIG4_ROWS[ri];
+    var xlab = (d.figure_texts && d.figure_texts[0] && d.figure_texts[0].text) || '';
+    for (ri = 0; ri < rows.length; ri++) {
+      ids = rows[ri];
       row = hEl('div', 'lqp-row', ctx.body);
-      head = hEl('div', 'lqp-legend is-row', row);
-      if (ri === 0) {
-        legendEntries(head, (legends[0] && legends[0].entries) || [], theme);
-      } else if (ri === 1) {
-        legendEntries(head, (legends[1] && legends[1].entries) || [], theme);
-      } else {
-        legendEntries(head, derivedLegend([panelById(d, 'e'), panelById(d, 'f')]), theme);
-      }
+      head = hEl('div', 'lqp-rowhead', row);
+      hEl('span', null, head, titles[ri] || '');
       grid = hEl('div', 'lqp-panels', row);
       setStyle(grid, '--lqp-cols:' + cols + ';--lqp-pmax:' + pw + 'px');
       for (ci = 0; ci < ids.length; ci++) {
@@ -1498,25 +1621,19 @@
           drawY: true, hasYLabel: hasYLabel,
           figRef: d.paper_ref,
           sub: cols === 1 ? p.column : null,
-          title: (d.paper_ref || 'Fig. 4') + ' ' + p.title + ' — ' + p.column,
+          title: (d.paper_ref || 'Fig. 4') + ' ' + (titles[ri] || '') + ' — ' + p.column,
           desc: d.description
         });
       }
-      hEl('p', 'lqp-xlab', row, (p && p.x.label) || '');
+      if (ri === rows.length - 1) hEl('p', 'lqp-xlab', row, xlab);
     }
 
-    var texts = d.figure_texts || [];
-    for (i = 0; i < texts.length; i++) {
-      if (texts[i].fontsize_pt && texts[i].fontsize_pt <= 6.5) {
-        hEl('p', 'lqp-pub', ctx.body, 'As published: ' + texts[i].text);
-      }
-    }
-
-    tableFor(ctx.table, 'Fig. 4: band-wise energy relative to the Dense teacher. a, b are ' +
-      'log₂ of the energy-share ratio (0 = ×1); c, d and e, f are divided by the ' +
-      'teacher’s own band energy under a re-truncated input. Light bars in c and d are ' +
-      'segment heights stacked on the matching dark bar. Columns are the 11 graph-frequency ' +
-      'bands by lower λ edge; 4 significant digits.', d.panels);
+    tableFor(ctx.table, 'Fig. 4: band energy relative to the Dense teacher, split into ' +
+      'the part a ridge fit on held-out azimuthal sectors attributes to the teacher ' +
+      '(real) and the part it does not (pseudo). Light bars in rows a and c are segment ' +
+      'heights stacked on the matching dark bar; rows b and d are the paired per-frame ' +
+      'change from LiSeer-P to LiEqualizer. Columns are the 11 graph-frequency bands by ' +
+      'lower λ edge; 4 significant digits.', d.panels);
     return ctx.fig;
   }
 

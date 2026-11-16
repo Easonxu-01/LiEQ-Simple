@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>LiEqualizer · Seeing the Lost Spectrum of Sparse LiDARs</title>
-<meta name="description" content="LiEqualizer equalizes a sparse-LiDAR student's spectrum against a dense teacher during training, raising zero-shot cross-sensor mIoU by up to 11.5 points without changing the network, its parameter count or its inference cost." />
+<meta name="description" content="LiEqualizer equalizes a sparse-LiDAR student's spectrum against a dense teacher during training, raising zero-shot cross-sensor mIoU by up to 17.1 points without changing the network, its parameter count or its inference cost." />
 <link rel="canonical" href="https://easonxu-01.github.io/LiEQ-Simple/" />
 <meta property="og:type" content="website" />
 <meta property="og:title" content="LiEqualizer: Seeing the Lost Spectrum of Sparse LiDARs" />
@@ -554,14 +554,14 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
       <span class="chip">TL;DR</span>
       <p class="lead"><b>Main takeaway:</b> read a LiDAR scan as a spectrum and the sensor gap becomes a band problem.
       A dense teacher still holds the bands a sparse scan lost, so a student can be taught to match them — restoring
-      real detail in the encoder's code and suppressing invented detail in the decoder's logits. This buys up to
-      <b>+11.5 zero-shot cross-sensor mIoU</b> with <b>zero</b> change to the architecture, the parameter count or the inference cost.</p>
+      macroscopic structure in the encoder's code, and recovering real detail while suppressing invented detail in the decoder's logits. This buys up to
+      <b>+17.1 zero-shot cross-sensor mIoU</b> with <b>zero</b> change to the architecture, the parameter count or the inference cost.</p>
     </div>
     <div class="prose reveal">
       <p><span class="tag">Motivation</span>Engineers and researchers pay twice for LiDAR perception: a cheap sensor with few beams sees less of the scene, and every new sensor means new data, labels and training, team after team. Recent work cuts that cost by randomizing the sampling pattern during training, but ignoring a pattern does not return the measurements it never took, and putting them back has meant reconstructing the scan before the network reads it.</p>
       <p><span class="tag">Perspective</span>Read as frequencies, sparse sampling corrupts a scan in two coupled ways. <em>High-frequency attenuation</em>: genuine fine detail falls between the beams, and on the network's grid the isolated cells left behind read as high-frequency energy the scene never contained. <em>Low-frequency aliasing</em>: unresolved energy folds down into the low and middle bands and spreads a broadband floor across the spectrum. A filter can only do the first; a sampler does both, which is why the method has two branches. Because every sparse view misses bands, the attenuated magnitudes cannot be recovered from sparse data alone — but a teacher trained on densified scenes has observed exactly the bands the student misses.</p>
-      <p><span class="tag">Method</span>LiEqualizer equalizes the spectrum rather than rebuilding the scan. Both branches probe the representations through polynomial diffusion operators that commute with the Laplacian and create no new frequency components — <em>spectral-invariant operators</em> (SIOs) — so what is aligned is a step-wise diffusion response rather than a raw spatial signal. A low-frequency distiller on the encoder's tri-perspective planes restores the weakened macroscopic structure; a high-frequency distiller on the decoder's voxel logits suppresses the fabricated detail. Selective teacher gating is what avoids the negative transfer of indiscriminate dense-to-sparse mimicry.</p>
-      <p><span class="tag">Results</span>Across SemanticKITTI, nuScenes and Waymo, LiEqualizer improves all six unseen-sensor transfers by 0.9 to 11.5&nbsp;mIoU (6.8 on average) and raises source-domain mIoU by 7.4 to 17.0 points, enough for a single generalizable model to surpass the in-domain experts trained on real scans on all three benchmarks. No architectural change, no added parameters and no extra data; the only overhead is the one-time cost of training the teacher. The losses act in training alone, so the deployed model keeps the baseline's architecture and inference cost. On three vehicles carrying previously unseen 32-, 80- and 128-beam LiDARs, the unchanged model improves class-averaged IoU over the randomized-sampling baseline in all nine platform&ndash;source settings.</p>
+      <p><span class="tag">Method</span>LiEqualizer equalizes the spectrum rather than rebuilding the scan. Both branches probe the representations through polynomial diffusion operators that commute with the Laplacian and create no new frequency components — <em>spectral-invariant operators</em> (SIOs) — so what is aligned is a step-wise diffusion response rather than a raw spatial signal. A low-frequency distiller on the encoder's tri-perspective planes restores the macroscopic structure that aliasing corrupts; a high-frequency distiller on the decoder's voxel logits recovers genuine detail while suppressing the fabricated. Selective teacher gating is what avoids the negative transfer of indiscriminate dense-to-sparse mimicry.</p>
+      <p><span class="tag">Results</span>Across SemanticKITTI, nuScenes and Waymo, LiEqualizer improves all six unseen-sensor transfers by 4.8 to 17.1&nbsp;mIoU (12.0 on average) and raises source-domain mIoU by 8.4 to 18.0 points, enough for a single generalizable model to surpass the in-domain experts trained on real scans on all three benchmarks. No architectural change, no added parameters and no extra data; the only overhead is the one-time cost of training the teacher. The losses act in training alone, so the deployed model keeps the baseline's architecture and inference cost. On three vehicles carrying previously unseen 32-, 80- and 128-beam LiDARs, the unchanged model improves class-averaged IoU over the randomized-sampling baseline in all nine platform&ndash;source settings.</p>
     </div>
   </div>
 </section>
@@ -685,9 +685,9 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
 
     <div class="stats reveal">
       <div class="stat"><div class="num">6/6<small>transfers</small></div>
-        <div class="lbl">Every unseen-sensor transfer improves over the randomized-sampling baseline, by 0.9 to 11.5 mIoU — 6.8 on average. The largest is Waymo → SemanticKITTI.</div></div>
+        <div class="lbl">Every unseen-sensor transfer improves over the randomized-sampling baseline, by 4.8 to 17.1 mIoU — 12.0 on average. The largest is Waymo → nuScenes.</div></div>
       <div class="stat accent"><div class="num">3/3<small>benchmarks</small></div>
-        <div class="lbl">On its own sensor, one generalizable model beats the in-domain experts trained on real scans: +3.9 on SemanticKITTI, +5.7 on nuScenes, +18.3 on Waymo.</div></div>
+        <div class="lbl">On its own sensor, one generalizable model beats the in-domain experts trained on real scans: +4.9 on SemanticKITTI, +8.0 on nuScenes, +19.3 on Waymo.</div></div>
       <div class="stat"><div class="num">0<small>extra params</small></div>
         <div class="lbl">The deployed model is the baseline network: 32,277,463 parameters, 0.224 s per frame, 5.66 GiB peak. The only overhead is training the teacher once.</div></div>
       <div class="stat"><div class="num">9/9<small>on-vehicle</small></div>
@@ -925,7 +925,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
                      loading="lazy" decoding="async" width="1100" height="332" />
                 <video data-src="assets/clips/rv-avt-01.mp4" muted loop playsinline preload="none"
                        disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
-                <span class="tile-no">11<s>/36</s></span>
+                <span class="tile-no">13<s>/36</s></span>
                 <span class="tile-chip"><b>TH-AVT</b></span>
                 <span class="tile-zoom" aria-hidden="true">&#8599;</span>
               </button>
@@ -936,7 +936,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
                      loading="lazy" decoding="async" width="1100" height="332" />
                 <video data-src="assets/clips/rv-avt-02.mp4" muted loop playsinline preload="none"
                        disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
-                <span class="tile-no">12<s>/36</s></span>
+                <span class="tile-no">14<s>/36</s></span>
                 <span class="tile-chip"><b>TH-AVT</b></span>
                 <span class="tile-zoom" aria-hidden="true">&#8599;</span>
               </button>
@@ -947,7 +947,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
                      loading="lazy" decoding="async" width="1100" height="332" />
                 <video data-src="assets/clips/rv-avt-03.mp4" muted loop playsinline preload="none"
                        disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
-                <span class="tile-no">13<s>/36</s></span>
+                <span class="tile-no">15<s>/36</s></span>
                 <span class="tile-chip"><b>TH-AVT</b></span>
                 <span class="tile-zoom" aria-hidden="true">&#8599;</span>
               </button>
@@ -958,7 +958,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
                      loading="lazy" decoding="async" width="1100" height="332" />
                 <video data-src="assets/clips/rv-avt-04.mp4" muted loop playsinline preload="none"
                        disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
-                <span class="tile-no">14<s>/36</s></span>
+                <span class="tile-no">16<s>/36</s></span>
                 <span class="tile-chip"><b>TH-AVT</b></span>
                 <span class="tile-zoom" aria-hidden="true">&#8599;</span>
               </button>
@@ -969,7 +969,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
                      loading="lazy" decoding="async" width="1100" height="332" />
                 <video data-src="assets/clips/rv-avt-05.mp4" muted loop playsinline preload="none"
                        disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
-                <span class="tile-no">15<s>/36</s></span>
+                <span class="tile-no">17<s>/36</s></span>
                 <span class="tile-chip"><b>TH-AVT</b></span>
                 <span class="tile-zoom" aria-hidden="true">&#8599;</span>
               </button>
@@ -980,7 +980,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
                      loading="lazy" decoding="async" width="1100" height="332" />
                 <video data-src="assets/clips/rv-avt-06.mp4" muted loop playsinline preload="none"
                        disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
-                <span class="tile-no">16<s>/36</s></span>
+                <span class="tile-no">18<s>/36</s></span>
                 <span class="tile-chip"><b>TH-AVT</b></span>
                 <span class="tile-zoom" aria-hidden="true">&#8599;</span>
               </button>
@@ -991,7 +991,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
                      loading="lazy" decoding="async" width="1100" height="332" />
                 <video data-src="assets/clips/rv-avt-07.mp4" muted loop playsinline preload="none"
                        disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
-                <span class="tile-no">17<s>/36</s></span>
+                <span class="tile-no">19<s>/36</s></span>
                 <span class="tile-chip"><b>TH-AVT</b></span>
                 <span class="tile-zoom" aria-hidden="true">&#8599;</span>
               </button>
@@ -1002,7 +1002,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
                      loading="lazy" decoding="async" width="1100" height="332" />
                 <video data-src="assets/clips/rv-avt-08.mp4" muted loop playsinline preload="none"
                        disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
-                <span class="tile-no">18<s>/36</s></span>
+                <span class="tile-no">20<s>/36</s></span>
                 <span class="tile-chip"><b>TH-AVT</b></span>
                 <span class="tile-zoom" aria-hidden="true">&#8599;</span>
               </button>
@@ -1013,7 +1013,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
                      loading="lazy" decoding="async" width="1100" height="332" />
                 <video data-src="assets/clips/rv-avt-09.mp4" muted loop playsinline preload="none"
                        disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
-                <span class="tile-no">19<s>/36</s></span>
+                <span class="tile-no">21<s>/36</s></span>
                 <span class="tile-chip"><b>TH-AVT</b></span>
                 <span class="tile-zoom" aria-hidden="true">&#8599;</span>
               </button>
@@ -1024,7 +1024,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
                      loading="lazy" decoding="async" width="1100" height="332" />
                 <video data-src="assets/clips/rv-avt-10.mp4" muted loop playsinline preload="none"
                        disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
-                <span class="tile-no">20<s>/36</s></span>
+                <span class="tile-no">22<s>/36</s></span>
                 <span class="tile-chip"><b>TH-AVT</b></span>
                 <span class="tile-zoom" aria-hidden="true">&#8599;</span>
               </button>
@@ -1035,7 +1035,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
                      loading="lazy" decoding="async" width="1100" height="332" />
                 <video data-src="assets/clips/rv-avt-11.mp4" muted loop playsinline preload="none"
                        disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
-                <span class="tile-no">11<s>/36</s></span>
+                <span class="tile-no">23<s>/36</s></span>
                 <span class="tile-chip"><b>TH-AVT</b></span>
                 <span class="tile-zoom" aria-hidden="true">&#8599;</span>
               </button>
@@ -1046,7 +1046,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
                      loading="lazy" decoding="async" width="1100" height="332" />
                 <video data-src="assets/clips/rv-avt-12.mp4" muted loop playsinline preload="none"
                        disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
-                <span class="tile-no">12<s>/36</s></span>
+                <span class="tile-no">24<s>/36</s></span>
                 <span class="tile-chip"><b>TH-AVT</b></span>
                 <span class="tile-zoom" aria-hidden="true">&#8599;</span>
               </button>
@@ -1064,7 +1064,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
                      loading="lazy" decoding="async" width="1100" height="340" />
                 <video data-src="assets/clips/rv-courier-01.mp4" muted loop playsinline preload="none"
                        disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
-                <span class="tile-no">21<s>/36</s></span>
+                <span class="tile-no">25<s>/36</s></span>
                 <span class="tile-chip"><b>TH-Courier</b></span>
                 <span class="tile-zoom" aria-hidden="true">&#8599;</span>
               </button>
@@ -1075,7 +1075,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
                      loading="lazy" decoding="async" width="1100" height="340" />
                 <video data-src="assets/clips/rv-courier-02.mp4" muted loop playsinline preload="none"
                        disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
-                <span class="tile-no">22<s>/36</s></span>
+                <span class="tile-no">26<s>/36</s></span>
                 <span class="tile-chip"><b>TH-Courier</b></span>
                 <span class="tile-zoom" aria-hidden="true">&#8599;</span>
               </button>
@@ -1086,7 +1086,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
                      loading="lazy" decoding="async" width="1100" height="340" />
                 <video data-src="assets/clips/rv-courier-03.mp4" muted loop playsinline preload="none"
                        disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
-                <span class="tile-no">23<s>/36</s></span>
+                <span class="tile-no">27<s>/36</s></span>
                 <span class="tile-chip"><b>TH-Courier</b></span>
                 <span class="tile-zoom" aria-hidden="true">&#8599;</span>
               </button>
@@ -1097,7 +1097,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
                      loading="lazy" decoding="async" width="1100" height="340" />
                 <video data-src="assets/clips/rv-courier-04.mp4" muted loop playsinline preload="none"
                        disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
-                <span class="tile-no">24<s>/36</s></span>
+                <span class="tile-no">28<s>/36</s></span>
                 <span class="tile-chip"><b>TH-Courier</b></span>
                 <span class="tile-zoom" aria-hidden="true">&#8599;</span>
               </button>
@@ -1108,7 +1108,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
                      loading="lazy" decoding="async" width="1100" height="340" />
                 <video data-src="assets/clips/rv-courier-05.mp4" muted loop playsinline preload="none"
                        disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
-                <span class="tile-no">25<s>/36</s></span>
+                <span class="tile-no">29<s>/36</s></span>
                 <span class="tile-chip"><b>TH-Courier</b></span>
                 <span class="tile-zoom" aria-hidden="true">&#8599;</span>
               </button>
@@ -1119,7 +1119,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
                      loading="lazy" decoding="async" width="1100" height="340" />
                 <video data-src="assets/clips/rv-courier-06.mp4" muted loop playsinline preload="none"
                        disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
-                <span class="tile-no">26<s>/36</s></span>
+                <span class="tile-no">30<s>/36</s></span>
                 <span class="tile-chip"><b>TH-Courier</b></span>
                 <span class="tile-zoom" aria-hidden="true">&#8599;</span>
               </button>
@@ -1130,7 +1130,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
                      loading="lazy" decoding="async" width="1100" height="340" />
                 <video data-src="assets/clips/rv-courier-07.mp4" muted loop playsinline preload="none"
                        disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
-                <span class="tile-no">27<s>/36</s></span>
+                <span class="tile-no">31<s>/36</s></span>
                 <span class="tile-chip"><b>TH-Courier</b></span>
                 <span class="tile-zoom" aria-hidden="true">&#8599;</span>
               </button>
@@ -1141,7 +1141,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
                      loading="lazy" decoding="async" width="1100" height="340" />
                 <video data-src="assets/clips/rv-courier-08.mp4" muted loop playsinline preload="none"
                        disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
-                <span class="tile-no">28<s>/36</s></span>
+                <span class="tile-no">32<s>/36</s></span>
                 <span class="tile-chip"><b>TH-Courier</b></span>
                 <span class="tile-zoom" aria-hidden="true">&#8599;</span>
               </button>
@@ -1152,7 +1152,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
                      loading="lazy" decoding="async" width="1100" height="340" />
                 <video data-src="assets/clips/rv-courier-09.mp4" muted loop playsinline preload="none"
                        disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
-                <span class="tile-no">29<s>/36</s></span>
+                <span class="tile-no">33<s>/36</s></span>
                 <span class="tile-chip"><b>TH-Courier</b></span>
                 <span class="tile-zoom" aria-hidden="true">&#8599;</span>
               </button>
@@ -1163,7 +1163,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
                      loading="lazy" decoding="async" width="1100" height="340" />
                 <video data-src="assets/clips/rv-courier-10.mp4" muted loop playsinline preload="none"
                        disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
-                <span class="tile-no">30<s>/36</s></span>
+                <span class="tile-no">34<s>/36</s></span>
                 <span class="tile-chip"><b>TH-Courier</b></span>
                 <span class="tile-zoom" aria-hidden="true">&#8599;</span>
               </button>
@@ -1174,7 +1174,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
                      loading="lazy" decoding="async" width="1100" height="340" />
                 <video data-src="assets/clips/rv-courier-11.mp4" muted loop playsinline preload="none"
                        disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
-                <span class="tile-no">11<s>/36</s></span>
+                <span class="tile-no">35<s>/36</s></span>
                 <span class="tile-chip"><b>TH-Courier</b></span>
                 <span class="tile-zoom" aria-hidden="true">&#8599;</span>
               </button>
@@ -1185,7 +1185,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
                      loading="lazy" decoding="async" width="1100" height="340" />
                 <video data-src="assets/clips/rv-courier-12.mp4" muted loop playsinline preload="none"
                        disablepictureinpicture tabindex="-1" aria-hidden="true"></video>
-                <span class="tile-no">12<s>/36</s></span>
+                <span class="tile-no">36<s>/36</s></span>
                 <span class="tile-chip"><b>TH-Courier</b></span>
                 <span class="tile-zoom" aria-hidden="true">&#8599;</span>
               </button>
@@ -1205,21 +1205,27 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
       <div class="eyebrow">Analysis</div>
       <h2>What the distillation actually moved</h2>
       <p class="lead">The two diagnostic figures from the manuscript, re-drawn here from the released measurements
-      rather than pasted in as pictures. Both read band by band, from the lowest-frequency band on the left.</p>
+      rather than pasted in as pictures. Both read band by band, from the lowest-frequency band on the left, with
+      one column per training source.</p>
     </div>
 
     <figure class="fig reveal">
       <div class="fig-media"><div id="lq-paper-fig3" data-lieq-paper-chart="paper-fig3"></div></div>
-      <figcaption><b>Fig 7.</b> Alignment, band by band. Agreement between the student's field and the teacher's
-      within each band, scaled so that one is the agreement the teacher reaches with itself when its input is
-      re-drawn under the same budget. Higher is better in all three columns. This is the manuscript's Fig. 3,
-      re-drawn here from the released measurements.</figcaption>
+      <figcaption><b>Fig 7.</b> Alignment, band by band, on all three training sources. Agreement between the
+      student's field and the teacher's within each band, scaled so that one is the agreement the teacher reaches
+      with itself when its input is re-drawn under the same budget. Higher is better. The strip under each panel
+      is the share of LiSeer-P's remaining distance to that ceiling which LiEqualizer closes. This is the
+      manuscript's Fig. 3, re-drawn here from the released measurements.</figcaption>
     </figure>
 
     <figure class="fig reveal">
       <div class="fig-media"><div id="lq-paper-fig4" data-lieq-paper-chart="paper-fig4"></div></div>
-      <figcaption><b>Fig 8.</b> How much energy a band carries, and how much of it the teacher accounts for.
-      The manuscript's Fig. 4, re-drawn from the released measurements.</figcaption>
+      <figcaption><b>Fig 8.</b> How much energy a band carries, and how much of it the teacher accounts for, on all
+      three training sources. Rows a and c split each band's energy into the part a fit on held-out sectors
+      attributes to the teacher and the part it does not; rows b and d are the paired per-frame change from LiSeer-P
+      to LiEqualizer. Bars carrying white diagonals sit in bands the sparse scan does not support, where the
+      structure is missing from the observation rather than attenuated in it. The manuscript's Fig. 4, re-drawn
+      from the released measurements.</figcaption>
     </figure>
 
     <div class="section-head reveal" style="margin-top:46px">
@@ -1251,7 +1257,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
         <span class="ic">&lt;/&gt;</span><span><span class="t">Source code</span><br /><span class="m">GitHub · LiEQ-Simple</span></span><span class="ar">→</span></a>
       <a class="dl soon" href="#"><span class="ic">◆</span><span><span class="t">Checkpoints</span><br /><span class="m">coming soon</span></span><span class="ar">→</span></a>
       <a class="dl" href="https://github.com/PRBonn/LiDiff" target="_blank" rel="noopener"><span class="ic">▤</span><span><span class="t">Densified data &amp; labels</span><br /><span class="m">generated with LiDiff · SemanticKITTI / nuScenes / Waymo</span></span><span class="ar">→</span></a>
-      <a class="dl" href="#clips"><span class="ic">&#9654;</span><span><span class="t">Real-vehicle clips</span><br /><span class="m">30 clips, on this page</span></span><span class="ar">&rarr;</span></a>
+      <a class="dl" href="#clips"><span class="ic">&#9654;</span><span><span class="t">Real-vehicle clips</span><br /><span class="m">36 clips, on this page</span></span><span class="ar">&rarr;</span></a>
     </div>
     <div class="eyebrow" style="margin-top:28px">Documentation</div>
     <div class="docs reveal">
@@ -1271,7 +1277,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
     <div class="bib reveal">
       <button class="copy" onclick="copyBib(this)">Copy</button>
       <pre id="bibtex">@article{xu2026liequalizer,
-  title   = {LiEqualizer: Seeing the Lost Spectrum of Sparse LiDARs via Spectral-Invariant Distillation},
+  title   = {LiEqualizer: Seeing the Lost Spectrum of Sparse LiDARs for Zero-Shot Cross-LiDAR Segmentation},
   author  = {Xu, Zikun and Yang, Shuocheng and Wang, Jianqiang and Li, Keqiang
              and Lee, Gim Hee and Xu, Shaobing},
   year    = {2026},
