@@ -135,12 +135,7 @@
   };
 
   /* Table 2 - distillation objectives compared under one pipeline.
-   *
-   * Transcribed from the printed tex with no departures. (An earlier revision
-   * of the tex printed (+0.5) on the last row's SK->nuScenes cell; 58.3 - 56.8
-   * = 1.5, and Table 3 printed (+1.5) for the identical pair, so the page
-   * carried (+1.5) with a footnote. The tex now prints (+1.5) too and the
-   * footnote is gone.)
+   * Transcribed from the printed tex with no departures.
    */
   var KD = {
     number: 'Table 2',
