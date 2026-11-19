@@ -1,5 +1,35 @@
 # Changelog
 
+## 2026-11 — final training code, layouts and teacher checkpoints
+
+### Changed
+
+- **Model code updated to the final training code.**
+  - *Boundary bookkeeping fix.* `shrink_num_sparse_points` (`datasets/pipelines/PointoccMapping.py`) keeps
+    `results['num_sparse_points']` in sync whenever rows are removed: by the ego-vehicle point filter, and by the
+    Waymo label-0 removal in `loading_voxels_sk.py`. This changes the purified input on nuScenes and Waymo;
+    SemanticKITTI is unchanged.
+  - *Loss balancer.* `dynamic_loss_balance` gains an optional closed-loop GradNorm controller
+    (`controller='gradnorm'`, `normalize='grad_budget'`) and optional diagnostics (`trace_file`, `log_grad_stats`).
+    The default `controller='legacy'` behaves exactly as before.
+  - *Minority-class recipe keys.* New keys `minority_mixup_prob`, `minority_mixup_classes`,
+    `minority_mixup_num_add` and `consistency_minority_weight`. Their defaults equal the former fixed constants.
+- **Configs.**
+  - All three student configs use 8 GPUs x 1 sample per GPU x 4 accumulation steps, an effective batch of 32.
+    Iteration-based values in these files are set for this layout.
+  - The SemanticKITTI dense-teacher config describes the released SemanticKITTI teacher. It trains on the
+    dense + sparse union input, with the Living Being paste and densification; its layout is 8 x 1 x 2, an
+    effective batch of 16.
+
+### Added
+
+- **Data transform `LivBInstanceBankPaste`** (`datasets/pipelines/livb_instance_bank.py`). It pastes Living Being
+  instances across frames from an offline bank built from the SemanticKITTI training sequences only. It must sit
+  after `VoxelClassMapping` and before `PointsegMapping`; with `prob=0` it is a no-op. The SemanticKITTI student
+  and teacher configs enable it; the nuScenes and Waymo configs do not use it. The bank itself is not
+  distributed; see the README for how it is built and its file format.
+- **Teacher checkpoints** for SemanticKITTI, nuScenes and Waymo; see the README.
+
 ## 2026-10 — initial LiEqualizer release
 
 First public release of the LiEqualizer code, built on the public

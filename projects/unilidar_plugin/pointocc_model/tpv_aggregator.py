@@ -536,21 +536,26 @@ def _cb_adc_consistency_loss(
 
 def cb_adc_consistency_loss_ckpt(logits_p, logits_q, voxel_label, num_classes,
                                  T=1.5, ignore_index=0,
-                                 use_checkpoint=True):
+                                 use_checkpoint=True,
+                                 minority_weight=5.0):
     """Checkpoint wrapper of _cb_adc_consistency_loss.
 
     The loss has no learnable parameters inside (a pure function of logits), so recomputation via torch.utils.checkpoint
     is safe under DDP (it does not trigger parameters marked-ready-twice). It frees ~8-10 internal dense
     [C,W,H,Z] intermediate tensors (about 1.5GB per pair in fp32), which are recomputed on demand during backward.
     Returns the loss at its "natural magnitude" (only the T² compensation included); the overall gain is applied by the caller.
+    minority_weight is passed through from the caller; its default 5.0 equals the default of
+    _cb_adc_consistency_loss, so leaving it at the default is bit-for-bit equivalent to not passing it.
+    The CBA-CL implementation itself is unchanged.
     """
     if isinstance(voxel_label, torch.Tensor) and voxel_label.dim() == 3:
         voxel_label = voxel_label.unsqueeze(0)
+    minority_weight = float(minority_weight)
 
     def _fn(lp, lq, lab):
         return _cb_adc_consistency_loss(
             lp, lq, lab, num_classes=num_classes, T=T,
-            ignore_index=ignore_index)
+            ignore_index=ignore_index, minority_weight=minority_weight)
 
     if use_checkpoint and torch.is_grad_enabled() and (
             logits_p.requires_grad or logits_q.requires_grad):
@@ -1211,8 +1216,15 @@ class TPVAggregator_Seg(BaseModule):
         supervise_aux_views=False,
         # The consistency loss has no parameters inside; checkpoint recomputation saves ~1.5GB of dense intermediate activations
         checkpoint_consistency_loss=True,
+        # Weight of the extra JS consistency term on minority-class (5, 6) voxels in CBA-CL.
+        # Previously the fixed default 5.0 of _cb_adc_consistency_loss; the default is unchanged => bit-for-bit equivalent.
+        consistency_minority_weight=5.0,
     ):
         super().__init__()
+        self.consistency_minority_weight = float(consistency_minority_weight)
+        assert self.consistency_minority_weight >= 0.0, consistency_minority_weight
+        print(f'[minority-recipe] model.tpv_aggregator.consistency_minority_weight='
+              f'{self.consistency_minority_weight}', flush=True)
         self.tpv_h = tpv_h
         self.tpv_w = tpv_w
         self.tpv_z = tpv_z
@@ -1644,6 +1656,7 @@ class TPVAggregator_Seg(BaseModule):
                         T=T,
                         ignore_index=0,
                         use_checkpoint=self.checkpoint_consistency_loss,
+                        minority_weight=self.consistency_minority_weight,
                     )
                     pairs += 1
 

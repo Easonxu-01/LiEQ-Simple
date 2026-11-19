@@ -40,8 +40,8 @@ configuration corresponds to.
 
 > **Changing the GPU layout changes the result.** The per-GPU batch size and gradient accumulation in these configs are
 > the ones the paper used. Changing how many GPUs you train on without adjusting them changes the batch-normalization
-> statistics and the iteration-counted schedules, which is why the paper's ablation marks the runs trained with one
-> sample per GPU separately and does not compare them across that boundary.
+> statistics and the iteration-counted schedules, and the result is then no longer comparable with the paper's; every
+> run in the paper's tables shares one effective batch of 32.
 
 ### Pointing the student at its teacher
 
@@ -60,11 +60,11 @@ to start if the file is missing or if its label protocol does not match the stud
 
 | Dataset | Teacher checkpoint | Teacher training layout |
 |---|---|---|
-| SemanticKITTI | best validation epoch (7 of 24) | 4 GPUs x 2 samples, accumulation 2 (effective 16), 500-iteration warmup |
+| SemanticKITTI | epoch 15 of 24, the highest point-level validation mIoU under the input the teacher receives during distillation | 8 GPUs x 1 sample, accumulation 2 (effective 16), 500-iteration warmup |
 | nuScenes | best validation epoch (24 of 24) | 8 GPUs x 1 sample, no accumulation (effective 8), 2500-iteration warmup |
 | Waymo | last epoch (24); no validation ran during teacher training | 4 GPUs x 1 sample, no accumulation (effective 4), 500-iteration warmup |
 
-The students themselves all train under 4 GPUs x 4 samples with accumulation 2 (effective 32).
+The students themselves all train under 8 GPUs x 1 sample with accumulation 4 (effective 32).
 
 ---
 

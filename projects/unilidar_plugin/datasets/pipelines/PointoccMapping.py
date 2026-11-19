@@ -314,6 +314,7 @@ class PointsegMapping(object):
                                  if torch.is_tensor(xyz) else np.concatenate([xyz, feat], axis=1))
             results['pts_semantic_mask'] = (labels if torch.is_tensor(labels)
                                             else torch.from_numpy(labels))
+            shrink_num_sparse_points(results, _keep)
         # ---- end of ego-vehicle point filter ----
 
         assert self.fixed_volume_space
@@ -411,6 +412,32 @@ def _apply_ego_filter(keep, *arrays):
             k = keep.cpu().numpy() if torch.is_tensor(keep) else keep
             out.append(a[k])
     return out
+
+
+def shrink_num_sparse_points(results, keep):
+    """Keep the sparse/dense boundary results['num_sparse_points'] in sync after rows are removed.
+
+    The rows of a dense7sparse concatenated cloud are ordered [real sparse points |
+    dense completion points], and MinorityDensePurify treats the first num_sparse_points
+    rows as real points (exempt from purification, used as the purification reference,
+    and copied by re-densification). Removing rows with a boolean mask preserves the row
+    order, so the real points are still a prefix and the new boundary = the number of rows
+    kept within the old prefix. Every stage that removes rows after LoadPointsFromFile_RPR
+    and before MinorityDensePurify must call this (currently the Waymo label-0 removal and
+    the ego-vehicle point filter); otherwise dense points would be treated as real points.
+    Does nothing when results has no such key (non-concatenated samples).
+    """
+    n = results.get('num_sparse_points')
+    if n is None:
+        return
+    n = int(n)
+    keep = keep.cpu().numpy() if torch.is_tensor(keep) else np.asarray(keep)
+    keep = keep.reshape(-1).astype(bool)
+    if keep.shape[0] < n:
+        raise ValueError(
+            f'[num_sparse_points] mask length {keep.shape[0]} is smaller than the boundary {n}: '
+            f'the mask was not applied to the full concatenated cloud, please check the upstream pipeline.')
+    results['num_sparse_points'] = int(np.count_nonzero(keep[:n]))
 
 
 def cart2polar(input_xyz):

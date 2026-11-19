@@ -3,11 +3,19 @@
 # distillation (d2skd) from a dense teacher.
 # The values in this file are those of the main results (the LiEqualizer rows of the
 # main results tables in the paper).
-# Layout: 4 GPUs x samples_per_gpu=4 x cumulative_iters=2 = effective batch 32.
-# When changing the number of GPUs, adjust samples_per_gpu and cumulative_iters together
-# so that the effective batch stays 32; otherwise the BatchNorm statistics and the
-# iteration-based schedules no longer match, and the results are not comparable with
-# the paper.
+# Layout: 8 GPUs x samples_per_gpu=1 x cumulative_iters=4 = effective batch 32.
+# Iteration-based values in this file are set for this layout (runner iterations per epoch
+# = training frames / 8):
+#   lr_config.warmup_iters 1000, WarmupEMAHook momentum 1e-4,
+#   LiDARCurriculumHook alpha_step 0.02 / alpha_momentum 0.9487,
+#   dynamic_loss_balance interval 20 / l0_burnin_iters 100 / distill.warmup_iters 1000.
+# With 4 GPUs x samples_per_gpu=4 x cumulative_iters=2 (same effective batch, half the
+# iterations per epoch) the equivalent values are 500, 2e-4, 0.04 / 0.9, 10 / 50 / 500:
+# iteration counts scale with the iterations per epoch, per-iteration steps and momenta
+# inversely (alpha_momentum as a power), so every per-epoch quantity stays the same.
+# When changing the number of GPUs, keep the effective batch at 32 and rescale these keys
+# together; otherwise the BatchNorm statistics and the iteration-based schedules no longer
+# match, and the results are not comparable with the paper.
 # The teacher checkpoint (d2skd_load_from) is trained with pointtpv_semantickitti_teacher_dense.py.
 # =============================================================================
 
@@ -260,7 +268,7 @@ cascade_ratio = 2
 dataset_flag = 1 if dataset_type == 'NuscOCCDataset' else 2
 
 
-cumulative_iters = 2
+cumulative_iters = 4  # gradient accumulation (used by optimizer_config below)
 find_unused_parameters = False
 unique_label = [0, 1, 2, 3, 4, 5, 6, 7] if DG else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,17,18,19]
 track_running_stats = False
@@ -510,55 +518,47 @@ model = dict(
         ref_floor_rel=1e-4,               # floor coefficient of the teacher reference in log_tail mode
         ungated_domain='support'),        # ungated planes (yz, zx) use the teacher support
     dense_train = dense_train,
+    # Task-loss balancer for the three segmentation groups point / voxel / sensor (closed-loop
+    # GradNorm; the same block is used for SemanticKITTI, nuScenes and Waymo).
+    #   controller='gradnorm': G_i = w_i * g_i is the weighted gradient norm of group i on the
+    #     reference parameter; target share s_i = p_i * r_i^alpha / sum_j p_j * r_j^alpha with
+    #     p = base_weights (gradient-share priors) and r_i = L_i / L0_i; target weight
+    #     w*_i = s_i * C / g_i; w_i <- w_i * clamp(w*_i / w_i, 0.2, 5)^step, mixed with `momentum`
+    #     and clamped to task_min/max_weights. Fixed point: w_i * g_i = s_i * C, i.e. the weights
+    #     move with the measured gradient ratios.
+    #   normalize='grad_budget': C = sum_i g_i, so the weighted segmentation gradient equals the
+    #     equal-weight one and the reference of the distillation controller below (the unweighted
+    #     mean segmentation gradient) keeps its calibrated meaning.
+    #   Iteration-based keys (layout-dependent, see the file header): gradient norms are measured
+    #     every `interval` calls; L0 is the mean loss of the first `l0_burnin_iters` calls;
+    #     distill.warmup_iters below. step / momentum / ema_beta act once per measurement.
     dynamic_loss_balance=dict(
         enabled=True,
-        alpha=0.1,          # GradNorm target strength
-        step=0.003,          # per-step update size
-        momentum=0.3,       # smoothing for weight updates
-        min_weight=0.1,
-        max_weight=2.0,
-        ema_beta=0.8,       # EMA for loss trend
-        # Task grouping follows fixed order in model:
-        # point / voxel / sensor / consistency
-        base_weights=dict(
-            point=1.5,
-            voxel=0.9,
-            sensor=0.8,  # 1.5 -> 0.8, see task_min_weights below
-            consistency=0.4,
-        ),
-
-        # sensor lower bound 1.2 -> 0.3. Measured basis: over all 24 epochs the balancer kept W_sensor
-        # at 1.2404, i.e. **pinned against this lower bound** -- it wanted to lower sensor and this
-        # floor stopped it. SK has a single real sensor (HDL-64E); after the curriculum widens its
-        # range at ep7/ep13 the sensor MAE rises instead of falling (height 0.054->0.19, H_res
-        # 443->844, theta_low 1.16->4.28), so on SK this task is a noise floor, yet it took 9.5% of the
-        # total loss. Worse, g_seg=mean(g_point,g_voxel,g_sensor) is the denominator of the spectral
-        # distillation rho budget, so noisy gradients inflating g_seg also change the absolute
-        # strength of the spectral terms. For comparison on nuScenes (same code): sensor loss
-        # 0.272->0.015 (18x lower) and W_sensor settles freely at 1.36 without touching any bound --
-        # there the task is really being learned.
-        task_min_weights=dict(
-            point=1.2,
-            voxel=0.65,
-            sensor=0.3,
-            consistency=0.15,
-        ),
-        task_max_weights=dict(
-            point=2.5,
-            voxel=1.6,
-            sensor=2.5,
-            consistency=0.8,
-        ),
-        voxel_guard_enabled=True,
-        voxel_guard_tol=0.02,
-        voxel_guard_gain=3.0,
+        controller='gradnorm',
+        normalize='grad_budget',
+        alpha=0.5,
+        step=1.0,
+        momentum=0.4,
+        interval=20,
+        l0_burnin_iters=100,
+        ema_beta=0.8,
+        min_weight=0.25,
+        max_weight=4.0,
+        base_weights=dict(point=0.55, voxel=0.07, sensor=0.38),
+        task_min_weights=dict(point=0.25, voxel=0.25, sensor=0.25),
+        task_max_weights=dict(point=4.0, voxel=4.0, sensor=4.0),
+        voxel_guard_enabled=False,
+        # Read-only diagnostics: adds balancer_g_* / balancer_share_* / balancer_R_distill to the
+        # training log every iteration. trace_file (optional rank-0 jsonl of every measurement) is off.
+        log_grad_stats=True,
+        trace_file=None,
         # Gradient-ratio controller for the d2skd distillation losses (independent of the GradNorm
         # groups above). The gradient norm of each distillation loss on the shared reference parameter
         # is anchored to rho times the mean gradient of the segmentation groups: when a distillation
-        # loss gets small its weight grows automatically (it is not suppressed), and the distillation
-        # gradient always stays <= rho*g_seg (segmentation is not suppressed). inter = low-frequency
-        # TPV feature distillation, vox = high-frequency voxel-logit distillation; the two paths are
-        # controlled independently and do not suppress each other.
+        # loss gets small its weight grows automatically (it is not suppressed). rho is a ratio target
+        # on this single reference parameter, not an upper bound on the distillation gradient.
+        # inter = low-frequency TPV feature distillation, vox = high-frequency voxel-logit
+        # distillation; the two paths are controlled independently and do not suppress each other.
         distill=dict(
             enabled=True,
             # rho reallocation at an equal total (same as the nuScenes config, which has the full
@@ -598,12 +598,17 @@ model = dict(
             # measure_interval_mult=5,
             rho=dict(inter=0.80, vox=0.75,
                      **({} if KDbaseline else dict(kd=1.30))),
-            warmup_iters=500,  # linear warmup; full effect once the GradNorm statistics are stable
+            warmup_iters=1000,  # linear warmup (iterations, layout-dependent); full effect once the GradNorm statistics are stable
             ema_beta=0.9,  # EMA smoothing of the weights
             min_weight=1e-3,
             max_weight=1e5,
         ),
     ),
+    # Minority copy-paste inside the model (per frame, before the sensor simulation): with
+    # probability minority_mixup_prob, copies of the clusters of the listed classes are pasted at
+    # new positions in the same frame. SemanticKITTI pastes Living Being (5) only.
+    minority_mixup_classes=(5,),
+    minority_mixup_prob=0.15,
 )
 
 bda_aug_conf = dict(
@@ -641,7 +646,11 @@ dict(
     cal_visible=visible_mask,
     file_client_args=dict(backend='disk')),
 dict(type='VoxelClassMapping'),
-dict(type='PointsegMapping', 
+# Cross-frame Living Being instance paste (training pipeline only): with probability 0.3 per
+# frame, num_instances=1 instance from the prebuilt SemanticKITTI train-split instance bank is
+# pasted into the frame. Placed after VoxelClassMapping and before PointsegMapping.
+dict(type='LivBInstanceBankPaste', bank_path='data/livb_bank_sk_train_v1', prob=0.3, num_instances=1),
+dict(type='PointsegMapping',
             grid_size = grid_size,
             grid_size_vox = [tpv_w_*scale_w, tpv_h_*scale_h, tpv_z_*scale_z],
             coarse_ratio = coarse_ratio,
@@ -665,12 +674,13 @@ dict(type='MinorityDensePurify',
      #         traffic-sign   0.325m = 1.7x   -> slightly worse but still better than building (2.3x)
      #   => purify cls5 only. cls6 consists of thin/small *static* structures that LiDiff completes
      #      well.
+     # Densify: real sparse Living Being rows only (cls5); Objects (cls6) are not densified on SK.
      # Note: SK's cls5 is only 0.005% of the points (about 6 real points per frame), ~60x rarer than
      #       nuScenes pedestrians; cls5=0 in the first epoch is a normal rare-class cold start, look
      #       at the trend over epochs 3-5.
      enable=True,
      purify_classes=(5,),  # purify Living Being only
-     densify_classes=(5, 6),
+     densify_classes=(5,),
      purify_thresh=0.2, densify_k=5, densify_jitter=0.02, max_add_per_class=20000),
 dict(type='Collect3Dinput', keys=['train_grid', 'grid_ind', 'grid_ind_vox', 'train_voxel_label', 'train_pts_label', 'reset_random']),
 ]
@@ -754,7 +764,7 @@ train_config=dict(
 )
 
 data = dict(
-    samples_per_gpu=4,
+    samples_per_gpu=1,
     workers_per_gpu=6, #8
     train=train_config,
     val=test_config,
@@ -780,18 +790,19 @@ optimizer_config = dict(
 lr_config = dict(
     policy='CosineAnnealing',
     warmup='linear',
-    warmup_iters=500,
+    warmup_iters=1000,  # iterations (layout-dependent, see the file header)
     warmup_ratio=1.0 / 3,
     min_lr=2e-5)  # the former floor was 40-60% of the peak, with no low-LR consolidation phase -> late val oscillation
 
 # Model-weight EMA.
 #
-# mmcv's built-in EMAHook initialises the EMA buffer with the *initial weights*; with
-# momentum 2e-4 the time constant is 5000 iterations, while one epoch here has only
-# 2400-3500 iterations -- at the end of epoch 1 the EMA still holds 50%-62% of the initial
-# weights, and eval/checkpoints use the EMA weights, so the metrics of the first epochs are
-# heavily underestimated (rare classes such as Living Being drop to 0). Its warm_up argument
+# mmcv's built-in EMAHook initialises the EMA buffer with the *initial weights*; the EMA time
+# constant is about 1/momentum iterations (10000 iterations with momentum 1e-4 at this layout),
+# which spans several epochs -- at the end of epoch 1 the EMA still holds a large share of the
+# initial weights, and eval/checkpoints use the EMA weights, so the metrics of the first epochs
+# are heavily underestimated (rare classes such as Living Being drop to 0). Its warm_up argument
 # uses min(), which only makes the EMA slower and cannot fix the cold start.
+# momentum is per iteration (layout-dependent, see the file header).
 #
 # WarmupEMAHook fixes this: during the first start_epochs epochs the EMA strictly follows the
 # current weights (equivalent to no EMA, zero contamination); afterwards it accumulates with
@@ -803,7 +814,7 @@ lr_config = dict(
 # Effect: smooths the +/-4-8 pp epoch-to-epoch swings of Living Being/Objects (coarse classes
 # 5/6; Objects was formerly called Movable objects).
 custom_hooks = [
-    dict(type='WarmupEMAHook', momentum=0.0002, start_epochs=1, priority='ABOVE_NORMAL'),
+    dict(type='WarmupEMAHook', momentum=0.0001, start_epochs=1, priority='ABOVE_NORMAL'),
 ]
 
 runner = dict(type='EpochBasedRunner', max_epochs=24) if not d2skd else dict(type='DistillEpochBasedRunner', max_epochs=24)
@@ -815,32 +826,19 @@ evaluation = dict(
 )
 
 d2skd_load_from = 'ckpts/teacher_dense_sk.pth'  # placeholder: dense teacher trained with pointtpv_semantickitti_teacher_dense.py
-work_dir = './work_dirs/pointtpv_semantickitti_seg_random'
 log_config = dict(
     interval=50,
     hooks=[
         dict(type='TextLoggerHook'),
-        # SK must be driven by the floor, not by the MAE gate. Measured: the ema_sensor_mae floor is
-        # 0.516, stuck exactly inside the default dead zone [0.5, 0.6], so
-        #   ep1-13 alpha=0.000 -> ep16 0.028 -> ep18 0.379 -> ep20 0.960 -> ep24 0.990
-        # For the first 17 epochs training used GT sensor conditioning while val/inference always used
-        # predicted conditioning -- exactly the train/test path mismatch warned about in this hook's
-        # documentation; only in the last 6 epochs was it forced over, matching in time the mIoU drop
-        # from 0.727@ep18 to 0.724@ep24. Waymo's 0.5-sigma floor has the same problem.
-        # Fix (same floor mechanism as Waymo):
-        #   both thresholds are set outside the MAE trajectory (0.52-0.95 on SK throughout) -> the MAE
-        #   path is completely silent and no longer fights the floor; alpha is driven entirely by
-        #   training progress.
-        #   floor 0.08->0.25 ~ ep2->ep6: starts climbing at ep2 (aligned with when alpha reaches 1 on
-        #   nuScenes), full at ep6 (end of curriculum stage 1); the following 18 epochs (75% of
-        #   training) are on the correct path, and the two curriculum upgrades at ep7/ep13 happen
-        #   after alpha is fixed at 1 -- FiLM conditioning and curriculum range never change at the
-        #   same time. A ramp rather than the nuScenes-style jump is used because SK's sensor head
-        #   predicts poorly to begin with, and a hard switch would inject a large conditioning error
-        #   at once.
+        # FiLM conditioning switch (alpha): the hook keeps an EMA of the sensor-parameter MAE
+        # (momentum alpha_momentum) and moves alpha by alpha_step after every iteration -- up while
+        # the EMA is below alpha_target_low, down while it is above alpha_target_high.
+        # SemanticKITTI uses this MAE-gated rule with thresholds 0.5 / 0.6 (the hook defaults) and no
+        # progress-driven floor (alpha_floor_start / alpha_floor_end unset).
+        # alpha_step / alpha_momentum act per iteration (layout-dependent, see the file header).
         dict(type='LiDARCurriculumHook', schedule=schedule,
-             alpha_target_low=0.45, alpha_target_high=1.10,
-             alpha_floor_start=0.08, alpha_floor_end=0.25),
+             alpha_target_low=0.5, alpha_target_high=0.6,
+             alpha_step=0.02, alpha_momentum=0.9487),
     ])
 
-checkpoint_config = dict(interval=2)
+checkpoint_config = dict(interval=1)

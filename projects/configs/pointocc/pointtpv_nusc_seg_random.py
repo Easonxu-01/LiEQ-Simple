@@ -3,11 +3,19 @@
 # distillation (d2skd) from a dense teacher.
 # The values in this file are those of the main results (the LiEqualizer rows of the
 # main results tables in the paper).
-# Layout: 4 GPUs x samples_per_gpu=4 x cumulative_iters=2 = effective batch 32.
-# When changing the number of GPUs, adjust samples_per_gpu and cumulative_iters together
-# so that the effective batch stays 32; otherwise the BatchNorm statistics and the
-# iteration-based schedules no longer match, and the results are not comparable with
-# the paper.
+# Layout: 8 GPUs x samples_per_gpu=1 x cumulative_iters=4 = effective batch 32.
+# Iteration-based values in this file are set for this layout (runner iterations per epoch
+# = training frames / 8):
+#   lr_config.warmup_iters 1000, WarmupEMAHook momentum 1e-4,
+#   LiDARCurriculumHook alpha_step 0.02 / alpha_momentum 0.9487,
+#   dynamic_loss_balance interval 20 / l0_burnin_iters 100 / distill.warmup_iters 1000.
+# With 4 GPUs x samples_per_gpu=4 x cumulative_iters=2 (same effective batch, half the
+# iterations per epoch) the equivalent values are 500, 2e-4, 0.04 / 0.9, 10 / 50 / 500:
+# iteration counts scale with the iterations per epoch, per-iteration steps and momenta
+# inversely (alpha_momentum as a power), so every per-epoch quantity stays the same.
+# When changing the number of GPUs, keep the effective batch at 32 and rescale these keys
+# together; otherwise the BatchNorm statistics and the iteration-based schedules no longer
+# match, and the results are not comparable with the paper.
 # The teacher checkpoint (d2skd_load_from) is trained with pointtpv_nusc_teacher_dense.py.
 # =============================================================================
 
@@ -196,7 +204,7 @@ dataset_flag_nu = 1 if dataset_type == 'NuscSegDataset' else 2
 
 # Gradient accumulation steps (applied through optimizer_config): effective batch =
 # samples_per_gpu x #GPUs x this value, at the memory cost of one step.
-cumulative_iters = 2
+cumulative_iters = 4
 find_unused_parameters = False
 unique_label = [0, 1, 2, 3, 4, 5, 6, 7] if DG else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
 track_running_stats = False
@@ -443,43 +451,40 @@ model = dict(
         suppress_ref_mode='log_tail',     # suppress reference depends only on the teacher
         ref_floor_rel=1e-4,               # floor coefficient of the teacher reference in log_tail mode
         ungated_domain='support'),        # ungated planes (yz, zx) use the teacher support
+    # Task-loss balancer for the three segmentation groups point / voxel / sensor (closed-loop
+    # GradNorm; the same block is used for SemanticKITTI, nuScenes and Waymo).
+    #   controller='gradnorm': G_i = w_i * g_i is the weighted gradient norm of group i on the
+    #     reference parameter; target share s_i = p_i * r_i^alpha / sum_j p_j * r_j^alpha with
+    #     p = base_weights (gradient-share priors) and r_i = L_i / L0_i; target weight
+    #     w*_i = s_i * C / g_i; w_i <- w_i * clamp(w*_i / w_i, 0.2, 5)^step, mixed with `momentum`
+    #     and clamped to task_min/max_weights. Fixed point: w_i * g_i = s_i * C, i.e. the weights
+    #     move with the measured gradient ratios.
+    #   normalize='grad_budget': C = sum_i g_i, so the weighted segmentation gradient equals the
+    #     equal-weight one and the reference of the distillation controller below (the unweighted
+    #     mean segmentation gradient) keeps its calibrated meaning.
+    #   Iteration-based keys (layout-dependent, see the file header): gradient norms are measured
+    #     every `interval` calls; L0 is the mean loss of the first `l0_burnin_iters` calls;
+    #     distill.warmup_iters below. step / momentum / ema_beta act once per measurement.
     dynamic_loss_balance=dict(
         enabled=True,
-        alpha=0.1,          # GradNorm target strength
-        step=0.001,          # per-step update size
-        momentum=0.2,       # smoothing for weight updates
-        min_weight=0.1,
-        max_weight=2.0,
-        ema_beta=0.8,       # EMA for loss trend
-        # Interval of the gradient probing. Each measurement runs 5 autograd.grad calls (3 supervised
-        # groups + 2 distillation groups) through the graph of base_bs scenes, measured at 0.20 s per
-        # iteration when amortised (2.3%). The weights evolve slowly with momentum anyway, so measuring
-        # less often does not affect convergence but saves 0.16 s/iter.
-        interval=50,
-        # Task grouping follows fixed order in model:
-        # point / voxel / sensor / consistency
-        base_weights=dict(
-            point=1.0,
-            voxel=0.9,
-            sensor=1.2,
-            consistency=0.4,
-        ),
-
-        task_min_weights=dict(
-            point=0.9,
-            voxel=0.65,
-            sensor=0.8,
-            consistency=0.15,
-        ),
-        task_max_weights=dict(
-            point=2.5,
-            voxel=1.6,
-            sensor=3.0,
-            consistency=0.8,
-        ),
-        voxel_guard_enabled=True,
-        voxel_guard_tol=0.02,
-        voxel_guard_gain=3.0,
+        controller='gradnorm',
+        normalize='grad_budget',
+        alpha=0.5,
+        step=1.0,
+        momentum=0.4,
+        interval=20,
+        l0_burnin_iters=100,
+        ema_beta=0.8,
+        min_weight=0.25,
+        max_weight=4.0,
+        base_weights=dict(point=0.55, voxel=0.07, sensor=0.38),
+        task_min_weights=dict(point=0.25, voxel=0.25, sensor=0.25),
+        task_max_weights=dict(point=4.0, voxel=4.0, sensor=4.0),
+        voxel_guard_enabled=False,
+        # Read-only diagnostics: adds balancer_g_* / balancer_share_* / balancer_R_distill to the
+        # training log every iteration. trace_file (optional rank-0 jsonl of every measurement) is off.
+        log_grad_stats=True,
+        trace_file=None,
         # Gradient-ratio controller for the d2skd distillation losses (independent of the GradNorm
         # groups): the gradient norm of each distillation loss is anchored to rho times the mean
         # gradient of the segmentation groups, so distillation and segmentation do not suppress each
@@ -539,12 +544,17 @@ model = dict(
             # measure_interval_mult=5,
             rho=dict(inter=0.80, vox=0.75,
                      **({} if KDbaseline else dict(kd=1.30))),
-            warmup_iters=500,
+            warmup_iters=1000,  # linear warmup (iterations, layout-dependent)
             ema_beta=0.9,
             min_weight=1e-3,
             max_weight=1e5,
         ),
     ),
+    # Minority copy-paste inside the model (per frame, before the sensor simulation): with
+    # probability minority_mixup_prob, copies of the clusters of the listed classes are pasted at
+    # new positions in the same frame. nuScenes pastes Living Being (5) only.
+    minority_mixup_classes=(5,),
+    minority_mixup_prob=0.15,
 )
 
 
@@ -591,10 +601,12 @@ if DG:
              #   cls6: barrier         0.367m = 1.11x  -> well completed; barrier is 95% of cls6 points,
              #         traffic_cone    0.574m = 1.73x     so purifying all of COLA cls6 to fix cone/moto
              #         motorcycle      0.525m = 1.58x     (only 2.8%) would wrongly drop barrier (95%).
-             #   => purify cls5 only. (This also explains why cls6 barely improved, 5.3% -> 6.0%, in an
-             #      earlier experiment.)
+             #   On the median alone cls6 looks well completed (barrier dominates). The final setting
+             #   nevertheless purifies cls5 and cls6: about 22% of the dense cls6 points lie > 0.5 m
+             #   from any real cls6 point and would otherwise supervise Objects where no object exists.
+             #   "Real" points are the sparse-scan rows before the num_sparse_points boundary.
              enable=True,
-             purify_classes=(5,),  # purify Living Being only
+             purify_classes=(5, 6),  # purify Living Being and Objects
              densify_classes=(5, 6),  # re-densification is harmless for both classes (adds density with real points)
              purify_thresh=0.2, densify_k=5, densify_jitter=0.02, max_add_per_class=20000),
         dict(type='Collect3Dinput', keys=['train_grid', 'grid_ind', 'grid_ind_vox', 'train_voxel_label', 'train_pts_label', 'reset_random']),
@@ -726,12 +738,12 @@ train_config=dict(
 
 # Memory-critical item: in CBA-CL alternate (sequential) mode the peak is ~ samples_per_gpu
 # student graphs (a single mmcv backward must hold the graphs of all scenes on this GPU; under
-# torch1.10+DDP the backbone cannot be broken up with checkpointing). spg=4 is the 80GB-GPU
-# setting; 24GB cards run out of memory (CUDNN_STATUS_NOT_INITIALIZED).
-# On 24GB cards use spg=1 with gradient accumulation cumulative_iters=8 (same effective batch
-# on 4 GPUs; see the note at the top of this file).
+# torch1.10+DDP the backbone cannot be broken up with checkpointing). spg=1 fits 24GB cards;
+# spg=4 needs 80GB GPUs (24GB cards run out of memory: CUDNN_STATUS_NOT_INITIALIZED).
+# Released layout: spg=1 on 8 GPUs with cumulative_iters=4; for other layouts see the note at
+# the top of this file.
 data = dict(
-    samples_per_gpu=4,
+    samples_per_gpu=1,
     # workers_per_gpu: with 32 CPU cores, 4 GPUs x 8 workers = 32 worker processes + 4 main
     # processes saturate the CPU and starve the main-process threads that launch CUDA kernels ->
     # measured GPU utilisation only 47-63%. data_time is only 0.042s (0.4% of an iteration), so
@@ -755,7 +767,7 @@ optimizer = dict(
         }),
     weight_decay=0.01)
 # Gradient accumulation: effective batch = samples_per_gpu x #GPUs x cumulative_iters
-# = 4 x 4 x 2 = 32, at the memory cost of one step.
+# = 1 x 8 x 4 = 32, at the memory cost of one step.
 # When overriding from the command line, override the nested key
 # optimizer_config.cumulative_iters: the top-level cumulative_iters is only used to build
 # optimizer_config in this file and is not read by the framework.
@@ -767,18 +779,19 @@ optimizer_config = dict(
 lr_config = dict(
     policy='CosineAnnealing',
     warmup='linear',
-    warmup_iters=500,
+    warmup_iters=1000,  # iterations (layout-dependent, see the file header)
     warmup_ratio=1.0 / 3,
     min_lr=2e-5)  # the former 2e-4 = 40% of the peak, with no low-LR consolidation phase -> persistent late val oscillation
 
 # Model-weight EMA.
 #
-# mmcv's built-in EMAHook initialises the EMA buffer with the *initial weights*; with
-# momentum 2e-4 the time constant is 5000 iterations, while one epoch here has only
-# 2400-3500 iterations -- at the end of epoch 1 the EMA still holds 50%-62% of the initial
-# weights, and eval/checkpoints use the EMA weights, so the metrics of the first epochs are
-# heavily underestimated (rare classes such as Living Being drop to 0). Its warm_up argument
+# mmcv's built-in EMAHook initialises the EMA buffer with the *initial weights*; the EMA time
+# constant is about 1/momentum iterations (10000 iterations with momentum 1e-4 at this layout),
+# which spans several epochs -- at the end of epoch 1 the EMA still holds a large share of the
+# initial weights, and eval/checkpoints use the EMA weights, so the metrics of the first epochs
+# are heavily underestimated (rare classes such as Living Being drop to 0). Its warm_up argument
 # uses min(), which only makes the EMA slower and cannot fix the cold start.
+# momentum is per iteration (layout-dependent, see the file header).
 #
 # WarmupEMAHook fixes this: during the first start_epochs epochs the EMA strictly follows the
 # current weights (equivalent to no EMA, zero contamination); afterwards it accumulates with
@@ -790,7 +803,7 @@ lr_config = dict(
 # Effect: smooths the +/-4-8 pp epoch-to-epoch swings of Living Being/Objects (coarse classes
 # 5/6; Objects was formerly called Movable objects).
 custom_hooks = [
-    dict(type='WarmupEMAHook', momentum=0.0002, start_epochs=1, priority='ABOVE_NORMAL'),
+    dict(type='WarmupEMAHook', momentum=0.0001, start_epochs=1, priority='ABOVE_NORMAL'),
 ]
 
 runner = dict(type='EpochBasedRunner', max_epochs=24) if not d2skd else dict(type='DistillEpochBasedRunner', max_epochs=24)
@@ -803,17 +816,23 @@ evaluation = dict(
 
 # d2skd teacher weights (dense pretrained model), required when d2skd is on:
 d2skd_load_from = 'ckpts/teacher_dense_nu.pth'  # placeholder: dense teacher trained with pointtpv_nusc_teacher_dense.py
-work_dir = './work_dirs/pointtpv_nusc_seg_random'
+# work_dir is not set here: tools/train.py uses --work-dir or ./work_dirs/<config name>.
 # KD baselines get their own work_dir automatically (derived from the KD variables, so the
 # three variant configs differ from this file only in the three KD lines, and the
 # spectral-distillation checkpoints are not overwritten)
 if KDbaseline:
-    work_dir = work_dir + f'_KDbaseline_kd{KD_lambda_kd}_feat{KD_lambda_feat}'    
+    work_dir = './work_dirs/pointtpv_nusc_seg_random' + f'_KDbaseline_kd{KD_lambda_kd}_feat{KD_lambda_feat}'
 log_config = dict(
     interval=50,
     hooks=[
         dict(type='TextLoggerHook'),
-        dict(type='LiDARCurriculumHook', schedule=schedule),
+        # FiLM conditioning switch (alpha): the hook keeps an EMA of the sensor-parameter MAE
+        # (momentum alpha_momentum) and moves alpha by alpha_step after every iteration -- up while
+        # the EMA is below alpha_target_low, down while it is above alpha_target_high.
+        # alpha_step / alpha_momentum act per iteration (layout-dependent, see the file header).
+        # nuScenes uses the hook's default thresholds 0.5 / 0.6 and no progress-driven floor.
+        dict(type='LiDARCurriculumHook', schedule=schedule,
+             alpha_step=0.02, alpha_momentum=0.9487),
     ])
 
-checkpoint_config = dict(interval=2)
+checkpoint_config = dict(interval=1)

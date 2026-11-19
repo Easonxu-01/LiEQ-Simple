@@ -2,20 +2,28 @@
 # Dense teacher config (SemanticKITTI), derived from pointtpv_semantickitti_seg_random.py.
 # The values in this file are those used to train the dense teacher whose checkpoint the
 # student loads (d2skd_load_from) for the main results.
-# Layout used to train this teacher: 4 GPUs x samples_per_gpu=2 x cumulative_iters=2
-# = effective batch 16. Warmup is counted in iterations (warmup_iters=500), as are the other
-# iteration-based schedules, so changing the layout changes the schedule. When changing the
-# number of GPUs, adjust samples_per_gpu / cumulative_iters together to keep the effective
-# batch; otherwise the BatchNorm statistics and the iteration-based schedules no longer match
-# and the result is not comparable with the teacher used in the paper.
+# Layout used to train this teacher: 8 GPUs x samples_per_gpu=1 x cumulative_iters=2
+# = effective batch 16 (8 samples per iteration; 4783 iterations per epoch with repeat=2).
+# Warmup is counted in iterations (warmup_iters=500), as are the other iteration-based
+# schedules (EMA momentum), so changing the number of samples per iteration changes the
+# schedule. When changing the number of GPUs, adjust samples_per_gpu / cumulative_iters
+# together to keep the effective batch; otherwise the BatchNorm statistics and the
+# iteration-based schedules no longer match and the result is not comparable with the teacher
+# used in the paper.
 # Differences from the student config:
 #   1. dense_train=True (teacher mode: no beam simulation, uniform 500k-point cap; no
-#      FiLM/sensor branch is built) and dense7sparse=False (pure dense input).
+#      FiLM/sensor branch is built) and dense7sparse=True (training input = serving input:
+#      real sparse scan concatenated with the dense completion, uniformly capped to 500k
+#      points inside the model -- the same rule as teacher serving during distillation,
+#      teacher_serve_max_points=500000 / scope 'all').
 #   2. d2skd=False, consistency=False, sensor_film=False (pure supervised training).
-#   3. No MinorityDensePurify in the training pipeline; dynamic loss balancing disabled.
+#   3. Training pipeline: cross-frame Living Being instance paste (p=0.3, one instance) and
+#      MinorityDensePurify with densification of real Living Being points only (no
+#      purification, no Objects densification); dynamic loss balancing disabled.
 #   4. val/test use the dense protocol (random=True + reset_random_prob=0.0 + pipeline
-#      Random=True), so per-epoch validation monitors the teacher on its serving input.
-#   5. Teacher recipe: repeat=2, lr=3e-4, min_lr=2e-4, loss_weight=[1, 1].
+#      Random=True, dense completion only; dense7sparse applies to training only).
+#   5. Teacher recipe: repeat=2, lr=3e-4, min_lr=2e-4, loss_weight=[1, 0.2].
+#   6. A checkpoint is saved every epoch (all kept).
 # =============================================================================
 
 # ===================== Coordinate frame / ground height (measured) =====================
@@ -181,7 +189,7 @@ input_modality = dict(use_lidar=True, use_camera=False)
 backend_args = None
 
 Random = True
-dense7sparse = False  # pure dense input for the teacher
+dense7sparse = True  # training input = serving input (real sparse scan + dense completion)
 ResetRandomProb = 0.0
 consistency = False
 d2skd = False
@@ -294,7 +302,7 @@ model = dict(
         tpv_h=tpv_h_,
         tpv_w=tpv_w_,
         tpv_z=tpv_z_,
-        loss_weight=[1, 1],  # teacher recipe ([1,0.2] is the student-side setting)
+        loss_weight=[1, 0.2],  # same value as the nuScenes teacher and the students
         nbr_classes=nbr_class,
         in_dims=_dim_,
         hidden_dims=2*_dim_,
@@ -513,10 +521,10 @@ model = dict(
         # Gradient-ratio controller for the d2skd distillation losses (independent of the GradNorm
         # groups above). The gradient norm of each distillation loss on the shared reference parameter
         # is anchored to rho times the mean gradient of the segmentation groups: when a distillation
-        # loss gets small its weight grows automatically (it is not suppressed), and the distillation
-        # gradient always stays <= rho*g_seg (segmentation is not suppressed). inter = low-frequency
-        # TPV feature distillation, vox = high-frequency voxel-logit distillation; the two paths are
-        # controlled independently and do not suppress each other.
+        # loss gets small its weight grows automatically (it is not suppressed). rho is a ratio target
+        # on this single reference parameter, not an upper bound on the distillation gradient.
+        # inter = low-frequency TPV feature distillation, vox = high-frequency voxel-logit
+        # distillation; the two paths are controlled independently and do not suppress each other.
         distill=dict(
             enabled=True,
             # inter 0.25->0.35: over 24 epochs raw_inter stalled at a ~0.5 high floor while the weight
@@ -562,6 +570,10 @@ bda_aug_conf = dict(
             flip_dx_ratio=0.5,
             flip_dy_ratio=0.5)
 
+# Prebuilt Living Being instance bank of the SemanticKITTI training split (relative to the
+# repository root).
+LIVB_BANK = 'data/livb_bank_sk_train_v1'
+
 train_pipeline = [
 dict(
     type='LoadPointsFromFile_RPR',
@@ -590,7 +602,11 @@ dict(
     cal_visible=visible_mask,
     file_client_args=dict(backend='disk')),
 dict(type='VoxelClassMapping'),
-dict(type='PointsegMapping', 
+# Cross-frame Living Being instance paste (training pipeline only): with probability 0.3 per
+# frame, num_instances=1 instance from the instance bank is pasted into the frame. Placed after
+# VoxelClassMapping and before PointsegMapping.
+dict(type='LivBInstanceBankPaste', bank_path=LIVB_BANK, prob=0.3, num_instances=1),
+dict(type='PointsegMapping',
             grid_size = grid_size,
             grid_size_vox = [tpv_w_*scale_w, tpv_h_*scale_h, tpv_z_*scale_z],
             coarse_ratio = coarse_ratio,
@@ -603,9 +619,16 @@ dict(type='PointsegMapping',
             cal_visible=False,
             RPR = RPR,
             restrict_pc_range = point_cloud_range),
-# MinorityDensePurify is not used for teacher training: its mismatch between training GT
-# (purified / densified) and val GT (raw), and the erosion of nearby ground GT by the densify
-# copies, were secondary suspects for the post-peak decay.
+# MinorityDensePurify, densification only: real sparse Living Being rows are replicated
+# (densify_k=5, 2 cm jitter). No purification: the SemanticKITTI dense Living Being points are
+# clean (0% lie > 0.5 m from a real point) and purification at 0.2 m would drop about 28% of the
+# teacher's Living Being supervision. No Objects densification, which keeps the teacher
+# conservative on Objects. (The student config purifies (5,) and densifies (5,).)
+dict(type='MinorityDensePurify',
+     enable=True,
+     purify_classes=(),
+     densify_classes=(5,),
+     purify_thresh=0.2, densify_k=5, densify_jitter=0.02, max_add_per_class=20000),
 dict(type='Collect3Dinput', keys=['train_grid', 'grid_ind', 'grid_ind_vox', 'train_voxel_label', 'train_pts_label', 'reset_random']),
 ]
 
@@ -690,7 +713,7 @@ train_config=dict(
 )
 
 data = dict(
-    samples_per_gpu=2,
+    samples_per_gpu=1,
     workers_per_gpu=8, #8
     train=train_config,
     val=test_config,
@@ -723,11 +746,11 @@ lr_config = dict(
 # Model-weight EMA.
 #
 # mmcv's built-in EMAHook initialises the EMA buffer with the *initial weights*; with
-# momentum 2e-4 the time constant is 5000 iterations, while one epoch here has only
-# 2400-3500 iterations -- at the end of epoch 1 the EMA still holds 50%-62% of the initial
-# weights, and eval/checkpoints use the EMA weights, so the metrics of the first epochs are
-# heavily underestimated (rare classes such as Living Being drop to 0). Its warm_up argument
-# uses min(), which only makes the EMA slower and cannot fix the cold start.
+# momentum 2e-4 the time constant is 5000 iterations, about one epoch of this teacher -- at
+# the end of epoch 1 the EMA still holds a large share of the initial weights, and
+# eval/checkpoints use the EMA weights, so the metrics of the first epochs are heavily
+# underestimated (rare classes such as Living Being drop to 0). Its warm_up argument uses
+# min(), which only makes the EMA slower and cannot fix the cold start.
 #
 # WarmupEMAHook fixes this: during the first start_epochs epochs the EMA strictly follows the
 # current weights (equivalent to no EMA, zero contamination); afterwards it accumulates with
@@ -752,7 +775,6 @@ evaluation = dict(
     rule='greater',
 )
 
-work_dir = './work_dirs/pointtpv_semantickitti_teacher_dense'
 log_config = dict(
     interval=50,
     hooks=[
@@ -760,4 +782,4 @@ log_config = dict(
         dict(type='LiDARCurriculumHook', schedule=schedule),
     ])
 
-checkpoint_config = dict(interval=2)
+checkpoint_config = dict(interval=1)  # every epoch, all kept

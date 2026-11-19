@@ -13,6 +13,7 @@ from mmdet3d.core.points import get_points_type, LiDARPoints
 import random
 import os
 import shutil
+from .PointoccMapping import shrink_num_sparse_points
 
 @PIPELINES.register_module()
 class LoadPointsFromFile_RPR(object):
@@ -228,6 +229,9 @@ class LoadPointsFromFile_RPR(object):
             # relied on RPR_indices_sparse it would not find the boundary and would skip
             # silently, disabling minority purification entirely on SK/Waymo (the nuScenes
             # pipeline has no LoadVoxels and was spared).
+            # Downstream stages that remove rows (the Waymo label-0 removal in LoadVoxels,
+            # the ego-vehicle point filter in PointsegMapping) must update it with
+            # shrink_num_sparse_points.
             results['num_sparse_points'] = int(sparse_points.shape[0])
         else:
             pts_filename = results['pts_filename']
@@ -605,7 +609,8 @@ class LoadVoxels(object):
             points = points[~waymo_idx]
             results['points'] = points
             pts_semantic_mask = pts_semantic_mask[~waymo_idx]
-        
+            shrink_num_sparse_points(results, ~waymo_idx)
+
         results['pts_semantic_mask'] = pts_semantic_mask
         
         if results.get('voxel_path', None) is not None:

@@ -116,6 +116,16 @@ class PointTPV_Seg(CenterPoint):
                  # None = independent random sampling every time (same distribution as the density jitter of teacher training);
                  # integer = reproducible sampling by call index, convenient for comparing experiments.
                  teacher_serve_cap_seed=None,
+                 # Per-frame, per-view trigger probability of the minority-class instance copy-paste (_mixup_minority).
+                 # Previously hard-coded in _sampling as mixup_prob = 0.15; the default is unchanged => bit-for-bit equivalent
+                 # (the number and order of random.random() calls are unchanged, only the comparison threshold is replaced). Only
+                 # affects the student's ray-casting sampling path; the dense_train (teacher) branch does no copy-paste anyway and is unaffected.
+                 minority_mixup_prob=0.15,
+                 # (Optional) the set of classes copy-paste acts on, and the number of copies attempted per instance.
+                 # Previously hard-coded as MINORITY_CLASSES=(5,6) inside _mixup_minority and num_add=2 at the call site; defaults
+                 # unchanged => bit-for-bit equivalent. Only changes copy-paste, not the same-named "minority protection" constant in the sampler.
+                 minority_mixup_classes=(5, 6),
+                 minority_mixup_num_add=2,
                  **kwargs,
                  ):
 
@@ -147,6 +157,18 @@ class PointTPV_Seg(CenterPoint):
             unknown = set(sampler_perturb) - set(self.perturb_cfg)
             assert not unknown, f'sampler_perturb unknown fields: {sorted(unknown)}'
             self.perturb_cfg.update(sampler_perturb)
+        self.minority_mixup_prob = float(minority_mixup_prob)
+        assert 0.0 <= self.minority_mixup_prob <= 1.0, \
+            f'minority_mixup_prob must be in [0,1], got {minority_mixup_prob}'
+        # Print the effective value once so it can be checked before a run (this class's **kwargs silently swallows misspelled keys).
+        print(f'[minority-recipe] model.minority_mixup_prob={self.minority_mixup_prob}', flush=True)
+        self.minority_mixup_classes = tuple(int(c) for c in minority_mixup_classes)
+        assert len(self.minority_mixup_classes) > 0 and all(1 <= c <= 7 for c in self.minority_mixup_classes), \
+            f'minority_mixup_classes must be a non-empty subset of 1..7, got {minority_mixup_classes}'
+        self.minority_mixup_num_add = int(minority_mixup_num_add)
+        assert self.minority_mixup_num_add >= 1, minority_mixup_num_add
+        print(f'[minority-recipe] model.minority_mixup_classes={self.minority_mixup_classes} '
+              f'model.minority_mixup_num_add={self.minority_mixup_num_add}', flush=True)
         self.consistency = consistency
         self.dense_train = dense_train
         self.d2skd = d2skd
@@ -185,6 +207,34 @@ class PointTPV_Seg(CenterPoint):
         self._voxel_guard_enabled = bool(self.dynamic_loss_balance.get('voxel_guard_enabled', False))
         self._voxel_guard_tol = float(self.dynamic_loss_balance.get('voxel_guard_tol', 0.02))
         self._voxel_guard_gain = float(self.dynamic_loss_balance.get('voxel_guard_gain', 0.6))
+        # Controller mode (opt-in; the default 'legacy' keeps the previous behaviour bit for bit).
+        # 'legacy': the previous update rule, which does not respond to the gradients (measured):
+        #   (1) update_ratio uses the **unweighted** gradient norm g_i, independent of w_i -> open-loop integration with no fixed point;
+        #   (2) every update multiplies by base_weights once more and renormalizes -> base^n compounding; within a few updates the
+        #       weights are pushed to the corner set by task_min/max and base (SK [2.42,0.65,0.30], NU [0.90,0.65,1.76]);
+        #   (3) with step 0.0002~0.003 the gradient term changes the weights by at most 0.03%~0.5% per update, far less than (2).
+        # 'gradnorm': closed-loop GradNorm. G_i = w_i·g_i (weighted gradient norm); target share
+        #   s_i = p_i·r_i^alpha / Σ_j p_j·r_j^alpha, with p = base_weights (in this mode interpreted as a prior on the gradient shares;
+        #   it enters only the target and is no longer compounded at every update), r_i = L_i/L0_i; target weight w*_i = s_i·C/g_i;
+        #   w_i <- w_i·clamp(w*_i/w_i, 0.2, 5)^step, then blended with momentum and clamped to task_min/max.
+        #   Fixed point w_i·g_i = s_i·C, i.e. the weights move inversely to the measured gradient ratios.
+        self._balance_controller = str(self.dynamic_loss_balance.get('controller', 'legacy'))
+        assert self._balance_controller in ('legacy', 'gradnorm'), self._balance_controller
+        # Normalization C of the gradnorm mode:
+        #   'grad_budget' (default): C = Σ_i g_i, i.e. mean_i(w*_i·g_i) = mean_i(g_i). The total weighted segmentation gradient is the
+        #     same as with equal weights, so the reference of the distillation rho controller (the unweighted mean g_seg) equals exactly
+        #     the actual average gradient of the segmentation group -> the weighted distillation/segmentation ratio is always Σrho/3,
+        #     and the originally calibrated meaning of rho is unchanged.
+        #   'weight_mean': mean(w*)=1 (the Σw=T convention of the original GradNorm paper); the distillation/segmentation ratio
+        #     drifts with the g ratios.
+        self._balance_normalize = str(self.dynamic_loss_balance.get('normalize', 'grad_budget'))
+        assert self._balance_normalize in ('grad_budget', 'weight_mean'), self._balance_normalize
+        # Diagnostics (opt-in, read-only, never change any weight): at every measurement g/G/w/targets/distillation ratio are
+        # written as jsonl (rank 0 only); with log_grad_stats=True balancer_g_* / balancer_share_* / balancer_R_distill are also
+        # output every iter.
+        self._balance_trace_file = self.dynamic_loss_balance.get('trace_file', None)
+        self._balance_log_grad_stats = bool(self.dynamic_loss_balance.get('log_grad_stats', False))
+        self._balance_trace = None
         base_weights_cfg = self.dynamic_loss_balance.get('base_weights', {})
         task_min_cfg = self.dynamic_loss_balance.get('task_min_weights', {})
         task_max_cfg = self.dynamic_loss_balance.get('task_max_weights', {})
@@ -233,6 +283,27 @@ class PointTPV_Seg(CenterPoint):
         self.register_buffer(
             "_balance_call_count",
             torch.zeros(1, dtype=torch.int64), persistent=False,
+        )
+        # For diagnostics: the unweighted gradient norms g_i, the weighted shares G_i/ΣG and the weighted distillation/segmentation
+        # gradient ratio R of the latest measurement. persistent=False: not saved in checkpoints, does not affect any computation.
+        self.register_buffer(
+            "_balance_last_g",
+            torch.zeros(num_tasks, dtype=torch.float32), persistent=False,
+        )
+        self.register_buffer(
+            "_balance_last_share",
+            torch.zeros(num_tasks, dtype=torch.float32), persistent=False,
+        )
+        self.register_buffer(
+            "_balance_last_R",
+            torch.zeros(1, dtype=torch.float32), persistent=False,
+        )
+        # gradnorm mode: whether the first measurement has been done (the first measurement assigns the target weights directly).
+        # persistent=False: on resume the first-measurement assignment is redone, consistent with the "quickly re-adapt on resume"
+        # convention of the other balancer state.
+        self.register_buffer(
+            "_balance_gn_initialized",
+            torch.zeros(1, dtype=torch.float32), persistent=False,
         )
         # Role-alternation counter of the alternate serial consistency mode (student/teacher swap every iter).
         # Every rank increments it on every consistency iter, so it is naturally synchronized across ranks.
@@ -728,26 +799,85 @@ class PointTPV_Seg(CenterPoint):
 
                 grad_stack = torch.stack(grad_stack)
                 rel_stack = torch.stack(rel_stack)
-                grad_avg = grad_stack.mean().clamp_min(self._balance_eps)
-                rel_rate = rel_stack / rel_stack.mean().clamp_min(self._balance_eps)
-                target_grad = grad_avg * torch.pow(rel_rate, self._balance_alpha)
+                if self._balance_controller == 'legacy':
+                    grad_avg = grad_stack.mean().clamp_min(self._balance_eps)
+                    rel_rate = rel_stack / rel_stack.mean().clamp_min(self._balance_eps)
+                    target_grad = grad_avg * torch.pow(rel_rate, self._balance_alpha)
 
-                curr_w = self._balance_weights.index_select(0, update_idx_tensor)
-                update_ratio = (target_grad / grad_stack.clamp_min(self._balance_eps)).clamp(0.2, 5.0)
-                new_w = curr_w * torch.pow(update_ratio, self._balance_step)
-                new_w = torch.clamp(new_w, min=self._balance_min_weight, max=self._balance_max_weight)
-                new_w = new_w / new_w.mean().clamp_min(self._balance_eps)
-                blended_w = (1.0 - self._balance_momentum) * curr_w + self._balance_momentum * new_w
-                # Apply task priors and per-task bounds.
-                base_w_active = self._balance_base_weights.index_select(0, update_idx_tensor)
-                min_w_active = self._balance_task_min_weights.index_select(0, update_idx_tensor)
-                max_w_active = self._balance_task_max_weights.index_select(0, update_idx_tensor)
-                blended_w = blended_w * base_w_active
-                blended_w = blended_w / blended_w.mean().clamp_min(self._balance_eps)
-                blended_w = torch.max(torch.min(blended_w, max_w_active), min_w_active)
+                    curr_w = self._balance_weights.index_select(0, update_idx_tensor)
+                    update_ratio = (target_grad / grad_stack.clamp_min(self._balance_eps)).clamp(0.2, 5.0)
+                    new_w = curr_w * torch.pow(update_ratio, self._balance_step)
+                    new_w = torch.clamp(new_w, min=self._balance_min_weight, max=self._balance_max_weight)
+                    new_w = new_w / new_w.mean().clamp_min(self._balance_eps)
+                    blended_w = (1.0 - self._balance_momentum) * curr_w + self._balance_momentum * new_w
+                    # Apply task priors and per-task bounds.
+                    base_w_active = self._balance_base_weights.index_select(0, update_idx_tensor)
+                    min_w_active = self._balance_task_min_weights.index_select(0, update_idx_tensor)
+                    max_w_active = self._balance_task_max_weights.index_select(0, update_idx_tensor)
+                    blended_w = blended_w * base_w_active
+                    blended_w = blended_w / blended_w.mean().clamp_min(self._balance_eps)
+                    blended_w = torch.max(torch.min(blended_w, max_w_active), min_w_active)
+                    target_w_dbg = None
+                    share_tgt_dbg = None
+                else:
+                    # Closed-loop GradNorm (see the controller comment in __init__).
+                    curr_w = self._balance_weights.index_select(0, update_idx_tensor)
+                    base_w_active = self._balance_base_weights.index_select(0, update_idx_tensor)
+                    min_w_active = self._balance_task_min_weights.index_select(0, update_idx_tensor)
+                    max_w_active = self._balance_task_max_weights.index_select(0, update_idx_tensor)
+                    g_pos = grad_stack.clamp_min(self._balance_eps)
+                    share_tgt = base_w_active.clamp_min(self._balance_eps) * torch.pow(
+                        rel_stack.clamp_min(self._balance_eps), self._balance_alpha)
+                    share_tgt = share_tgt / share_tgt.sum().clamp_min(self._balance_eps)
+                    if self._balance_normalize == 'grad_budget':
+                        target_w = share_tgt * g_pos.sum() / g_pos
+                    else:
+                        target_w = share_tgt / g_pos
+                        target_w = target_w / target_w.mean().clamp_min(self._balance_eps)
+                    if float(self._balance_gn_initialized.item()) < 0.5:
+                        # The first measurement assigns directly (same convention as the distillation rho controller): the initial
+                        # value 1.0 of the weight buffer has no meaning, and climbing from 1.0 with momentum would leave a meaningless
+                        # transient of about 1/momentum measurements.
+                        blended_w = torch.clamp(target_w, min=self._balance_min_weight,
+                                                max=self._balance_max_weight)
+                        self._balance_gn_initialized.fill_(1.0)
+                    else:
+                        update_ratio = (target_w / curr_w.clamp_min(self._balance_eps)).clamp(0.2, 5.0)
+                        new_w = curr_w * torch.pow(update_ratio, self._balance_step)
+                        new_w = torch.clamp(new_w, min=self._balance_min_weight, max=self._balance_max_weight)
+                        blended_w = (1.0 - self._balance_momentum) * curr_w + self._balance_momentum * new_w
+                    blended_w = torch.max(torch.min(blended_w, max_w_active), min_w_active)
+                    target_w_dbg = target_w
+                    share_tgt_dbg = share_tgt
+
+                # Diagnostics: weighted gradient shares under the weights in effect at this measurement (read-only).
+                G_dbg = curr_w * grad_stack
+                self._balance_last_g.index_copy_(0, update_idx_tensor, grad_stack.to(self._balance_last_g.dtype))
+                self._balance_last_share.index_copy_(
+                    0, update_idx_tensor,
+                    (G_dbg / G_dbg.sum().clamp_min(self._balance_eps)).to(self._balance_last_share.dtype))
+                if self._balance_trace_file:
+                    _names = [self._balance_task_names[i] for i in update_indices]
+                    self._balance_trace = {
+                        'call': int(self._balance_call_count.item()),
+                        'controller': self._balance_controller,
+                        'names': _names,
+                        'g': [float(v) for v in grad_stack.tolist()],
+                        'L': [float(global_losses[n].item()) for n in _names],
+                        'L0': [float(self._balance_initial_losses[i].item()) for i in update_indices],
+                        'w_before': [float(v) for v in curr_w.tolist()],
+                        'G_share': [float(v) for v in (G_dbg / G_dbg.sum().clamp_min(self._balance_eps)).tolist()],
+                        'target_w': None if target_w_dbg is None else [float(v) for v in target_w_dbg.tolist()],
+                        'share_tgt': None if share_tgt_dbg is None else [float(v) for v in share_tgt_dbg.tolist()],
+                        'w_after_pre_guard': [float(v) for v in blended_w.tolist()],
+                        'G_sum': float(G_dbg.sum().item()),
+                        'g_sum': float(grad_stack.sum().item()),
+                    }
 
                 # Voxel-rise guard: if voxel loss is rising above EMA, boost voxel weight.
-                if self._voxel_guard_enabled and ('voxel' in global_losses):
+                # Not applied in gradnorm mode (this heuristic ignores the gradients and would fight the closed-loop target).
+                if self._voxel_guard_enabled and self._balance_controller == 'legacy' \
+                        and ('voxel' in global_losses):
                     voxel_idx = self._balance_task_names.index('voxel')
                     pos = (update_idx_tensor == voxel_idx).nonzero(as_tuple=False)
                     if pos.numel() > 0:
@@ -821,6 +951,46 @@ class PointTPV_Seg(CenterPoint):
                             + (1.0 - self._distill_ema_beta) * target_w
                         )
 
+                # Diagnostics (read-only): weighted distillation/segmentation gradient ratio
+                # R = Σ_d w_d·g_d / Σ_i w_i·g_i (same reference parameter, same measurement; all w are the updated values actually
+                # applied in this iter; the distillation w_d excludes the warmup factor = steady-state value; R_eff also multiplies by warmup).
+                if self._balance_trace is not None or self._balance_log_grad_stats:
+                    warm = min(1.0, float(self._balance_call_count.item())
+                               / float(self._distill_warmup_iters))
+                    seg_G = float((self._balance_last_g * self._balance_weights).sum().item())
+                    d_rec = {}
+                    num_nom = 0.0
+                    for gi, gname in enumerate(self._distill_group_names):
+                        cnt = stats[3 + 2 * gi]
+                        if gname not in distill_losses or float(cnt.item()) < 0.5:
+                            continue
+                        g_d = float((stats[2 + 2 * gi] / cnt).item())
+                        w_d = float(self._distill_weights[gi].item())
+                        num_nom += w_d * g_d
+                        d_rec[gname] = {'g': g_d, 'w': w_d, 'w_eff': w_d * warm,
+                                        'rho': float(self._distill_rho[gi].item())}
+                    R_nom = num_nom / max(seg_G, self._balance_eps)
+                    self._balance_last_R.fill_(R_nom)
+                    if self._balance_trace is not None:
+                        self._balance_trace['g_seg_ref'] = float(g_seg.item())
+                        self._balance_trace['distill'] = d_rec
+                        self._balance_trace['warmup'] = warm
+                        self._balance_trace['seg_G_for_R'] = seg_G
+                        self._balance_trace['R_nominal'] = R_nom
+                        self._balance_trace['R_eff'] = R_nom * warm
+
+        if self._balance_trace is not None:
+            self._balance_trace['w_after'] = [float(v) for v in self._balance_weights.tolist()]
+            try:
+                _rank0 = (not (dist.is_available() and dist.is_initialized())) or dist.get_rank() == 0
+                if _rank0:
+                    import json as _json
+                    with open(self._balance_trace_file, 'a') as _fh:
+                        _fh.write(_json.dumps(self._balance_trace) + '\n')
+            except Exception as _e:  # diagnostics must never interrupt training
+                print(f'[balancer trace] write failed: {_e}', flush=True)
+            self._balance_trace = None
+
         # Apply group weights to individual losses and log current weights.
         for idx, name in enumerate(self._balance_task_names):
             keys = group_keys.get(name, [])
@@ -831,6 +1001,11 @@ class PointTPV_Seg(CenterPoint):
                 if torch.is_tensor(loss_dict[k]):
                     loss_dict[k] = loss_dict[k] * w
             loss_dict[f'balancer_w_{name}'] = w.detach()
+            if self._balance_log_grad_stats:
+                loss_dict[f'balancer_g_{name}'] = self._balance_last_g[idx].detach().clone()
+                loss_dict[f'balancer_share_{name}'] = self._balance_last_share[idx].detach().clone()
+        if self._balance_log_grad_stats:
+            loss_dict['balancer_R_distill'] = self._balance_last_R[0].detach().clone()
 
         # ---- Apply the distillation weights (with a linear warmup ramp) ----
         # Before the first measurement the weight is 0: the distillation loss is multiplied by 0 so that the key is always present (DDP collectives aligned)
@@ -1223,6 +1398,8 @@ class PointTPV_Seg(CenterPoint):
                         T=1.5,
                         ignore_index=0,
                         use_checkpoint=use_ckpt,
+                        # previously the function default 5.0; now read from the config (default 5.0, bit-for-bit equivalent)
+                        minority_weight=getattr(self.tpv_aggregator, 'consistency_minority_weight', 5.0),
                     )
 
                     # ---- Low-frequency feature distillation: TPV features of the student main view ↔ the teacher's ----
@@ -1862,7 +2039,8 @@ class PointTPV_Seg(CenterPoint):
         device = points.device
         dtype = points.dtype
     
-        MINORITY_CLASSES = (5, 6)
+        # Previously hard-coded (5, 6); now read from model.minority_mixup_classes (default (5, 6)).
+        MINORITY_CLASSES = tuple(getattr(self, 'minority_mixup_classes', (5, 6)))
     
         # ---- Tunables ------------------------------------------------------
         # Cluster: BFS in polar voxel space; max neighbour distance in voxel idx
@@ -2271,7 +2449,9 @@ class PointTPV_Seg(CenterPoint):
         lower_vertical_field_of_view_bound = self.sensor_config.get('lower_vertical_field_of_view_bound', [-40, -5])
         upper_vertical_field_of_view_bound = self.sensor_config.get('upper_vertical_field_of_view_bound', [0, 25])
 
-        mixup_prob = 0.15
+        # Previously hard-coded 0.15; now read from model.minority_mixup_prob (default 0.15).
+        # getattr fallback: still 0.15 when an analysis script binds _sampling to a stub object without this attribute.
+        mixup_prob = float(getattr(self, 'minority_mixup_prob', 0.15))
 
         def _sample_sensor_params_tuple():
             # Continuous sampling: rounding to 0.1m would leave stage0 (range 0.2m) with only 3 discrete target values,
@@ -2573,7 +2753,8 @@ class PointTPV_Seg(CenterPoint):
                 if random.random() < mixup_prob:
                     curr_points, curr_grid_ind, curr_grid_ind_vox, curr_labels = \
                         self._mixup_minority(
-                            curr_points, curr_grid_ind, curr_grid_ind_vox, curr_labels, num_add=2
+                            curr_points, curr_grid_ind, curr_grid_ind_vox, curr_labels,
+                            num_add=int(getattr(self, 'minority_mixup_num_add', 2))
                         )
         
                 # --------------------------------------------------
