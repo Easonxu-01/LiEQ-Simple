@@ -46,6 +46,7 @@ projects/
     datasets/coarse_mapping.py                            the shared coarse taxonomy, single source of truth
 docs/                                                     project page + install / data / train guides
 tools/                                                    data preparation and training entry points
+  spectral/                                               the spectral measurement suite behind the paper's figures (see its README)
 ```
 
 ## Getting started

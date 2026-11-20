@@ -1,0 +1,49 @@
+# Keys read by the analysis stage (tools/spectral/analysis/).
+# Everything a dump produces beyond this list is not used by any reported quantity.
+# <role> = ceiling, sparse-teacher and every model role; <model> = model roles only;
+# <variant> = every entry of the voxel summary's 'variants' list; <reference> = dense teacher.
+# Band vectors have 11 entries (JSON null -> NaN); scalars may be null (-> NaN).
+
+## TPV/FRAMES.json                                            used by
+eval                                                          all (evaluation frames = eval minus dev)
+dev                                                           all
+
+## TPV/summary200/frame_XXXXXX.json  (feature planes)
+xy.b_dct_standard.cka.<role>.OmegaT                           Fig. 3 planes                       [11]
+xy.b_dct_standard.excess.<role>.gate_closed_oldint.excess_mean    App. D spurious HF, planes      scalar
+xy.d_probC_sbr_mbr.<model>.SBR                                planes boundary figure              scalar
+xy.d_probC_sbr_mbr.<model>.MBR                                planes boundary figure              scalar
+yz.d_probC_sbr_mbr.<model>.SBR                                planes boundary figure              scalar
+yz.d_probC_sbr_mbr.<model>.MBR                                planes boundary figure              scalar
+zx.d_probC_sbr_mbr.<model>.SBR                                planes boundary figure              scalar
+zx.d_probC_sbr_mbr.<model>.MBR                                planes boundary figure              scalar
+xy.rho_crop_rows                                              info; default crop of gate test and cross-term
+xy.p2_domain_cells.R                                          gate test (consistency check of the evaluated support)
+(role discovery: the keys of xy.b_dct_standard.cka)
+
+## LOGITS/summary200/frame_XXXXXX.json  (voxel logits; M7_phi = TPV xy features, M6_phi = voxel logits)
+variants                                                      role discovery; cross-term channel-batch order
+M7_phi.<role>.recovery                                        Fig. 4 planes rows                  [11]
+M7_phi.<role>.useful_share                                    Fig. 4 planes rows (ceiling: unit)  [11]
+M7_phi.<role>.pseudo_share                                    Fig. 4 planes rows                  [11]
+M7_phi.<role>.pseudo_share_hf                                 App. D pseudo-HF shares, paired statistic   scalar
+M6_phi.<role>.recovery                                        Fig. 4 voxel rows                   [11]
+M6_phi.<role>.useful_share                                    Fig. 4 voxel rows (ceiling: unit)   [11]
+M6_phi.<role>.pseudo_share                                    Fig. 4 voxel rows                   [11]
+M6_phi.<role>.pseudo_share_hf                                 App. D pseudo-HF shares, paired statistic   scalar
+M1.<role>.OmegaT                                              Fig. 3 voxel logits                 [11]
+M3.<role>.gate_closed.excess_mean                             App. D spurious HF, voxel logits    scalar
+M7_phi.<ceiling|model>.r2_student_from_teacher                cross-term (consistency check, raw frames only)  [11]
+M7_phi.<ceiling|model>.energy_share_student                   cross-term (consistency check, raw frames only)  [11]
+M6_phi.<ceiling|model>.r2_student_from_teacher                cross-term (consistency check, raw frames only)  [11]
+M6_phi.<ceiling|model>.energy_share_student                   cross-term (consistency check, raw frames only)  [11]
+
+## Raw frames (gate_test.py)
+TPV/dump200/_p2dom/frame_XXXXXX.npz: gate_v_mean_full (or gate_v_mean), R_full (or R)   on the original (uncropped) xy grid
+TPV/dump200/<reference>/frame_XXXXXX.npz: grid_ind, gt_new
+
+## Raw frames (crossterm.py; raw frames that are evaluation frames)
+LOGITS/dump200/<reference>/frame_XXXXXX.npz: neck_xy_s0, sup_idx, sup_logit
+LOGITS/dump200/<ceiling|model>/frame_XXXXXX.npz: neck_xy_s0, cs_logit
+LOGITS/dump200/<variant>/frame_XXXXXX.npz: cs_logit           (all voxel variants enter the Chebyshev batch)
+LOGITS/dump200/_masks/frame_XXXXXX.npz: OmegaT_xy (uncropped), field_shape

@@ -29,6 +29,15 @@
   and teacher configs enable it; the nuScenes and Waymo configs do not use it. The bank itself is not
   distributed; see the README for how it is built and its file format.
 - **Teacher checkpoints** for SemanticKITTI, nuScenes and Waymo; see the README.
+- **Spectral measurement suite** (`tools/spectral/`, see its README). It contains the scripts that compute the
+  paper's spectral quantities, and writes only the quantities the paper reports.
+  - `dump/`: per-frame spectral summaries of the TPV feature planes and the voxel logits (GPU).
+  - `analysis/`: the reported quantities, computed from one dump (CPU).
+  - `fbd/`: the frequency-band discrepancy (FBD) of the voxel logits.
+  - `native/`: data-only statistics of sparse scans against dense completions. No model is involved.
+  - Models are passed only as checkpoints on the command line, one per role: `--teacher-checkpoint`,
+    `--model student=CONFIG:CHECKPOINT`, `--model baseline=CONFIG:CHECKPOINT`. No checkpoint is bundled or
+    referenced.
 
 ## 2026-10 — initial LiEqualizer release
 

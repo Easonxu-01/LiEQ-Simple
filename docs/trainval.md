@@ -126,19 +126,22 @@ Set `REAL_DATA_NAME` / `REAL_DATA_ROOTS` and the prediction output dir inside `p
 
 ## The spectral measurement protocol
 
-The paper's diagnosis — what sparse sampling does to a signal, and whether distillation repaired it — is released as a
-protocol rather than as a one-off script, so it can be run on any pair of sensors.
+The spectral quantities of the paper are computed by the suite in [`tools/spectral/`](../tools/spectral/). Its
+[README](../tools/spectral/README.md) lists every step, option and output file.
 
-It reports two families of quantities:
+- **dump, then analysis**, on the TPV feature planes and the voxel logits: band-wise CKA divided by the noise ceiling,
+  real and pseudo energy per band, spurious and missed boundary rates, and the appendix diagnostics. The dump takes one
+  GPU pass for each of its two stages; the analysis then runs on CPU.
+- **fbd**: the frequency-band discrepancy (FBD) between the voxel logits of a model and those of the teacher.
+- **native**: data-only statistics of sparse scans against dense completions, namely the high-frequency share,
+  per-class retention, band profiles and roll-off. No model is involved.
 
-- **Native suite**, on raw point clouds: high-frequency retention per signal and per class, the spectral roll-off, and
-  the band-energy gap between a dense and a sparse observation of the same scene.
-- **Voxel suite**, on the grid the network actually reads: the frequency-band discrepancy to the teacher, split low /
-  mid / high (FBD), the spectral curve correlation of the log band profiles (SCC), and their symmetric divergence (SID).
+Models are passed only as checkpoints on the command line, one per role (teacher, student, baseline). The evaluation
+frames follow a fixed rule:
 
-Both are computed from the same graph-spectral machinery the losses use, so a number that moves in the diagnosis and a
-number that moves in the loss are the same quantity. The entry points and their arguments are documented alongside the
-protocol code.
+- 200 evenly spaced validation frames are selected;
+- the development frame 0 is held out, so 199 frames are evaluated;
+- FBD uses all 200.
 
 ---
 
