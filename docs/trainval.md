@@ -52,7 +52,8 @@ The student config loads a frozen teacher checkpoint through `d2skd_load_from`, 
 d2skd_load_from = 'ckpts/teacher_dense_sk.pth'      # and _nu.pth / _waymo.pth for the other two
 ```
 
-Point it at a checkpoint from Stage 1, or drop the released teachers in `ckpts/` under those names. Training refuses
+Point it at a checkpoint from Stage 1, or drop the released teachers
+([download](https://cloud.tsinghua.edu.cn/d/ad8d8920c1e94f028f4f/)) in `ckpts/` under those names. Training refuses
 to start if the file is missing or if its label protocol does not match the student's — see
 `occupancy/apis/teacher_protocol.py`.
 

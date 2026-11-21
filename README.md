@@ -89,6 +89,9 @@ The learning rate is not scaled with the number of GPUs.
 
 ## Teacher checkpoints
 
+Download: **[Tsinghua Cloud](https://cloud.tsinghua.edu.cn/d/ad8d8920c1e94f028f4f/)**. The folder holds the three teachers and the three LiEqualizer students
+of the paper (`LiEQ_SemanticKITTI.pth`, `LiEQ_nuScenes.pth`, `LiEQ_Waymo.pth`).
+
 `teacher_dense_sk.pth`, `teacher_dense_nu.pth` and `teacher_dense_waymo.pth` are the teachers of the paper's
 students. Place them at `ckpts/teacher_dense_{sk,nu,waymo}.pth`, the paths the student configs expect.
 
@@ -98,7 +101,7 @@ students. Place them at `ckpts/teacher_dense_{sk,nu,waymo}.pth`, the paths the s
 | nuScenes | epoch 24, the best validation epoch |
 | Waymo | epoch 24, the last one; no validation split is used while training the Waymo teacher |
 
-The files hold weights and label-mapping metadata only, with no optimizer state: they serve distillation and
+The teacher files hold weights and label-mapping metadata only, with no optimizer state: they serve distillation and
 evaluation, not resuming training. Training refuses to start if a teacher's label protocol does not match the
 student's (`occupancy/apis/teacher_protocol.py`).
 
