@@ -1,6 +1,6 @@
 # LiEqualizer
 
-**Seeing the Lost Spectrum of Sparse LiDARs via Spectral-Invariant Distillation**
+**Seeing the Lost Spectrum of Sparse LiDARs for Zero-Shot Cross-LiDAR Segmentation**
 
 Project page: **https://easonxu-01.github.io/LiEQ-Simple/**
 
@@ -18,9 +18,9 @@ LiEqualizer attaches two training-time distillation branches to the baseline pip
 
 Each acts only where the frozen teacher's own response marks something to restore or remove.
 
-Across SemanticKITTI, Waymo and nuScenes this raises zero-shot cross-sensor mIoU by up to **11.5 points**, and it
-does so **without changing the network, its parameter count or its inference cost** — the losses act during
-training only, so the deployed model is the baseline network.
+Across SemanticKITTI, nuScenes and Waymo this improves all six unseen-sensor transfers by **12.0 mIoU on average and
+up to 17.1**, and it does so **without changing the network, its parameter count or its inference cost** — the
+losses act during training only, so the deployed model is the baseline network.
 
 ---
 

@@ -558,10 +558,10 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
       <b>+17.1 zero-shot cross-sensor mIoU</b> with <b>zero</b> change to the architecture, the parameter count or the inference cost.</p>
     </div>
     <div class="prose reveal">
-      <p><span class="tag">Motivation</span>Engineers and researchers pay twice for LiDAR perception: a cheap sensor with few beams sees less of the scene, and every new sensor means new data, labels and training, team after team. Recent work cuts that cost by randomizing the sampling pattern during training, but ignoring a pattern does not return the measurements it never took, and putting them back has meant reconstructing the scan before the network reads it.</p>
-      <p><span class="tag">Perspective</span>Read as frequencies, sparse sampling corrupts a scan in two coupled ways. <em>High-frequency attenuation</em>: genuine fine detail falls between the beams, and on the network's grid the isolated cells left behind read as high-frequency energy the scene never contained. <em>Low-frequency aliasing</em>: unresolved energy folds down into the low and middle bands and spreads a broadband floor across the spectrum. A filter can only do the first; a sampler does both, which is why the method has two branches. Because every sparse view misses bands, the attenuated magnitudes cannot be recovered from sparse data alone — but a teacher trained on densified scenes has observed exactly the bands the student misses.</p>
-      <p><span class="tag">Method</span>LiEqualizer equalizes the spectrum rather than rebuilding the scan. Both branches probe the representations through polynomial diffusion operators that commute with the Laplacian and create no new frequency components — <em>spectral-invariant operators</em> (SIOs) — so what is aligned is a step-wise diffusion response rather than a raw spatial signal. A low-frequency distiller on the encoder's tri-perspective planes restores the macroscopic structure that aliasing corrupts; a high-frequency distiller on the decoder's voxel logits recovers genuine detail while suppressing the fabricated. Selective teacher gating is what avoids the negative transfer of indiscriminate dense-to-sparse mimicry.</p>
-      <p><span class="tag">Results</span>Across SemanticKITTI, nuScenes and Waymo, LiEqualizer improves all six unseen-sensor transfers by 4.8 to 17.1&nbsp;mIoU (12.0 on average) and raises source-domain mIoU by 8.4 to 18.0 points, enough for a single generalizable model to surpass the in-domain experts trained on real scans on all three benchmarks. No architectural change, no added parameters and no extra data; the only overhead is the one-time cost of training the teacher. The losses act in training alone, so the deployed model keeps the baseline's architecture and inference cost. On three vehicles carrying previously unseen 32-, 80- and 128-beam LiDARs, the unchanged model improves class-averaged IoU over the randomized-sampling baseline in all nine platform&ndash;source settings.</p>
+      <p><span class="tag">Motivation</span>Engineers and researchers have a love&ndash;hate relationship with LiDAR: it measures the 3D world precisely, yet sparse LiDARs may miss critical structure, and models trained on one LiDAR falter on another. Every upgraded LiDAR therefore triggers a fresh cycle of data collection, annotation and retraining. Disentangling scene geometry from the sensor-specific sampling pattern lets a model tolerate unseen sensors, but it cannot bring back what a sparse scan loses.</p>
+      <p><span class="tag">Perspective</span>Different LiDARs do not see different worlds; they see different spectra of the same world. Sparse sampling corrupts a scene's spectrum through two coupled effects. <em>High-frequency attenuation</em>: genuine fine detail vanishes between the beams. The point cloud simply lacks it, whereas in gridded network features the isolated cells left behind stand in for it as spurious high-frequency energy the scene never contained. <em>Low-frequency aliasing</em>: overlapping spectral replicas fold unresolved energy down into the low and middle bands and spread a broadband floor across the spectrum. Neither effect can be undone from sparse data alone: what every sparse view has lost, none can supply. A teacher trained on densified scenes has observed exactly what a sparse student misses, and serves as the spectral reference.</p>
+      <p><span class="tag">Method</span>Much as an audio equalizer rebalances distorted bands against a reference response without re-recording the track, LiEqualizer equalizes a sparse student's spectrum against a frozen dense teacher during training, through two teacher-gated, spectral-invariant distillers. A low-frequency distiller on the encoder's tri-perspective planes restores the macroscopic structure that aliasing corrupts; a high-frequency distiller on the decoder's voxel logits recovers genuine detail and suppresses fabricated responses. Both probe the representations through <em>spectral-invariant operators</em> (SIOs), polynomial diffusion operators that commute with the graph Laplacian and reweight eigenmodes without creating new frequencies, so what is aligned is a step-wise diffusion response rather than a raw spatial signal. By selectively dictating where to match and where to suppress, teacher gating avoids the negative transfer of indiscriminate dense-to-sparse mimicry.</p>
+      <p><span class="tag">Results</span>Across SemanticKITTI, nuScenes and Waymo, LiEqualizer improves all six unseen-sensor transfers over the disentanglement baseline LiSeer-P by 4.8 to 17.1&nbsp;mIoU (12.0 on average) and raises source-domain mIoU by 8.4 to 18.0 points, enabling a single generalizable model to surpass the single-sensor specialists trained on real scans on all three benchmarks. The backbone, the parameter count and the training data are unchanged, and the losses act in training alone, so the deployed model keeps the baseline's architecture and inference cost. An open spectral protocol confirms the repair band by band: on SemanticKITTI, LiEqualizer cuts the student's frequency-band discrepancy to the teacher by about 91%, and it brings band-wise structure closer to the teacher's in every band, at both representation levels and on all three datasets. Deployed zero-shot on three real vehicles carrying previously unseen 32-, 80- and 128-beam LiDARs across campus, urban and rural scenes, it improves mIoU over LiSeer-P in all nine platform&ndash;source settings, by 5.4 to 9.8 points.</p>
     </div>
   </div>
 </section>
@@ -574,15 +574,16 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
       <p class="lead">On raw point clouds, sparse sampling <em>attenuates</em> real high frequencies: the detail falls between
       the beams. On the voxel grid the network actually reads, the isolated cells left behind <em>fabricate</em> high-frequency
       energy the scene never held, while unresolved energy folds down into the low and middle bands as a broadband floor.
-      A filter can only attenuate. A sampler does both, which is why the method has two branches.</p>
+      Across 600 paired dense and sparse scans, a sparse point cloud retains only 24&ndash;30% of its genuine high-frequency energy.
+      A filter cannot produce the second symptom and a sampler can, which is why repair needs a reference and a spatial gate rather than band gains.</p>
     </div>
     <figure class="fig reveal">
-      <div class="fig-media"><a href="assets/insight.pdf" target="_blank" rel="noopener" title="Open the vector PDF"><img src="assets/insight.jpg" alt="Conceptual illustration: against spatial position, the dense teacher's profile carries fine ripple all along its envelope while the sparse student's profile is smooth and its envelope sits in the wrong place." loading="lazy" /></a></div>
-      <figcaption><b>Fig 1.</b> Different LiDARs observe different spectra of the same world. Sparse sampling attenuates
-      genuine high frequencies in the point domain and, unlike a filter, fabricates high-frequency energy on the voxel grid
-      while aliasing unresolved energy down into the lower bands. LiEqualizer takes a teacher trained on densified scenes as
-      its spectral reference and equalizes the student's response — matching the bands the teacher supports, suppressing the
-      response it does not.</figcaption>
+      <div class="fig-media"><a href="assets/insight.pdf" target="_blank" rel="noopener" title="Open the vector PDF"><img src="assets/insight.jpg" alt="Left: a conceptual equalizer across spatial position, with the frozen dense teacher in blue and the trainable sparse student in orange; bypass, then the low- and high-frequency distillers move the band faders and pull the student's response onto the teacher's. Right: teacher-supported structure is matched and unsupported student artifacts are suppressed." loading="lazy" /></a></div>
+      <figcaption><b>Fig 1.</b> Distillation as an equalizer: what each branch moves, and where it acts. <b>Left</b>: a conceptual
+      equalizer across spatial position (blue, the frozen dense teacher; orange, the trainable sparse student; dashed, the
+      teacher reference). <em>Bypass</em> passes the undistilled student through unchanged; adding the low- and high-frequency
+      distillers adjusts the corresponding band faders, progressively pulling the student's response onto the teacher's.
+      <b>Right</b>: the spatial action of each distiller. Teacher-supported structure is matched, whereas unsupported student artifacts in teacher-flat regions are removed. Curves are schematic.</figcaption>
     </figure>
   </div>
 </section>
@@ -597,33 +598,33 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
       which is what fixes their band.</p>
     </div>
     <figure class="fig reveal">
-      <div class="fig-media"><a href="assets/framework.pdf" target="_blank" rel="noopener" title="Open the vector PDF"><img src="assets/framework.jpg" alt="The LiEqualizer framework: frozen dense teacher, active sparse student, LF distiller on the TPV planes and HF distiller on the voxel logits." loading="lazy" /></a></div>
-      <figcaption><b>Fig 2.</b> The frozen teacher reads densified scenes; the student reads the sensor's own sparse scan.
-      The LF distiller acts on the three tri-perspective-view planes, the HF distiller on the common-support voxel logits.
-      Neither adds a trainable parameter to the deployed model.</figcaption>
+      <div class="fig-media"><a href="assets/framework.pdf" target="_blank" rel="noopener" title="Open the vector PDF"><img src="assets/framework.jpg" alt="The LiEqualizer framework: frozen dense teacher, trainable sparse student, LF distiller on the TPV planes and HF distiller on the voxel logits." loading="lazy" /></a></div>
+      <figcaption><b>Fig 2.</b> Overview of the LiEqualizer framework. During training, a densified scene enters the frozen teacher while a physics-based sparse re-sampling enters the trainable student.
+      The LF distiller equalizes diffused responses on the three tri-perspective-view planes, the HF distiller high-pass residuals of the voxel logits on the teacher's support; in each branch a detached teacher gate governs where to match and where to suppress.
+      At inference all distillation modules are removed and the student runs as the unmodified baseline.</figcaption>
     </figure>
     <div class="mod blue reveal">
       <span class="tag">Low frequency · the boost</span>
       <h3>Restore what sampling weakened</h3>
-      <p>In the encoder's compressed code, the student's smoothed response is matched to the teacher's where the teacher's
-      gate is open, and driven toward zero where it is closed. That returns structure the student's beams never measured.</p>
+      <p>On the encoder's tri-perspective planes, the student's diffused response is matched to the teacher's where the teacher's
+      gate is open, and spurious student curvature is damped toward zero where it is closed. That restores the macroscopic structure that aliasing corrupts.</p>
     </div>
     <div class="mod orange reveal">
       <span class="tag">High frequency · the cut</span>
       <h3>Remove what sampling faked</h3>
-      <p>In the decoder's voxel logits, the student's high-pass response is matched to the teacher's where the teacher has
-      detail, and suppressed toward the teacher's own level where it does not — so aliasing cannot pass as real detail.</p>
+      <p>In the decoder's voxel logits, the student's high-pass residual is matched to the teacher's where the teacher has
+      detail, and only its excess energy over the teacher is penalized where it does not &mdash; so aliasing cannot pass as real detail.</p>
     </div>
     <div class="two reveal" style="margin-top:20px">
       <figure class="fig" style="margin-top:0">
         <div class="fig-media"><a href="assets/LF.pdf" target="_blank" rel="noopener" title="Open the vector PDF"><img src="assets/LF.jpg" alt="The low-frequency branch." loading="lazy" /></a></div>
         <figcaption><b>The low-frequency branch.</b> Teacher and student planes are smoothed by the same diffusion pyramid;
-        the gate comes from the teacher's projected class map, not from the planes themselves.</figcaption>
+        the gate is built from the teacher's voxel class probabilities projected onto the plane, not from the planes themselves.</figcaption>
       </figure>
       <figure class="fig" style="margin-top:0">
         <div class="fig-media"><a href="assets/HF.pdf" target="_blank" rel="noopener" title="Open the vector PDF"><img src="assets/HF.jpg" alt="The high-frequency branch." loading="lazy" /></a></div>
-        <figcaption><b>The high-frequency branch.</b> Acts on the voxel logits over the cells teacher and student share,
-        matching detail the teacher holds and shrinking the rest toward it.</figcaption>
+        <figcaption><b>The high-frequency branch.</b> Acts on the voxel logits over the teacher's support,
+        matching detail the teacher holds and penalizing only the student's excess over it.</figcaption>
       </figure>
     </div>
   </div>
@@ -679,19 +680,19 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
     <div class="section-head reveal">
       <div class="eyebrow">Results</div>
       <h2>Zero-shot across sensors, with the network untouched</h2>
-      <p class="lead">Every number below is the same backbone, the same schedule and the same generated data as the
-      randomized-sampling baseline. Only the training objective differs.</p>
+      <p class="lead">LiEqualizer shares its backbone, its schedule and its training data with LiSeer-P, the disentanglement
+      baseline trained on randomized sparse re-samplings. Only the training objective differs.</p>
     </div>
 
     <div class="stats reveal">
       <div class="stat"><div class="num">6/6<small>transfers</small></div>
-        <div class="lbl">Every unseen-sensor transfer improves over the randomized-sampling baseline, by 4.8 to 17.1 mIoU — 12.0 on average. The largest is Waymo → nuScenes.</div></div>
+        <div class="lbl">Every unseen-sensor transfer improves over LiSeer-P, by 4.8 to 17.1 mIoU — 12.0 on average. The largest is Waymo → nuScenes.</div></div>
       <div class="stat accent"><div class="num">3/3<small>benchmarks</small></div>
-        <div class="lbl">On its own sensor, one generalizable model beats the in-domain experts trained on real scans: +4.9 on SemanticKITTI, +8.0 on nuScenes, +19.3 on Waymo.</div></div>
+        <div class="lbl">On its own sensor, one generalizable model surpasses the single-sensor specialists trained on real scans: +4.9 on SemanticKITTI, +8.0 on nuScenes, +19.3 on Waymo.</div></div>
       <div class="stat"><div class="num">0<small>extra params</small></div>
-        <div class="lbl">The deployed model is the baseline network: 32,277,463 parameters, 0.224 s per frame, 5.66 GiB peak. The only overhead is training the teacher once.</div></div>
+        <div class="lbl">The deployed model is the baseline network: 32,277,463 parameters, 0.224 s per frame, 5.66 GiB peak. Distillation costs 1.52× the training step and nothing at inference.</div></div>
       <div class="stat"><div class="num">9/9<small>on-vehicle</small></div>
-        <div class="lbl">Class-averaged IoU improves in every platform–source setting on 900 independently labelled frames, by 5.4 to 9.8 points.</div></div>
+        <div class="lbl">mIoU improves over LiSeer-P in every platform–source setting on 900 independently labelled frames, by 5.4 to 9.8 points.</div></div>
     </div>
 
     <figure class="fig reveal">
@@ -702,16 +703,16 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
 
     <figure class="fig reveal">
       <div class="fig-media"><div id="lq-gain-strip"></div></div>
-      <figcaption><b>Fig 4.</b> LiEqualizer's gain over the randomized-sampling baseline in every cell.</figcaption>
+      <figcaption><b>Fig 4.</b> LiEqualizer's gain over LiSeer-P in every cell.</figcaption>
     </figure>
 
     <figure class="fig reveal">
       <div class="fig-media">
         <a href="#video" title="Play the build-up in the Video section"><img src="assets/table1_3d.jpg"
-           alt="The main table drawn as grouped 3-D bars: grey single-sensor baseline, orange randomized-sampling baseline, blue LiEqualizer." loading="lazy" /></a>
+           alt="The main table drawn as grouped 3-D bars: grey single-sensor specialist (P-baseline), orange LiSeer-P, blue LiEqualizer." loading="lazy" /></a>
       </div>
-      <figcaption><b>Fig 5.</b> The same table, as bars. Grey is the single-sensor baseline, orange the randomized-sampling
-      baseline, blue LiEqualizer. Arrows mark the gain over the orange bars.</figcaption>
+      <figcaption><b>Fig 5.</b> The same table, as bars. Grey is the single-sensor specialist (P-baseline), orange LiSeer-P,
+      blue LiEqualizer. Arrows mark the gain over the orange bars.</figcaption>
     </figure>
   </div>
 </section>
@@ -722,9 +723,9 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
       <div class="eyebrow">On-vehicle</div>
       <h2>Real platforms, unseen LiDARs</h2>
       <p class="lead">The deployed network is identical to the baseline's, so on-vehicle testing needs no re-integration.
-      Three platforms carry previously unseen 32-, 80- and 128-beam LiDARs, with mounting heights absent from every training
+      Three platforms carry previously unseen 32-, 80- and 128-beam LiDARs across campus, urban and rural scenes, with mounting heights absent from every training
       set. A third-party service labelled 900 frames from scratch, with no model output shown to the annotators, and against
-      those labels LiEqualizer improves class-averaged IoU in all nine platform–source settings, by 5.4 to 9.8 points — the
+      those labels LiEqualizer improves mIoU over LiSeer-P in all nine platform–source settings, by 5.4 to 9.8 points — the
       gains concentrating on the categories sparse sampling degrades most: vehicles, living beings and ground surfaces.</p>
     </div>
     <div class="cards reveal">
@@ -1204,14 +1205,14 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
     <div class="section-head reveal">
       <div class="eyebrow">Analysis</div>
       <h2>What the distillation actually moved</h2>
-      <p class="lead">The two diagnostic figures from the manuscript, re-drawn here from the released measurements
-      rather than pasted in as pictures. Both read band by band, from the lowest-frequency band on the left, with
-      one column per training source.</p>
+      <p class="lead">On held-out SemanticKITTI scenes the student's frequency-band discrepancy to the teacher falls by about 91%,
+      from 1.167 in LiSeer-P to 0.100 in LiEqualizer, improving on all 200 evaluated frames. That measure is built from the energies the objective optimizes, so the two figures below test what the losses never see: whether the structure within each band aligns with the teacher's, and whether the energy the student gains is energy the teacher explains. Both are the manuscript's figures, re-drawn from the released measurements, and read band by band from the lowest-frequency band on the left,
+      with one column per dataset.</p>
     </div>
 
     <figure class="fig reveal">
       <div class="fig-media"><div id="lq-paper-fig3" data-lieq-paper-chart="paper-fig3"></div></div>
-      <figcaption><b>Fig 7.</b> Alignment, band by band, on all three training sources. Agreement between the
+      <figcaption><b>Fig 7.</b> Alignment, band by band, on three datasets. Agreement between the
       student's field and the teacher's within each band, scaled so that one is the agreement the teacher reaches
       with itself when its input is re-drawn under the same budget. Higher is better. The strip under each panel
       is the share of LiSeer-P's remaining distance to that ceiling which LiEqualizer closes. This is the
@@ -1221,7 +1222,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
     <figure class="fig reveal">
       <div class="fig-media"><div id="lq-paper-fig4" data-lieq-paper-chart="paper-fig4"></div></div>
       <figcaption><b>Fig 8.</b> How much energy a band carries, and how much of it the teacher accounts for, on all
-      three training sources. Rows a and c split each band's energy into the part a fit on held-out sectors
+      three datasets. Rows a and c split each band's energy into the part a fit on held-out sectors
       attributes to the teacher and the part it does not; rows b and d are the paired per-frame change from LiSeer-P
       to LiEqualizer. Bars carrying white diagonals sit in bands the sparse scan does not support, where the
       structure is missing from the observation rather than attenuated in it. The manuscript's Fig. 4, re-drawn
@@ -1250,7 +1251,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
     <div class="section-head reveal">
       <div class="eyebrow">Downloads</div>
       <h2>Code, data and checkpoints</h2>
-      <p class="lead">The spectral measurement protocol is released with the code so the diagnosis can be reproduced on any sensor pair.</p>
+      <p class="lead">The spectral measurement suite is released with the code, under <code>tools/spectral</code>, so the diagnosis can be reproduced on any sensor pair.</p>
     </div>
     <div class="dlist reveal">
       <a class="dl" href="https://github.com/Easonxu-01/LiEQ-Simple" target="_blank" rel="noopener">
@@ -1264,6 +1265,7 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
       <a class="doc" href="https://github.com/Easonxu-01/LiEQ-Simple/blob/main/docs/install.md">Install</a>
       <a class="doc" href="https://github.com/Easonxu-01/LiEQ-Simple/blob/main/docs/prepare_data.md">Prepare data</a>
       <a class="doc" href="https://github.com/Easonxu-01/LiEQ-Simple/blob/main/docs/trainval.md">Train &amp; eval</a>
+      <a class="doc" href="https://github.com/Easonxu-01/LiEQ-Simple/tree/main/tools/spectral">Spectral suite</a>
     </div>
   </div>
 </section>
@@ -1292,8 +1294,8 @@ table.data .best{font-weight:700} table.data .second{text-decoration:underline}
     <div class="section-head reveal">
       <div class="eyebrow">Spectrum</div>
       <h2>An open protocol for measuring what a sensor loses</h2>
-      <p class="lead">The diagnosis is a separate contribution: a measurement protocol that reports what sparse sampling does
-      to a signal, and whether distillation repaired it. Every figure below is rendered live from the released measurements.</p>
+      <p class="lead">The diagnosis is a separate contribution: eigendecomposition-free diagnostic suites for point clouds and gridded
+      features, which quantify retention, band divergence, band-wise structural alignment and real-versus-pseudo energy, so that a cross-LiDAR gap can be audited band by band. Every figure below is rendered live from the released measurements.</p>
     </div>
     <div class="reveal" style="display:grid;gap:30px">
       <div data-lieq-chart="qprofiles"></div>

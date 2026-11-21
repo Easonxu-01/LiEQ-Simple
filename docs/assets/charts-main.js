@@ -110,15 +110,15 @@
    */
   var ABLATION = {
     number: 'Table 3',
-    caption: 'What each part of the objective adds, under the standard single-pass protocol.',
+    caption: 'Ablation study of LiEqualizer components (source-domain and zero-shot mIoU, %).',
     rowHead: 'Objective',
     cols: ['SK→SK', 'SK→Waymo', 'SK→nuScenes'],
     rows: [
-      { label: 'LiSeer-P, no distillation', ruleAfter: true,
+      { label: 'LiSeer-P (no distillation)', ruleAfter: true,
         cells: [{ v: 68.1 }, { v: 54.6 }, { v: 56.8 }] },
-      { label: '+ LF alone',
+      { label: '+ LF alone, ungated',
         cells: [{ v: 74.5, d: 6.4 }, { v: 65.4, d: 10.8, mark: 'second' }, { v: 58.8, d: 2.0 }] },
-      { label: '+ HF alone',
+      { label: '+ HF alone, ungated',
         cells: [{ v: 73.5, d: 5.4 }, { v: 63.7, d: 9.1 }, { v: 57.4, d: 0.6 }] },
       { label: '+ both branches, ungated',
         cells: [{ v: 73.8, d: 5.7 }, { v: 64.0, d: 9.4 }, { v: 57.8, d: 1.0 }] },
@@ -126,12 +126,12 @@
         cells: [{ v: 74.6, d: 6.5, mark: 'second' }, { v: 64.1, d: 9.5 }, { v: 60.3, d: 3.5 }] },
       { label: '+ gates, suppressing only', ruleAfter: true,
         cells: [{ v: 74.2, d: 6.1 }, { v: 64.2, d: 9.6 }, { v: 59.6, d: 2.8 }] },
-      { label: 'LiEqualizer, with LF suppressed towards the teacher', ruleAfter: true,
+      { label: 'LiEqualizer (LF suppressed toward the teacher)', ruleAfter: true,
         cells: [{ v: 74.6, d: 6.5, mark: 'second' }, { v: 64.0, d: 9.4 }, { v: 61.3, d: 4.5, mark: 'second' }] },
       { label: 'LiEqualizer (gates, matching and suppressing)', ours: true,
         cells: [{ v: 76.5, d: 8.4, mark: 'best' }, { v: 66.5, d: 11.9, mark: 'best' }, { v: 63.9, d: 7.1, mark: 'best' }] }
     ],
-    note: 'The table is read downwards, from the undistilled student to the full objective, and each bracketed figure is the difference from the first row. That row is the randomized-sampling student of Table 1 trained on SemanticKITTI, quoted from the original publication. The two single-branch rows are alternatives rather than steps: one keeps the low-frequency branch alone, the other the high-frequency branch that shares its switch. The three rows after them hold both branches and differ in how much of the gate they carry.'
+    note: 'All variants are trained on SemanticKITTI atop the undistilled LiSeer-P student (first row, quoted from the LiSeer paper) using the same frozen dense teacher. The rows cover the single-branch variants (LF or HF alone), the two-branch gating variants (ungated, matching only and suppressing only), an alternative reference that suppresses LF curvature only when it exceeds the teacher’s band-pass energy, and the full LiEqualizer objective, which damps closed-gate LF curvature toward zero. Bracketed figures are differences from the first row.'
   };
 
   /* Table 2 - distillation objectives compared under one pipeline.
@@ -139,12 +139,12 @@
    */
   var KD = {
     number: 'Table 2',
-    caption: 'Distillation objectives compared under one pipeline (source-domain and zero-shot mIoU).',
+    caption: 'Comparison of distillation objectives under a unified pipeline (source-domain and zero-shot mIoU, %).',
     rowHead: 'Objective',
     attachHead: 'Attached to',
     cols: ['SK→SK', 'SK→Waymo', 'SK→nuScenes'],
     rows: [
-      { label: 'student (no distillation)', attached: '—',
+      { label: 'LiSeer-P (no distillation)', attached: '—',
         cells: [{ v: 68.1 }, { v: 54.6 }, { v: 56.8, mark: 'second' }] },
       { label: '+ feature mimicking [LiDAR Distillation]', attached: 'TPV planes',
         cells: [{ v: 73.7, d: 5.6 }, { v: 64.8, d: 10.2, mark: 'second' }, { v: 54.0, d: -2.8 }] },
@@ -161,7 +161,7 @@
       { label: '+ LiEqualizer (ours)', attached: 'Both', ours: true,
         cells: [{ v: 76.5, d: 8.4, mark: 'best' }, { v: 66.5, d: 11.9, mark: 'best' }, { v: 63.9, d: 7.1, mark: 'best' }] }
     ],
-    note: 'All competing objectives are implemented by us within this pipeline. Where the released code runs on this architecture we follow it and its default hyper-parameters; the substitutions we made are listed in Appendix E. The first row is the same student without any distillation, and the bracketed figures are differences against that row.'
+    note: 'All competing objectives are re-implemented on SemanticKITTI atop the same LiSeer-P student (first row, quoted from the LiSeer paper) and frozen dense teacher, using official default hyperparameters where applicable; the adaptations are listed in Appendix E of the paper. Bracketed figures are differences from the first row.'
   };
 
   /* ====================================================================== *
@@ -642,8 +642,8 @@
       'the two plain groups are the cross-sensor transfers the paper’s claim is about.</p>');
     h.push('</figcaption>');
     h.push(legendHTML([
-      { name: 'P-baseline', note: 'single dataset', style: 'background:' + T.series.base },
-      { name: 'LiSeer-P', note: 'randomized sampling', style: 'background:' + T.series.liseer },
+      { name: 'P-baseline', note: 'single-sensor specialist', style: 'background:' + T.series.base },
+      { name: 'LiSeer-P', note: 'disentanglement baseline', style: 'background:' + T.series.liseer },
       { name: 'LiEqualizer', note: 'ours', style: 'background:' + T.series.lieq },
       { name: 'same sensor', note: '', style: 'background:' + T.diagFill +
         ';box-shadow:inset 0 0 0 1px ' + T.hatch +
@@ -656,7 +656,7 @@
     }
     h.push('</div>');
     h.push('<p class="lq-note">Bars are read against the 0' + MINUS + '80 mIoU scale at the ' +
-      'left of each panel. Trained on Waymo alone, the single-dataset baseline scores ' +
+      'left of each panel. Trained on Waymo alone, the single-sensor specialist scores ' +
       '<b>60.9</b> on its own sensor and <b>5.4</b> on nuScenes. Hover or tap a bar for the ' +
       'delta the manuscript prints beside it.</p>');
     h.push(mainDataTable(true));
@@ -822,7 +822,7 @@
     ]));
     h.push('<div class="lq-strip">' + gainStripSVG(bucket, opts) + '</div>');
     h.push('<p class="lq-note">Every one of the nine cells moves upwards: the smallest gain ' +
-      'is <b>+0.9</b> (nuScenes' + ARROW + 'SemanticKITTI), the largest <b>+17.0</b> ' +
+      'is <b>+4.8</b> (nuScenes' + ARROW + 'SemanticKITTI), the largest <b>+18.0</b> ' +
       '(Waymo' + ARROW + 'Waymo, same sensor).</p>');
     h.push(gainDataTable(true));
     h.push('</figure>');
